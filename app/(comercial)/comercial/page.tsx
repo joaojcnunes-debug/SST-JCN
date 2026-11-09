@@ -9,7 +9,7 @@
 // (Inspeção, AEP, Conciliação), o que justifica, a situação e a venda.
 
 import { useId, useMemo, useState, type ReactNode } from "react";
-import { BadgeCheck, Building2, ChevronDown, ChevronRight, ClipboardCheck, Download, FilterX, Handshake, Loader2, Mail, MapPin, Phone, Search, Undo2 } from "lucide-react";
+import { BadgeCheck, Building2, ChevronDown, ChevronRight, ClipboardCheck, Download, FilterX, Handshake, Info, Loader2, Mail, MapPin, Phone, Search, Undo2 } from "lucide-react";
 import { useComercial, useDesfazerVenda, useRegistrarVenda } from "@/lib/hooks/useComercial";
 import Modal from "@/components/ui/Modal";
 import { ConfirmHost, confirmar } from "@/components/ui/confirm";
@@ -434,13 +434,14 @@ function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial
           {/* Um serviço por linha, com a origem da indicação. */}
           <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
             <table className="w-full min-w-[52rem] text-sm [&_td+td]:border-l [&_td]:border-gray-200 [&_th+th]:border-l [&_th]:border-gray-200">
-              <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-600">
+              <thead className={CLS_THEAD}>
+                <FaixaGrupos indicacao="O que indicamos" colunas={3} />
                 <tr>
-                  <th className="w-56 px-3 py-2">Serviço</th>
-                  <th className="w-40 px-3 py-2">Origem</th>
-                  <th className="px-3 py-2">O que justifica</th>
-                  <th className="w-40 px-3 py-2">Situação</th>
-                  <th className="w-52 px-3 py-2">Venda</th>
+                  <Titulo className="w-56" dica="Serviço que a empresa ainda não contratou">Serviço</Titulo>
+                  <Titulo className="w-40" dica="De onde veio a indicação: Inspeção, AEP ou Conciliação">Origem</Titulo>
+                  <Titulo dica="Os itens que levaram à indicação; o nome de cada um em negrito">O que justifica</Titulo>
+                  <Titulo className="w-40" comercial dica="Aberta, revisão recomendada, em andamento, realizada ou vendida">Situação</Titulo>
+                  <Titulo className="w-52" comercial dica="Marque quando o cliente fechar; quem marcou, ou um Admin, pode desfazer">Venda</Titulo>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -471,12 +472,12 @@ function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial
                       <td className="px-3 py-2.5 text-xs text-gray-700">
                         <Justificativa c={c} o={o} />
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td className={cn("px-3 py-2.5", CLS_COL_COMERCIAL)}>
                         <span title={st.dica} className={cn("inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold", st.cls)}>
                           {st.rotulo}
                         </span>
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td className={cn("px-3 py-2.5", CLS_COL_COMERCIAL)}>
                         <VendaDoServico idEmpresa={e.idEmpresa} oportunidade={o} />
                       </td>
                     </tr>
@@ -536,6 +537,38 @@ function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial
   );
 }
 
+/*
+ * Títulos das tabelas em 2 níveis (0.3.247): uma faixa agrupa as colunas em "o que a JCN indicou" (azul)
+ * e "Comercial" (âmbar, com Situação e Venda, que têm fundo leve nas linhas). Cada título tem a explicação
+ * ao passar o mouse. As duas tabelas usam as mesmas larguras para Situação e Venda, e ficam alinhadas.
+ */
+const CLS_THEAD = "bg-gray-100 text-left text-[11px] font-bold uppercase tracking-wide text-gray-700 [&_tr:last-child]:border-b-2 [&_tr:last-child]:border-gray-300";
+const CLS_COL_COMERCIAL = "bg-amber-50/40";
+
+function FaixaGrupos({ indicacao, colunas }: { indicacao: string; colunas: number }) {
+  return (
+    <tr className="text-[10px] tracking-wider">
+      <th colSpan={colunas} className="border-b border-sky-200 bg-sky-50 px-3 py-1 text-sky-800">
+        {indicacao}
+      </th>
+      <th colSpan={2} className="border-b border-amber-200 bg-amber-100/70 px-3 py-1 text-amber-900">
+        Comercial
+      </th>
+    </tr>
+  );
+}
+
+function Titulo({ children, dica, className, comercial }: { children: ReactNode; dica: string; className?: string; comercial?: boolean }) {
+  return (
+    <th title={dica} className={cn("px-3 py-2", comercial && "bg-amber-50", className)}>
+      <span className="inline-flex cursor-help items-center gap-1">
+        {children}
+        <Info className="size-3 text-gray-400" aria-hidden />
+      </span>
+    </th>
+  );
+}
+
 /** Observação sobre a situação (documento antigo, rascunho parado), não item a vender. */
 const ehNota = (d: string) => /antes da indicação|não conta como|^Há \d/.test(d);
 
@@ -574,19 +607,20 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
   return (
     <div className="overflow-x-auto rounded-xl border border-indigo-200 bg-white">
       <p className="border-b border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-900">
-        Intervenções psicossociais · indicadas na Conciliação
+        Intervenções psicossociais
       </p>
       <table className="w-full min-w-[72rem] text-sm [&_td+td]:border-l [&_td]:border-gray-200 [&_th+th]:border-l [&_th]:border-gray-200">
-        <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-600">
+        <thead className={CLS_THEAD}>
+          <FaixaGrupos indicacao="Indicado na Conciliação" colunas={6} />
           <tr>
-            <th className="w-40 px-3 py-2">Setor</th>
-            <th className="w-32 px-3 py-2">Risco</th>
-            <th className="px-3 py-2">Intervenção</th>
-            <th className="w-28 px-3 py-2">Modalidade</th>
-            <th className="w-48 px-3 py-2">Responsável</th>
-            <th className="w-20 px-3 py-2">Prazo</th>
-            <th className="w-40 px-3 py-2">Situação</th>
-            <th className="w-52 px-3 py-2">Venda</th>
+            <Titulo className="w-40" dica="Setor onde o risco foi confirmado">Setor</Titulo>
+            <Titulo className="w-32" dica="Fator de risco psicossocial confirmado na Conciliação">Risco</Titulo>
+            <Titulo dica="Ação indicada para o risco">Intervenção</Titulo>
+            <Titulo className="w-28" dica="Como é feita: EAD, presencial ou ao vivo">Modalidade</Titulo>
+            <Titulo className="w-48" dica="Quem executa a intervenção">Responsável</Titulo>
+            <Titulo className="w-20" dica="Prazo indicado para executar, em dias">Prazo</Titulo>
+            <Titulo className="w-40" comercial dica="Aberta ou vendida, por intervenção">Situação</Titulo>
+            <Titulo className="w-52" comercial dica="Cada intervenção se vende sozinha; quem marcou, ou um Admin, pode desfazer">Venda</Titulo>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 text-gray-700">
@@ -602,12 +636,12 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
                 <td className="px-3 py-2">{l.modalidade ?? "—"}</td>
                 <td className="px-3 py-2">{l.responsavel ?? "—"}</td>
                 <td className="px-3 py-2 whitespace-nowrap">{l.prazoDias ? `${l.prazoDias} ${l.prazoDias === 1 ? "dia" : "dias"}` : "—"}</td>
-                <td className="px-3 py-2">
+                <td className={cn("px-3 py-2", CLS_COL_COMERCIAL)}>
                   <span title={st.dica} className={cn("inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold", st.cls)}>
                     {st.rotulo}
                   </span>
                 </td>
-                <td className="px-3 py-2">
+                <td className={cn("px-3 py-2", CLS_COL_COMERCIAL)}>
                   {!l.venda && o.venda ? (
                     <span className="text-xs text-violet-900">Vendida com o serviço inteiro</span>
                   ) : (

@@ -48,7 +48,9 @@ export const CATALOGO: Novidade[] = [
     texto:
       "Na tabela das intervenções psicossociais do Comercial, cada intervenção tem agora a sua Situação e o seu botão " +
       "Marcar como vendido, com Desfazer. Na linha do serviço aparece quantas já foram vendidas (por exemplo, 1 de 5); " +
-      "o serviço só sai do \"a vender\" quando todas forem vendidas. Em Consolidação › Vendas, a venda mostra a intervenção vendida.",
+      "o serviço só sai do \"a vender\" quando todas forem vendidas. Em Consolidação › Vendas, a venda mostra a intervenção vendida. " +
+      "Os títulos das duas tabelas ganharam uma faixa que separa o que indicamos (em azul) das colunas do Comercial " +
+      "(em âmbar), e cada título explica a coluna ao passar o mouse.",
     onde: "Comercial › Oportunidades e Consolidação › Vendas",
     versoes: ["0.3.247"],
   },
