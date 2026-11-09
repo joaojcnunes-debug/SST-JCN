@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "vendas-o-que-foi-vendido",
+    data: "2026-11-09",
+    tipo: "melhoria",
+    titulo: "Vendas: cada venda mostra o que foi vendido",
+    texto:
+      "Na página Vendas, cada venda abre embaixo o que foi vendido. Em Intervenções psicossociais aparece a tabela da " +
+      "Conciliação (setor, risco, intervenção, modalidade, responsável e prazo) e o parecer da equipe; nos outros serviços, " +
+      "os itens que justificaram a oportunidade. A seta ao lado da empresa recolhe ou abre o detalhe.",
+    onde: "Consolidação › Vendas",
+    versoes: ["0.3.245"],
+  },
+  {
     id: "conciliacao-intervencoes-colunas-setor-risco",
     data: "2026-11-09",
     tipo: "melhoria",

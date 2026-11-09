@@ -86,9 +86,46 @@ export function useComercial() {
   );
 }
 
-/** Consolidação › Vendas: a mais recente primeiro. */
+/** O que foi vendido, para Consolidação › Vendas (0.3.245): o mesmo que o vendedor via na oportunidade. */
+export interface DetalheVenda {
+  /** Os itens que justificaram a oportunidade (setores, máquinas, agentes, treinamentos…). */
+  detalhes: string[];
+  origens: string[];
+  setoresAet: { nome: string; expostos: number }[];
+  /** Intervenções psicossociais: as linhas da etapa Intervenções da Conciliação. */
+  intervencoes: IntervencaoIndicada[];
+  /** Parecer da equipe no atendimento concluído. */
+  parecer: string | null;
+}
+
+export type VendaComDetalhe = VendaRegistrada & { detalhe: DetalheVenda | null };
+
+/**
+ * Consolidação › Vendas: a mais recente primeiro, cada uma com o que foi vendido. O detalhe é o de agora:
+ * sem a oportunidade (por exemplo, atendimento reaberto), vem null e a tela avisa.
+ */
 export function useVendasComercial() {
-  return useDadosComercial<VendaRegistrada[]>((d) => [...d.vendas].sort((a, b) => b.vendido_em.localeCompare(a.vendido_em)));
+  return useDadosComercial<VendaComDetalhe[]>((d) => {
+    const visao = new Map(visaoDoVendedor(d.lista, d.atendimentos, d.indicadas, d.conciliacoes).map((c) => [c.empresa.idEmpresa, c]));
+    return [...d.vendas]
+      .sort((a, b) => b.vendido_em.localeCompare(a.vendido_em))
+      .map((v) => {
+        const emp = visao.get(v.id_empresa);
+        const op = emp?.oportunidades.find((o) => o.produto === v.produto);
+        if (!emp || !op) return { ...v, detalhe: null };
+        const psico = v.produto === "Intervenção psicossocial";
+        return {
+          ...v,
+          detalhe: {
+            detalhes: op.detalhes,
+            origens: op.origens,
+            setoresAet: op.setores.map((s) => ({ nome: s.nome, expostos: s.expostos })),
+            intervencoes: psico ? d.indicadas.filter((i) => i.id_empresa === v.id_empresa) : [],
+            parecer: psico ? (emp.parecerEquipe ?? null) : null,
+          },
+        };
+      });
+  });
 }
 
 export function useRegistrarVenda() {
