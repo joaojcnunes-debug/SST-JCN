@@ -175,7 +175,7 @@ export default function LiberarParaComercial({
                 <table className="w-full min-w-[56rem] text-sm">
                   <thead className="border-b border-gray-200 text-left text-xs font-semibold text-gray-600">
                     <tr>
-                      <th className="w-56 py-2 pr-3">Risco</th>
+                      <th className="w-56 py-2 pr-3">Setor e risco</th>
                       <th className="py-2 pr-2">Intervenção</th>
                       <th className="w-32 py-2 pr-2">Modalidade</th>
                       <th className="w-72 py-2 pr-2">Responsável</th>
@@ -305,8 +305,15 @@ function LinhasDoRisco({
 
   const celulaRisco = (
     <td rowSpan={linhas} className="py-2 pr-3 align-top">
-      <span className="font-medium text-gray-900">{risco.setor}</span>
-      <span className="block text-gray-700">{risco.fator}</span>
+      {/* 0.3.243: rótulo antes de cada nome, para não confundir setor com risco. */}
+      <span className="block">
+        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Setor:</span>{" "}
+        <span className="font-medium text-gray-900">{risco.setor}</span>
+      </span>
+      <span className="block">
+        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Risco:</span>{" "}
+        <span className="text-gray-700">{risco.fator}</span>
+      </span>
       <div className="mt-1 flex flex-wrap gap-1">
         {risco.aet && (
           <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-800">Aprofundar com AET</span>
