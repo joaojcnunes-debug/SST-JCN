@@ -101,6 +101,16 @@ export interface SetorAet {
   cargos: number;
 }
 
+/** Uma intervenção indicada na Conciliação, em campos separados para a tabela do vendedor (0.3.246). */
+export interface LinhaIntervencaoOferta {
+  setor: string;
+  risco: string;
+  intervencao: string;
+  modalidade: string | null;
+  responsavel: string | null;
+  prazoDias: number | null;
+}
+
 export interface Oportunidade {
   produto: Produto;
   situacao: SituacaoOportunidade;
@@ -110,6 +120,8 @@ export interface Oportunidade {
   detalhes: string[];
   /** Para AET: setores indicados (com expostos). */
   setores: SetorAet[];
+  /** Intervenções psicossociais: uma linha por intervenção indicada na Conciliação (0.3.246). */
+  intervencoes?: LinhaIntervencaoOferta[];
   /** v323: o vendedor marcou como vendido. Ainda sem documento, a situação vira "vendida". */
   venda?: { por: string; porEmail: string; em: string; observacao: string | null };
 }

@@ -5,9 +5,11 @@
 // inspeção concluída (Apreciação NR-12, medição, químicos, DRPS,
 // treinamentos), com a situação (aberta / em andamento / realizada), o que
 // justifica cada uma e o contato da empresa. Regra em lib/comercial/oportunidades.ts.
+// 0.3.246: primeiro a lista de empresas, recolhida; ao abrir, cada serviço numa linha com a origem
+// (Inspeção, AEP, Conciliação), o que justifica, a situação e a venda.
 
 import { useMemo, useState, type ReactNode } from "react";
-import { BadgeCheck, Building2, ClipboardCheck, Download, FilterX, Handshake, Loader2, Mail, MapPin, Phone, Search, Undo2 } from "lucide-react";
+import { BadgeCheck, Building2, ChevronDown, ChevronRight, ClipboardCheck, Download, FilterX, Handshake, Loader2, Mail, MapPin, Phone, Search, Undo2 } from "lucide-react";
 import { useComercial, useDesfazerVenda, useRegistrarVenda } from "@/lib/hooks/useComercial";
 import Modal from "@/components/ui/Modal";
 import { ConfirmHost, confirmar } from "@/components/ui/confirm";
@@ -19,7 +21,9 @@ import {
   NOME_PRODUTO,
   PRODUTOS,
   type EmpresaComercial,
+  type LinhaIntervencaoOferta,
   type Oportunidade,
+  type Origem,
   type Produto,
   type SituacaoOportunidade,
 } from "@/lib/comercial/oportunidades";
@@ -32,6 +36,13 @@ import { cn, fmtData, formatCNPJ } from "@/lib/utils";
 
 const selectCls =
   "w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20";
+
+/** De onde veio a indicação do serviço (0.3.246). */
+const ORIGEM: Record<Origem, { cls: string; dica: string }> = {
+  "Inspeção": { cls: "border-sky-200 bg-sky-50 text-sky-800", dica: "Indicado pela última inspeção concluída e liberada" },
+  AEP: { cls: "border-violet-200 bg-violet-50 text-violet-800", dica: "Indicado pela AEP entregue e liberada" },
+  "Conciliação": { cls: "border-indigo-200 bg-indigo-50 text-indigo-800", dica: "Indicado na Conciliação DRPS/QPS × AEP" },
+};
 
 const SITUACAO: Record<SituacaoOportunidade, { rotulo: string; cls: string; dica: string }> = {
   aberta: { rotulo: "Oportunidade aberta", cls: "border-amber-300 bg-amber-50 text-amber-900", dica: "Indicada e a empresa ainda não tem" },
@@ -86,6 +97,15 @@ export default function ComercialPage() {
     !situacao || (situacao === "vender" ? A_VENDER.includes(s) : s === situacao);
   const [unidade, setUnidade] = useState("");
   const [nivel, setNivel] = useState("");
+  // Empresas abertas na lista (0.3.246): todas começam recolhidas.
+  const [abertas, setAbertas] = useState<Set<string>>(new Set());
+  const alternar = (id: string) =>
+    setAbertas((a) => {
+      const n = new Set(a);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
 
   const opcoesUnidade = useMemo(
     () =>
@@ -122,15 +142,15 @@ export default function ComercialPage() {
   }, [lista, busca, produto, situacao, unidade, nivel, nomeUnidade, nomeGrupoDe]);
 
   const todas = lista.flatMap((c) => c.oportunidades.map((o) => ({ c, o })));
-  const abertas = (p: Produto) => todas.filter(({ o }) => o.produto === p && A_VENDER.includes(o.situacao));
+  const aVender = (p: Produto) => todas.filter(({ o }) => o.produto === p && A_VENDER.includes(o.situacao));
   const kpi = {
     abertas: todas.filter(({ o }) => A_VENDER.includes(o.situacao)).length,
-    aet: abertas("AET").length,
-    expostos: abertas("AET").reduce((n, { c }) => n + c.expostosAet, 0),
+    aet: aVender("AET").length,
+    expostos: aVender("AET").reduce((n, { c }) => n + c.expostosAet, 0),
     andamento: todas.filter(({ o }) => o.situacao === "andamento").length,
   };
   // Abertas por produto — os chips embaixo dos contadores.
-  const porProduto = PRODUTOS.map((p) => ({ p, n: abertas(p).length })).filter((x) => x.n > 0);
+  const porProduto = PRODUTOS.map((p) => ({ p, n: aVender(p).length })).filter((x) => x.n > 0);
   const nAtivos = [busca.trim(), produto, situacao !== "vender" ? situacao || "todas" : "", unidade, nivel].filter(Boolean).length;
   const limpar = () => {
     setBusca("");
@@ -294,11 +314,23 @@ export default function ComercialPage() {
             {filtradas.length} empresa{filtradas.length !== 1 ? "s" : ""} ·{" "}
             {filtradas.reduce((n, c) => n + c.oportunidades.length, 0)} oportunidade(s)
           </span>
-          {nAtivos > 0 && (
-            <button type="button" onClick={limpar} className="inline-flex items-center gap-1 font-semibold text-marca-primary hover:underline">
-              <FilterX className="size-3.5" /> Voltar ao padrão (a vender)
-            </button>
-          )}
+          <span className="flex flex-wrap items-center gap-3">
+            {filtradas.length > 0 && (
+              <>
+                <button type="button" onClick={() => setAbertas(new Set(filtradas.map((c) => c.empresa.idEmpresa)))} className="font-semibold text-marca-primary hover:underline">
+                  Abrir todas
+                </button>
+                <button type="button" onClick={() => setAbertas(new Set())} className="font-semibold text-marca-primary hover:underline">
+                  Recolher todas
+                </button>
+              </>
+            )}
+            {nAtivos > 0 && (
+              <button type="button" onClick={limpar} className="inline-flex items-center gap-1 font-semibold text-marca-primary hover:underline">
+                <FilterX className="size-3.5" /> Voltar ao padrão (a vender)
+              </button>
+            )}
+          </span>
         </div>
       </div>
 
@@ -315,9 +347,15 @@ export default function ComercialPage() {
             : "Nenhuma oportunidade com esses filtros."}
         </p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           {filtradas.map((c) => (
-            <CartaoEmpresa key={c.empresa.idEmpresa} c={c} unidade={unidadeDe(c.empresa.idUnidade)} />
+            <CartaoEmpresa
+              key={c.empresa.idEmpresa}
+              c={c}
+              unidade={unidadeDe(c.empresa.idUnidade)}
+              aberta={abertas.has(c.empresa.idEmpresa)}
+              onAlternar={() => alternar(c.empresa.idEmpresa)}
+            />
           ))}
         </ul>
       )}
@@ -325,22 +363,55 @@ export default function ComercialPage() {
   );
 }
 
-function CartaoEmpresa({ c, unidade }: { c: EmpresaComercial; unidade: string }) {
+function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial; unidade: string; aberta: boolean; onAlternar: () => void }) {
   const e = c.empresa;
   const regiao = [e.municipio, e.uf].filter(Boolean).join("/");
+  const nVender = c.oportunidades.filter((o) => A_VENDER.includes(o.situacao)).length;
   return (
-    <li className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-start gap-3">
-        <Building2 className="mt-0.5 size-5 shrink-0 text-amber-700" />
-        <div className="min-w-0 flex-1">
-          <div className="text-base font-semibold text-gray-900">{e.nome}</div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500">
+    <li className={cn(aberta && "bg-gray-50/50")}>
+      {/* Linha da empresa: clicar abre os serviços. */}
+      <button
+        type="button"
+        onClick={onAlternar}
+        aria-expanded={aberta}
+        className="flex w-full flex-wrap items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
+      >
+        {aberta ? <ChevronDown className="size-4 shrink-0 text-gray-500" /> : <ChevronRight className="size-4 shrink-0 text-gray-500" />}
+        <Building2 className="size-5 shrink-0 text-amber-700" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-gray-900">{e.nome}</span>
+          <span className="flex flex-wrap items-center gap-x-3 text-xs text-gray-500">
             <span>{e.cnpj ? formatCNPJ(e.cnpj) : "—"}</span>
             <span className="inline-flex items-center gap-1">
               <MapPin className="size-3" />
-              <span className="font-medium text-gray-700">{unidade || "Sem unidade"}</span>
+              {unidade || "Sem unidade"}
               {regiao && <span className="text-gray-400">· {regiao}</span>}
             </span>
+          </span>
+        </span>
+        <span className="flex flex-wrap items-center gap-1.5">
+          {c.oportunidades.map((o) => (
+            <span key={o.produto} title={`${NOME_PRODUTO[o.produto]} · ${SITUACAO[o.situacao].rotulo}`} className={cn("rounded-full border px-2 py-0.5 text-[11px] font-semibold", SITUACAO[o.situacao].cls)}>
+              {o.produto}
+            </span>
+          ))}
+        </span>
+        <span className="flex items-center gap-2 text-xs text-gray-600">
+          {e.pior && <SeloNivelAiha nivel={e.pior} />}
+          <span className="whitespace-nowrap">
+            <strong className="text-gray-900">{c.oportunidades.length}</strong> serviço{c.oportunidades.length !== 1 ? "s" : ""}
+            {nVender > 0 && (
+              <>
+                {" "}· <strong className="text-amber-700">{nVender}</strong> a vender
+              </>
+            )}
+          </span>
+        </span>
+      </button>
+
+      {aberta && (
+        <div className="space-y-3 px-4 pb-4 pl-11">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
             {c.telefone && (
               <a href={`tel:${c.telefone}`} className="inline-flex items-center gap-1 hover:text-marca-primary">
                 <Phone className="size-3" /> {c.telefone}
@@ -351,63 +422,76 @@ function CartaoEmpresa({ c, unidade }: { c: EmpresaComercial; unidade: string })
                 <Mail className="size-3" /> {c.email}
               </a>
             )}
+            {c.temAep && <span>AEP entregue {e.ultimaData ? fmtData(e.ultimaData) : "—"}</span>}
+            {c.inspecao && (
+              <span className="inline-flex items-center gap-1">
+                <ClipboardCheck className="size-3.5" />
+                Inspeção {c.inspecao.idInspecao} concluída {c.inspecao.concluidaEm ? fmtData(c.inspecao.concluidaEm) : ""}
+              </span>
+            )}
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-          {e.pior && <SeloNivelAiha nivel={e.pior} />}
-          {c.temAep && <span>AEP entregue {e.ultimaData ? fmtData(e.ultimaData) : "—"}</span>}
-          {c.inspecao && (
-            <span className="inline-flex items-center gap-1">
-              <ClipboardCheck className="size-3.5" />
-              Inspeção {c.inspecao.idInspecao} concluída {c.inspecao.concluidaEm ? fmtData(c.inspecao.concluidaEm) : ""}
-            </span>
-          )}
-        </div>
-      </div>
 
-      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-        {c.oportunidades.map((o) => {
-          const s = SITUACAO[o.situacao];
-          return (
-            <div key={o.produto} className={cn("rounded-xl border p-3", s.cls)} title={s.dica}>
-              <div className="flex items-start justify-between gap-2">
-                <span className="text-sm font-bold">{NOME_PRODUTO[o.produto]}</span>
-                <span className="shrink-0 rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-semibold">{s.rotulo}</span>
-              </div>
-              <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide opacity-70">
-                Indicada por: {o.origens.join(" + ")}
-              </div>
-              {o.produto === "AET" && o.setores.length > 0 ? (
-                <div className="mt-1 text-xs">
-                  <div>
-                    <strong>{o.setores.length}</strong> setor{o.setores.length !== 1 ? "es" : ""} indicado{o.setores.length !== 1 ? "s" : ""} ·{" "}
-                    <strong>{c.expostosAet}</strong> trabalhador{c.expostosAet !== 1 ? "es" : ""} exposto{c.expostosAet !== 1 ? "s" : ""}
-                  </div>
-                  <div className="mt-0.5 opacity-80">
-                    {o.setores.map((st) => `${st.nome}${st.expostos ? ` (${st.expostos})` : ""}`).join(" · ")}
-                  </div>
-                  {/* Os riscos que a Conciliação mandou aprofundar somam-se aos setores da AEP. */}
-                  {o.detalhes
-                    .filter((d) => d.includes("(Conciliação:"))
-                    .map((d) => (
-                      <div key={d} className="mt-0.5">
-                        {d}
-                      </div>
-                    ))}
-                </div>
-              ) : (
-                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs">
-                  {o.detalhes.slice(0, 6).map((d) => (
-                    <li key={d}>{d}</li>
-                  ))}
-                  {o.detalhes.length > 6 && <li className="list-none opacity-70">+ {o.detalhes.length - 6} item(ns)</li>}
-                </ul>
-              )}
-              <VendaDoServico idEmpresa={e.idEmpresa} oportunidade={o} />
-            </div>
-          );
-        })}
-      </div>
+          {/* Um serviço por linha, com a origem da indicação. */}
+          <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+            <table className="w-full min-w-[52rem] text-sm [&_td+td]:border-l [&_td]:border-gray-200 [&_th+th]:border-l [&_th]:border-gray-200">
+              <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-600">
+                <tr>
+                  <th className="w-56 px-3 py-2">Serviço</th>
+                  <th className="w-40 px-3 py-2">Origem</th>
+                  <th className="px-3 py-2">O que justifica</th>
+                  <th className="w-40 px-3 py-2">Situação</th>
+                  <th className="w-52 px-3 py-2">Venda</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {c.oportunidades.map((o) => {
+                  const st = SITUACAO[o.situacao];
+                  return (
+                    <tr key={o.produto} className="align-top">
+                      <td className="px-3 py-2.5 font-semibold text-gray-900">{NOME_PRODUTO[o.produto]}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex flex-wrap gap-1">
+                          {o.origens.map((og) => (
+                            <span
+                              key={og}
+                              title={og === "Inspeção" && c.inspecao ? `${ORIGEM[og].dica}: ${c.inspecao.idInspecao}` : ORIGEM[og].dica}
+                              className={cn("rounded-full border px-2 py-0.5 text-[11px] font-semibold", ORIGEM[og].cls)}
+                            >
+                              {og}
+                            </span>
+                          ))}
+                        </div>
+                        {o.origens.includes("Inspeção") && c.inspecao && (
+                          <p className="mt-1 text-[11px] text-gray-500">
+                            {c.inspecao.idInspecao}
+                            {c.inspecao.concluidaEm ? ` · ${fmtData(c.inspecao.concluidaEm)}` : ""}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-gray-700">
+                        <Justificativa c={c} o={o} />
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span title={st.dica} className={cn("inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold", st.cls)}>
+                          {st.rotulo}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <VendaDoServico idEmpresa={e.idEmpresa} oportunidade={o} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Intervenções psicossociais numa tabela própria: uma linha por intervenção (0.3.246). */}
+          {c.oportunidades
+            .filter((o) => o.produto === "Intervenção psicossocial" && o.intervencoes?.length)
+            .map((o) => (
+              <TabelaIntervencoes key={o.produto} linhas={o.intervencoes!} />
+            ))}
 
       {c.parecerEquipe && (
         <p className="mt-3 whitespace-pre-line rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
@@ -446,7 +530,146 @@ function CartaoEmpresa({ c, unidade }: { c: EmpresaComercial; unidade: string })
           </span>
         )}
       </div>
+        </div>
+      )}
     </li>
+  );
+}
+
+/** Observação sobre a situação (documento antigo, rascunho parado), não item a vender. */
+const ehNota = (d: string) => /antes da indicação|não conta como|^Há \d/.test(d);
+
+/**
+ * Um item com o título em destaque para quem vende (0.3.246): o nome antes de " – ", " (", " · " ou ": "
+ * fica em negrito e o resto em cinza; número no começo fica em negrito; observação vira nota.
+ */
+function ItemJustificativa({ texto }: { texto: string }) {
+  if (ehNota(texto)) return <span className="italic text-gray-500">{texto}</span>;
+  const num = /^(\d+)(\s.*)$/.exec(texto);
+  if (num) {
+    return (
+      <span>
+        <strong className="text-gray-900">{num[1]}</strong>
+        {num[2]}
+      </span>
+    );
+  }
+  const corte = [" – ", " (", " · ", ": "].map((sep) => texto.indexOf(sep)).filter((i) => i > 0);
+  const i = corte.length ? Math.min(...corte) : -1;
+  if (i < 0) return <strong className="font-semibold text-gray-900">{texto}</strong>;
+  return (
+    <span>
+      <strong className="font-semibold text-gray-900">{texto.slice(0, i)}</strong>
+      <span className="text-gray-500">{texto.slice(i)}</span>
+    </span>
+  );
+}
+
+/** As intervenções que a Conciliação indicou: Setor, Risco, Intervenção, Modalidade, Responsável e Prazo. */
+function TabelaIntervencoes({ linhas }: { linhas: LinhaIntervencaoOferta[] }) {
+  return (
+    <div className="overflow-x-auto rounded-xl border border-indigo-200 bg-white">
+      <p className="border-b border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-900">
+        Intervenções psicossociais · indicadas na Conciliação
+      </p>
+      <table className="w-full min-w-[52rem] text-sm [&_td+td]:border-l [&_td]:border-gray-200 [&_th+th]:border-l [&_th]:border-gray-200">
+        <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-600">
+          <tr>
+            <th className="w-44 px-3 py-2">Setor</th>
+            <th className="w-40 px-3 py-2">Risco</th>
+            <th className="px-3 py-2">Intervenção</th>
+            <th className="w-28 px-3 py-2">Modalidade</th>
+            <th className="w-56 px-3 py-2">Responsável</th>
+            <th className="w-20 px-3 py-2">Prazo</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100 text-gray-700">
+          {linhas.map((l, n) => {
+            const novoSetor = n === 0 || linhas[n - 1].setor !== l.setor;
+            const novoRisco = novoSetor || linhas[n - 1].risco !== l.risco;
+            return (
+              <tr key={n} className="align-top">
+                <td className="px-3 py-2 font-semibold text-gray-900">{novoSetor ? l.setor : ""}</td>
+                <td className="px-3 py-2 font-medium text-gray-800">{novoRisco ? l.risco : ""}</td>
+                <td className="px-3 py-2 font-semibold text-gray-900">{l.intervencao}</td>
+                <td className="px-3 py-2">{l.modalidade ?? "—"}</td>
+                <td className="px-3 py-2">{l.responsavel ?? "—"}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{l.prazoDias ? `${l.prazoDias} ${l.prazoDias === 1 ? "dia" : "dias"}` : "—"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** O que justifica o serviço: na AET, setores e expostos (e o que a Conciliação mandou aprofundar); nos demais, os itens. */
+function Justificativa({ c, o }: { c: EmpresaComercial; o: Oportunidade }) {
+  const notas = o.detalhes.filter(ehNota);
+  if (o.produto === "Intervenção psicossocial" && o.intervencoes?.length) {
+    const riscos = new Set(o.intervencoes.map((i) => `${i.setor}|${i.risco}`)).size;
+    return (
+      <span>
+        <strong className="text-gray-900">{o.intervencoes.length}</strong> intervenç{o.intervencoes.length !== 1 ? "ões" : "ão"} em{" "}
+        <strong className="text-gray-900">{riscos}</strong> risco{riscos !== 1 ? "s" : ""} · <span className="text-indigo-700">tabela abaixo</span>
+      </span>
+    );
+  }
+  if (o.produto === "AET" && o.setores.length > 0) {
+    const conciliacao = o.detalhes.filter((d) => d.includes("(Conciliação:"));
+    return (
+      <div className="space-y-1">
+        <div>
+          <strong className="text-gray-900">{o.setores.length}</strong> setor{o.setores.length !== 1 ? "es" : ""} indicado{o.setores.length !== 1 ? "s" : ""} ·{" "}
+          <strong className="text-gray-900">{c.expostosAet}</strong> trabalhador{c.expostosAet !== 1 ? "es" : ""} exposto{c.expostosAet !== 1 ? "s" : ""}
+        </div>
+        <div>
+          <span className="text-[11px] font-bold uppercase tracking-wide text-gray-600">Setores: </span>
+          {o.setores.map((st, n) => (
+            <span key={st.nome}>
+              {n > 0 && <span className="text-gray-400"> · </span>}
+              <strong className="font-semibold text-gray-900">{st.nome}</strong>
+              {st.expostos ? <span className="text-gray-500"> ({st.expostos})</span> : null}
+            </span>
+          ))}
+        </div>
+        {conciliacao.length > 0 && (
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wide text-indigo-800">Aprofundar (Conciliação): </span>
+            {conciliacao.map((d, n) => (
+              <span key={d}>
+                {n > 0 && <span className="text-gray-400"> · </span>}
+                <strong className="font-semibold text-gray-900">{d.replace(/\s*\(Conciliação:.*\)$/, "")}</strong>
+              </span>
+            ))}
+          </div>
+        )}
+        {notas.map((d) => (
+          <p key={d} className="italic text-gray-500">
+            {d}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  const itens = o.detalhes.filter((d) => !ehNota(d));
+  return (
+    <div className="space-y-1">
+      <ul className="list-disc space-y-0.5 pl-4 marker:text-gray-400">
+        {itens.slice(0, 6).map((d) => (
+          <li key={d}>
+            <ItemJustificativa texto={d} />
+          </li>
+        ))}
+        {itens.length > 6 && <li className="list-none text-gray-500">+ {itens.length - 6} item(ns)</li>}
+      </ul>
+      {notas.map((d) => (
+        <p key={d} className="italic text-gray-500">
+          {d}
+        </p>
+      ))}
+    </div>
   );
 }
 
@@ -461,7 +684,7 @@ function VendaDoServico({ idEmpresa, oportunidade: o }: { idEmpresa: string; opo
   if (o.venda) {
     const podeDesfazer = user?.perfil === "Admin" || user?.email?.toLowerCase() === o.venda.porEmail;
     return (
-      <div className="mt-2 border-t border-current/10 pt-1.5 text-xs">
+      <div className="text-xs text-violet-900">
         <p className="flex items-center gap-1 font-semibold">
           <BadgeCheck className="size-3.5" /> Vendido em {fmtData(o.venda.em)} por {o.venda.por}
         </p>
@@ -493,7 +716,7 @@ function VendaDoServico({ idEmpresa, oportunidade: o }: { idEmpresa: string; opo
       <button
         type="button"
         onClick={() => setAberta(true)}
-        className="mt-2 inline-flex items-center gap-1 rounded-md border border-current/30 bg-white/70 px-2 py-1 text-xs font-semibold hover:bg-white"
+        className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100"
       >
         <BadgeCheck className="size-3.5" /> Marcar como vendido
       </button>

@@ -205,6 +205,24 @@ test("concluído leva intervenções, AET e parecer ao vendedor", () => {
   assert.equal(v.parecerEquipe, "Empresa pronta");
 });
 
+test("as intervenções vão ao vendedor em campos separados, por setor e risco (0.3.246)", () => {
+  const c = fechada("A", [item("RH", "Assédio", "CONFIRMAR"), item("Padaria", "Sobrecarga", "CONFIRMAR")]);
+  const [v] = visaoDoVendedor(
+    [],
+    [atendimento("A", "CONCLUIDO")],
+    [indicada("A", "RH", "Assédio", { modalidade: null, prazo_dias: null }), indicada("A", "Padaria", "Sobrecarga", { prazo_dias: 30 })],
+    [c],
+  );
+  const psico = v.oportunidades.find((o) => o.produto === "Intervenção psicossocial");
+  assert.deepEqual(
+    psico?.intervencoes?.map((i) => [i.setor, i.risco, i.intervencao, i.modalidade, i.prazoDias]),
+    [
+      ["Padaria", "Sobrecarga", "Treinamento Saúde Mental", "EAD", 30],
+      ["RH", "Assédio", "Treinamento Saúde Mental", null, null],
+    ],
+  );
+});
+
 test("AET que já veio da AEP junta na mesma oportunidade", () => {
   const c = fechada("A", [item("RH", "Assédio", "AET")]);
   const [v] = visaoDoVendedor([empresa("A", [op("AET")])], [atendimento("A", "CONCLUIDO")], [], [c]);
