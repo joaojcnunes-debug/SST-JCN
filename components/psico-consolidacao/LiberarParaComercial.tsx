@@ -172,10 +172,11 @@ export default function LiberarParaComercial({
                 , e cada alteração é gravada na hora. O que você inserir em &quot;+ Inserir novo&quot; também entra no catálogo.
               </p>
               <div className="mt-3 overflow-x-auto">
-                <table className="w-full min-w-[56rem] text-sm">
+                <table className="w-full min-w-[64rem] text-sm">
                   <thead className="border-b border-gray-200 text-left text-xs font-semibold text-gray-600">
                     <tr>
-                      <th className="w-56 py-2 pr-3">Setor e risco</th>
+                      <th className="w-40 py-2 pr-3">Setor</th>
+                      <th className="w-48 py-2 pr-3">Risco</th>
                       <th className="py-2 pr-2">Intervenção</th>
                       <th className="w-32 py-2 pr-2">Modalidade</th>
                       <th className="w-72 py-2 pr-2">Responsável</th>
@@ -184,10 +185,11 @@ export default function LiberarParaComercial({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {riscos.map((r) => (
+                    {riscos.map((r, n) => (
                       <LinhasDoRisco
                         key={r.chave}
                         risco={r}
+                        primeiroDoSetor={n === 0 || riscos[n - 1].setor !== r.setor}
                         idEmpresa={idEmpresa}
                         itens={intervencoesDoRisco(indicadas, r.chave)}
                         catalogo={catalogo}
@@ -286,6 +288,7 @@ export default function LiberarParaComercial({
 /** As linhas de um risco: uma por intervenção, a de adicionar e, sem nenhuma, o aviso. */
 function LinhasDoRisco({
   risco,
+  primeiroDoSetor,
   idEmpresa,
   itens,
   catalogo,
@@ -293,6 +296,8 @@ function LinhasDoRisco({
   podeAlterar,
 }: {
   risco: RiscoConciliado;
+  /** Os riscos vêm por setor: o nome do setor aparece só no primeiro de cada um (0.3.244). */
+  primeiroDoSetor: boolean;
   idEmpresa: string;
   itens: IntervencaoIndicada[];
   catalogo: IntervencaoCatalogo[];
@@ -303,17 +308,14 @@ function LinhasDoRisco({
   const mostrarNova = podeAlterar && (adicionando || itens.length === 0);
   const linhas = itens.length + (mostrarNova ? 1 : 0) || 1;
 
+  // 0.3.244: Setor e Risco em colunas separadas (antes, os dois na mesma célula).
   const celulaRisco = (
-    <td rowSpan={linhas} className="py-2 pr-3 align-top">
-      {/* 0.3.243: rótulo antes de cada nome, para não confundir setor com risco. */}
-      <span className="block">
-        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Setor:</span>{" "}
-        <span className="font-medium text-gray-900">{risco.setor}</span>
-      </span>
-      <span className="block">
-        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Risco:</span>{" "}
-        <span className="text-gray-700">{risco.fator}</span>
-      </span>
+    <Fragment>
+      <td rowSpan={linhas} className="py-2 pr-3 align-top">
+        {primeiroDoSetor && <span className="font-medium text-gray-900">{risco.setor}</span>}
+      </td>
+      <td rowSpan={linhas} className="py-2 pr-3 align-top">
+      <span className="block text-gray-800">{risco.fator}</span>
       <div className="mt-1 flex flex-wrap gap-1">
         {risco.aet && (
           <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-800">Aprofundar com AET</span>
@@ -327,7 +329,8 @@ function LinhasDoRisco({
           <Plus className="size-3.5" /> Adicionar intervenção
         </button>
       )}
-    </td>
+      </td>
+    </Fragment>
   );
 
   return (
