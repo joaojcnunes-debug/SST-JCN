@@ -10,7 +10,7 @@
 // indo direto às Oportunidades.
 
 import type { DecisaoParecer, Questionario } from "@/lib/psico-consolidacao/conciliacao";
-import { A_VENDER, empresaBase, type Cad, type EmpresaComercial, type Oportunidade, type Produto, type VendaFeita } from "@/lib/comercial/oportunidades";
+import { A_VENDER, empresaBase, type Cad, type EmpresaComercial, juntarSetores, type Oportunidade, type Produto, type VendaFeita } from "@/lib/comercial/oportunidades";
 
 /** As modalidades de partida. Desde a 0.3.240 a equipe pode inserir outras, que ficam no catálogo. */
 export const MODALIDADES = ["EAD", "Presencial", "Ao vivo"] as const;
@@ -325,9 +325,19 @@ export function visaoDoVendedor(
       const detalhes = aet.map((r) => `${r.setor} · ${r.fator} (Conciliação: aprofundar com AET)`);
       oportunidades = oportunidades.some((o) => o.produto === "AET")
         ? oportunidades.map((o) =>
-            o.produto === "AET" ? { ...o, origens: [...o.origens, "Conciliação" as const], detalhes: [...o.detalhes, ...detalhes] } : o,
+            o.produto === "AET"
+              ? {
+                  ...o,
+                  origens: [...o.origens, "Conciliação" as const],
+                  detalhes: [...o.detalhes, ...detalhes],
+                  setoresIndicados: juntarSetores(o.setoresIndicados ?? [], aet.map((r) => r.setor)),
+                }
+              : o,
           )
-        : [...oportunidades, { produto: "AET", situacao: "aberta", origens: ["Conciliação"], detalhes, setores: [] }];
+        : [
+            ...oportunidades,
+            { produto: "AET", situacao: "aberta", origens: ["Conciliação"], detalhes, setores: [], setoresIndicados: juntarSetores(aet.map((r) => r.setor)) },
+          ];
     }
     if (dela.length > 0) {
       oportunidades = [
@@ -338,6 +348,7 @@ export function visaoDoVendedor(
           origens: ["Conciliação"],
           detalhes: dela.map(textoIntervencao),
           setores: [],
+          setoresIndicados: juntarSetores(dela.map((i) => i.setor_nome)),
           intervencoes: dela
             .map((i) => ({
               idItem: i.id_item,

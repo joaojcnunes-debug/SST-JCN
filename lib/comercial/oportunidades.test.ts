@@ -120,6 +120,36 @@ test("DRPS/Questionário pela AEP e pela inspeção vira uma oportunidade só, c
   assert.equal(drps[0].detalhes.length, 2);
 });
 
+test("coluna Setor: o setor de cada serviço; treinamento vale para a empresa toda (0.3.248)", () => {
+  const [c] = montarComercial(
+    [aep("A1", "E1", [setorAet])],
+    [],
+    [
+      insp("E1", {
+        maquinas: [
+          { nome: "Serra", grau_risco: "ALTO", adequacao: true, setor: "Marcenaria" },
+          { nome: "Prensa", grau_risco: "ALTO", adequacao: false, setor: null },
+        ],
+        medicoes: [{ agente: "Ruído", qual: "Dosimetria", setor: "Produção" }],
+        quimicos: ["Tolueno"],
+        quimicos_setores: ["Pintura"],
+        psicossociais: 1,
+        psicossociais_setores: ["Expedição", "Produção"],
+        treinamentos: [{ nr: "NR-06", titulo: "EPI" }],
+      }),
+    ],
+  );
+  const setores = Object.fromEntries(c.oportunidades.map((o) => [o.produto, o.setoresIndicados]));
+  assert.deepEqual(setores, {
+    AET: ["Produção"],
+    "DRPS/Questionário": ["Produção", "Expedição"],
+    "Apreciação NR-12": ["Marcenaria", "Setor não informado"],
+    "Medição quantitativa": ["Produção"],
+    "Análise de Químicos": ["Pintura"],
+    "Treinamentos NR": ["Empresa toda"],
+  });
+});
+
 test("treinamentos todos com certificado = realizada; empresa sem nada indicado não entra", () => {
   const r = montarComercial([], [], [
     insp("E1", { treinamentos: [{ nr: "NR-01", titulo: "GRO" }] }),

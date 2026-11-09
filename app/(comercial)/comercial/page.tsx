@@ -20,6 +20,8 @@ import {
   linhasCsv,
   NOME_PRODUTO,
   PRODUTOS,
+  SETOR_EMPRESA_TODA,
+  SETOR_NAO_INFORMADO,
   type EmpresaComercial,
   type Oportunidade,
   type Origem,
@@ -433,11 +435,12 @@ function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial
 
           {/* Um serviço por linha, com a origem da indicação. */}
           <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-            <table className="w-full min-w-[52rem] text-sm [&_td+td]:border-l [&_td]:border-gray-200 [&_th+th]:border-l [&_th]:border-gray-200">
+            <table className="w-full min-w-[64rem] text-sm [&_td+td]:border-l [&_td]:border-gray-200 [&_th+th]:border-l [&_th]:border-gray-200">
               <thead className={CLS_THEAD}>
-                <FaixaGrupos indicacao="O que indicamos" colunas={3} />
+                <FaixaGrupos indicacao="O que indicamos" colunas={4} />
                 <tr>
                   <Titulo className="w-56" dica="Serviço que a empresa ainda não contratou">Serviço</Titulo>
+                  <Titulo className="w-44" dica="Setores a que o serviço se refere; treinamentos NR valem para a empresa toda">Setor</Titulo>
                   <Titulo className="w-40" dica="De onde veio a indicação: Inspeção, AEP ou Conciliação">Origem</Titulo>
                   <Titulo dica="Os itens que levaram à indicação; o nome de cada um em negrito">O que justifica</Titulo>
                   <Titulo className="w-40" comercial dica="Aberta, revisão recomendada, em andamento, realizada ou vendida">Situação</Titulo>
@@ -451,6 +454,9 @@ function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial
                   return (
                     <tr key={o.produto} className="align-top">
                       <td className="px-3 py-2.5 font-semibold text-gray-900">{NOME_PRODUTO[o.produto]}</td>
+                      <td className="px-3 py-2.5">
+                        <SetoresDoServico nomes={o.setoresIndicados ?? []} />
+                      </td>
                       <td className="px-3 py-2.5">
                         <div className="flex flex-wrap gap-1">
                           {o.origens.map((og) => (
@@ -567,6 +573,20 @@ function Titulo({ children, dica, className, comercial }: { children: ReactNode;
         <Info className="size-3 text-gray-400" aria-hidden />
       </span>
     </th>
+  );
+}
+
+/** Coluna Setor (0.3.248): um setor por linha; "Empresa toda" e "Setor não informado" em cinza. */
+function SetoresDoServico({ nomes }: { nomes: string[] }) {
+  if (nomes.length === 0) return <span className="text-xs text-gray-400">—</span>;
+  return (
+    <ul className="space-y-0.5 text-xs">
+      {nomes.map((n) => (
+        <li key={n} className={n === SETOR_EMPRESA_TODA || n === SETOR_NAO_INFORMADO ? "italic text-gray-500" : "font-semibold text-gray-900"}>
+          {n}
+        </li>
+      ))}
+    </ul>
   );
 }
 
