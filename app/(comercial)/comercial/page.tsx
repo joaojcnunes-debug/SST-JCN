@@ -528,33 +528,124 @@ function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial
   );
 }
 
+/** Observação sobre a situação (documento antigo, rascunho parado), não item a vender. */
+const ehNota = (d: string) => /antes da indicação|não conta como|^Há \d/.test(d);
+
+/**
+ * Um item com o título em destaque para quem vende (0.3.246): o nome antes de " – ", " (", " · " ou ": "
+ * fica em negrito e o resto em cinza; número no começo fica em negrito; observação vira nota.
+ */
+function ItemJustificativa({ texto }: { texto: string }) {
+  if (ehNota(texto)) return <span className="italic text-gray-500">{texto}</span>;
+  const num = /^(\d+)(\s.*)$/.exec(texto);
+  if (num) {
+    return (
+      <span>
+        <strong className="text-gray-900">{num[1]}</strong>
+        {num[2]}
+      </span>
+    );
+  }
+  const corte = [" – ", " (", " · ", ": "].map((sep) => texto.indexOf(sep)).filter((i) => i > 0);
+  const i = corte.length ? Math.min(...corte) : -1;
+  if (i < 0) return <strong className="font-semibold text-gray-900">{texto}</strong>;
+  return (
+    <span>
+      <strong className="font-semibold text-gray-900">{texto.slice(0, i)}</strong>
+      <span className="text-gray-500">{texto.slice(i)}</span>
+    </span>
+  );
+}
+
+/** Intervenções psicossociais agrupadas por "Setor · Risco"; cada uma com o nome em destaque. */
+function IntervencoesAgrupadas({ detalhes }: { detalhes: string[] }) {
+  const grupos = new Map<string, string[][]>();
+  for (const d of detalhes) {
+    const i = d.indexOf(": ");
+    const titulo = i > 0 ? d.slice(0, i) : "Sem setor";
+    const partes = (i > 0 ? d.slice(i + 2) : d).split(" · ");
+    grupos.set(titulo, [...(grupos.get(titulo) ?? []), partes]);
+  }
+  return (
+    <div className="space-y-2">
+      {[...grupos.entries()].map(([titulo, itens]) => (
+        <div key={titulo}>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-indigo-800">{titulo}</p>
+          <ul className="mt-0.5 space-y-0.5">
+            {itens.map(([nome, ...resto], n) => (
+              <li key={n} className="flex gap-1.5">
+                <span className="text-indigo-400">•</span>
+                <span>
+                  <strong className="font-semibold text-gray-900">{nome}</strong>
+                  {resto.length > 0 && <span className="text-gray-500"> · {resto.join(" · ")}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** O que justifica o serviço: na AET, setores e expostos (e o que a Conciliação mandou aprofundar); nos demais, os itens. */
 function Justificativa({ c, o }: { c: EmpresaComercial; o: Oportunidade }) {
+  const notas = o.detalhes.filter(ehNota);
+  if (o.produto === "Intervenção psicossocial") return <IntervencoesAgrupadas detalhes={o.detalhes} />;
   if (o.produto === "AET" && o.setores.length > 0) {
+    const conciliacao = o.detalhes.filter((d) => d.includes("(Conciliação:"));
     return (
-      <div>
+      <div className="space-y-1">
         <div>
-          <strong>{o.setores.length}</strong> setor{o.setores.length !== 1 ? "es" : ""} indicado{o.setores.length !== 1 ? "s" : ""} ·{" "}
-          <strong>{c.expostosAet}</strong> trabalhador{c.expostosAet !== 1 ? "es" : ""} exposto{c.expostosAet !== 1 ? "s" : ""}
+          <strong className="text-gray-900">{o.setores.length}</strong> setor{o.setores.length !== 1 ? "es" : ""} indicado{o.setores.length !== 1 ? "s" : ""} ·{" "}
+          <strong className="text-gray-900">{c.expostosAet}</strong> trabalhador{c.expostosAet !== 1 ? "es" : ""} exposto{c.expostosAet !== 1 ? "s" : ""}
         </div>
-        <div className="mt-0.5 text-gray-500">{o.setores.map((st) => `${st.nome}${st.expostos ? ` (${st.expostos})` : ""}`).join(" · ")}</div>
-        {o.detalhes
-          .filter((d) => d.includes("(Conciliação:"))
-          .map((d) => (
-            <div key={d} className="mt-0.5">
-              {d}
-            </div>
+        <div>
+          <span className="text-[11px] font-bold uppercase tracking-wide text-gray-600">Setores: </span>
+          {o.setores.map((st, n) => (
+            <span key={st.nome}>
+              {n > 0 && <span className="text-gray-400"> · </span>}
+              <strong className="font-semibold text-gray-900">{st.nome}</strong>
+              {st.expostos ? <span className="text-gray-500"> ({st.expostos})</span> : null}
+            </span>
           ))}
+        </div>
+        {conciliacao.length > 0 && (
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wide text-indigo-800">Aprofundar (Conciliação): </span>
+            {conciliacao.map((d, n) => (
+              <span key={d}>
+                {n > 0 && <span className="text-gray-400"> · </span>}
+                <strong className="font-semibold text-gray-900">{d.replace(/\s*\(Conciliação:.*\)$/, "")}</strong>
+              </span>
+            ))}
+          </div>
+        )}
+        {notas.map((d) => (
+          <p key={d} className="italic text-gray-500">
+            {d}
+          </p>
+        ))}
       </div>
     );
   }
+  const itens = o.detalhes.filter((d) => !ehNota(d));
   return (
-    <ul className="list-disc space-y-0.5 pl-4">
-      {o.detalhes.slice(0, 6).map((d) => (
-        <li key={d}>{d}</li>
+    <div className="space-y-1">
+      <ul className="list-disc space-y-0.5 pl-4 marker:text-gray-400">
+        {itens.slice(0, 6).map((d) => (
+          <li key={d}>
+            <ItemJustificativa texto={d} />
+          </li>
+        ))}
+        {itens.length > 6 && <li className="list-none text-gray-500">+ {itens.length - 6} item(ns)</li>}
+      </ul>
+      {notas.map((d) => (
+        <p key={d} className="italic text-gray-500">
+          {d}
+        </p>
       ))}
-      {o.detalhes.length > 6 && <li className="list-none text-gray-500">+ {o.detalhes.length - 6} item(ns)</li>}
-    </ul>
+    </div>
   );
 }
 
