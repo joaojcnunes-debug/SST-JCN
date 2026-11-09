@@ -335,6 +335,34 @@ export function useAtualizarListasDoCatalogo() {
   });
 }
 
+/**
+ * Edição na própria linha da página Intervenções (0.3.241): grava só o campo mexido, para não
+ * sobrescrever com dado velho o que outro campo da mesma linha acabou de gravar.
+ */
+export function useAtualizarIntervencaoNaLinha() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      idIntervencao,
+      campos,
+    }: {
+      idIntervencao: string;
+      campos: Partial<Pick<IntervencaoCatalogo, "nome" | "observacao" | "modalidades" | "responsaveis">>;
+    }) => {
+      const linha = campos.responsaveis ? camposCatalogo({ ...campos, responsaveis: campos.responsaveis }) : campos;
+      const { error } = await sb().from("comercial_intervencoes").update(linha).eq("id_intervencao", idIntervencao);
+      if (error) throw error;
+    },
+    // Devolver a promessa faz o mutateAsync esperar o catálogo novo: o próximo clique já parte dele.
+    onSuccess: async () => {
+      toast.success("Salvo");
+      await qc.invalidateQueries({ queryKey: [CHAVE_CATALOGO] });
+    },
+    onError: (e: Error & { code?: string }) =>
+      toast.error(e.code === "23505" ? "Já existe uma intervenção com este nome." : mensagemErro(e, "Falha ao salvar a intervenção")),
+  });
+}
+
 export function useExcluirIntervencao() {
   const qc = useQueryClient();
   return useMutation({
