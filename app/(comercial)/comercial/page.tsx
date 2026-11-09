@@ -433,7 +433,7 @@ function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial
 
           {/* Um serviço por linha, com a origem da indicação. */}
           <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-            <table className="w-full min-w-[52rem] text-sm">
+            <table className="w-full min-w-[52rem] text-sm [&_td+td]:border-l [&_td]:border-gray-200 [&_th+th]:border-l [&_th]:border-gray-200">
               <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-600">
                 <tr>
                   <th className="w-56 px-3 py-2">Serviço</th>
@@ -472,7 +472,7 @@ function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial
                         <Justificativa c={c} o={o} />
                       </td>
                       <td className="px-3 py-2.5">
-                        <span title={st.dica} className={cn("inline-block rounded-full border px-2 py-0.5 text-[11px] font-semibold", st.cls)}>
+                        <span title={st.dica} className={cn("inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold", st.cls)}>
                           {st.rotulo}
                         </span>
                       </td>
@@ -572,7 +572,7 @@ function TabelaIntervencoes({ linhas }: { linhas: LinhaIntervencaoOferta[] }) {
       <p className="border-b border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-900">
         Intervenções psicossociais · indicadas na Conciliação
       </p>
-      <table className="w-full min-w-[52rem] text-sm">
+      <table className="w-full min-w-[52rem] text-sm [&_td+td]:border-l [&_td]:border-gray-200 [&_th+th]:border-l [&_th]:border-gray-200">
         <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-600">
           <tr>
             <th className="w-44 px-3 py-2">Setor</th>
