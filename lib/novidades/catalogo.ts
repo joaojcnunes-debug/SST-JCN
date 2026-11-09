@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "intervencoes-lista-na-linha",
+    data: "2026-11-09",
+    tipo: "melhoria",
+    titulo: "Intervenções: altere cada coluna direto na tabela",
+    texto:
+      "Na página Intervenções, Modalidades e Responsável viraram listas suspensas em cada linha: marque, desmarque ou " +
+      "insira outro valor ali mesmo, sem abrir o Editar. Tudo grava na hora. No Responsável, a estrela indica o que vem " +
+      "preenchido na Conciliação e troca o padrão. O nome e a observação da intervenção também se alteram com um clique.",
+    onde: "Consolidação › Intervenções",
+    versoes: ["0.3.241"],
+  },
+  {
     id: "intervencoes-campos-livres",
     data: "2026-11-06",
     tipo: "melhoria",
