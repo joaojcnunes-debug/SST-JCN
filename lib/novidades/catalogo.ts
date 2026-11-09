@@ -48,7 +48,7 @@ export const CATALOGO: Novidade[] = [
     texto:
       "A tela Oportunidades do Comercial agora mostra primeiro a lista de empresas, recolhida, com os serviços de cada uma " +
       "em selos e quantos estão a vender. Ao abrir a empresa, cada serviço aparece numa linha com a origem da indicação " +
-      "(Inspeção, AEP ou Conciliação), o que justifica (com o nome de cada item em destaque e as intervenções agrupadas por setor e risco), a situação e o botão Marcar como vendido. Abrir todas e Recolher " +
+      "(Inspeção, AEP ou Conciliação), o que justifica (com o nome de cada item em destaque), a situação e o botão Marcar como vendido. As intervenções psicossociais vêm numa tabela própria embaixo: Setor, Risco, Intervenção, Modalidade, Responsável e Prazo. Abrir todas e Recolher " +
       "todas ficam ao lado da contagem.",
     onde: "Comercial › Oportunidades",
     versoes: ["0.3.246"],

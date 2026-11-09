@@ -311,7 +311,23 @@ export function visaoDoVendedor(
     if (dela.length > 0) {
       oportunidades = [
         ...oportunidades,
-        { produto: "Intervenção psicossocial", situacao: "aberta", origens: ["Conciliação"], detalhes: dela.map(textoIntervencao), setores: [] },
+        {
+          produto: "Intervenção psicossocial",
+          situacao: "aberta",
+          origens: ["Conciliação"],
+          detalhes: dela.map(textoIntervencao),
+          setores: [],
+          intervencoes: dela
+            .map((i) => ({
+              setor: i.setor_nome,
+              risco: i.fator_nome,
+              intervencao: i.nome,
+              modalidade: i.modalidade,
+              responsavel: i.responsavel,
+              prazoDias: i.prazo_dias,
+            }))
+            .sort((x, y) => x.setor.localeCompare(y.setor, "pt-BR") || x.risco.localeCompare(y.risco, "pt-BR")),
+        },
       ];
     }
     resultado.set(id, { ...base, oportunidades, ...(a.parecer ? { parecerEquipe: a.parecer } : {}) });

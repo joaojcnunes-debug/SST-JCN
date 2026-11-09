@@ -21,6 +21,7 @@ import {
   NOME_PRODUTO,
   PRODUTOS,
   type EmpresaComercial,
+  type LinhaIntervencaoOferta,
   type Oportunidade,
   type Origem,
   type Produto,
@@ -485,6 +486,13 @@ function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial
             </table>
           </div>
 
+          {/* Intervenções psicossociais numa tabela própria: uma linha por intervenção (0.3.246). */}
+          {c.oportunidades
+            .filter((o) => o.produto === "Intervenção psicossocial" && o.intervencoes?.length)
+            .map((o) => (
+              <TabelaIntervencoes key={o.produto} linhas={o.intervencoes!} />
+            ))}
+
       {c.parecerEquipe && (
         <p className="mt-3 whitespace-pre-line rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
           <strong>Parecer da equipe:</strong> {c.parecerEquipe}
@@ -557,33 +565,41 @@ function ItemJustificativa({ texto }: { texto: string }) {
   );
 }
 
-/** Intervenções psicossociais agrupadas por "Setor · Risco"; cada uma com o nome em destaque. */
-function IntervencoesAgrupadas({ detalhes }: { detalhes: string[] }) {
-  const grupos = new Map<string, string[][]>();
-  for (const d of detalhes) {
-    const i = d.indexOf(": ");
-    const titulo = i > 0 ? d.slice(0, i) : "Sem setor";
-    const partes = (i > 0 ? d.slice(i + 2) : d).split(" · ");
-    grupos.set(titulo, [...(grupos.get(titulo) ?? []), partes]);
-  }
+/** As intervenções que a Conciliação indicou: Setor, Risco, Intervenção, Modalidade, Responsável e Prazo. */
+function TabelaIntervencoes({ linhas }: { linhas: LinhaIntervencaoOferta[] }) {
   return (
-    <div className="space-y-2">
-      {[...grupos.entries()].map(([titulo, itens]) => (
-        <div key={titulo}>
-          <p className="text-[11px] font-bold uppercase tracking-wide text-indigo-800">{titulo}</p>
-          <ul className="mt-0.5 space-y-0.5">
-            {itens.map(([nome, ...resto], n) => (
-              <li key={n} className="flex gap-1.5">
-                <span className="text-indigo-400">•</span>
-                <span>
-                  <strong className="font-semibold text-gray-900">{nome}</strong>
-                  {resto.length > 0 && <span className="text-gray-500"> · {resto.join(" · ")}</span>}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+    <div className="overflow-x-auto rounded-xl border border-indigo-200 bg-white">
+      <p className="border-b border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-900">
+        Intervenções psicossociais · indicadas na Conciliação
+      </p>
+      <table className="w-full min-w-[52rem] text-sm">
+        <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-600">
+          <tr>
+            <th className="w-44 px-3 py-2">Setor</th>
+            <th className="w-40 px-3 py-2">Risco</th>
+            <th className="px-3 py-2">Intervenção</th>
+            <th className="w-28 px-3 py-2">Modalidade</th>
+            <th className="w-56 px-3 py-2">Responsável</th>
+            <th className="w-20 px-3 py-2">Prazo</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100 text-gray-700">
+          {linhas.map((l, n) => {
+            const novoSetor = n === 0 || linhas[n - 1].setor !== l.setor;
+            const novoRisco = novoSetor || linhas[n - 1].risco !== l.risco;
+            return (
+              <tr key={n} className="align-top">
+                <td className="px-3 py-2 font-semibold text-gray-900">{novoSetor ? l.setor : ""}</td>
+                <td className="px-3 py-2 font-medium text-gray-800">{novoRisco ? l.risco : ""}</td>
+                <td className="px-3 py-2 font-semibold text-gray-900">{l.intervencao}</td>
+                <td className="px-3 py-2">{l.modalidade ?? "—"}</td>
+                <td className="px-3 py-2">{l.responsavel ?? "—"}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{l.prazoDias ? `${l.prazoDias} ${l.prazoDias === 1 ? "dia" : "dias"}` : "—"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -591,7 +607,15 @@ function IntervencoesAgrupadas({ detalhes }: { detalhes: string[] }) {
 /** O que justifica o serviço: na AET, setores e expostos (e o que a Conciliação mandou aprofundar); nos demais, os itens. */
 function Justificativa({ c, o }: { c: EmpresaComercial; o: Oportunidade }) {
   const notas = o.detalhes.filter(ehNota);
-  if (o.produto === "Intervenção psicossocial") return <IntervencoesAgrupadas detalhes={o.detalhes} />;
+  if (o.produto === "Intervenção psicossocial" && o.intervencoes?.length) {
+    const riscos = new Set(o.intervencoes.map((i) => `${i.setor}|${i.risco}`)).size;
+    return (
+      <span>
+        <strong className="text-gray-900">{o.intervencoes.length}</strong> intervenç{o.intervencoes.length !== 1 ? "ões" : "ão"} em{" "}
+        <strong className="text-gray-900">{riscos}</strong> risco{riscos !== 1 ? "s" : ""} · <span className="text-indigo-700">tabela abaixo</span>
+      </span>
+    );
+  }
   if (o.produto === "AET" && o.setores.length > 0) {
     const conciliacao = o.detalhes.filter((d) => d.includes("(Conciliação:"));
     return (
