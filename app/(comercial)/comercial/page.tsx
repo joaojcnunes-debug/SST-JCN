@@ -349,7 +349,8 @@ export default function ComercialPage() {
             : "Nenhuma oportunidade com esses filtros."}
         </p>
       ) : (
-        <ul className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        // Um cartão por empresa, separados (0.3.250).
+        <ul className="space-y-3">
           {filtradas.map((c) => (
             <CartaoEmpresa
               key={c.empresa.idEmpresa}
@@ -370,7 +371,12 @@ function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial
   const regiao = [e.municipio, e.uf].filter(Boolean).join("/");
   const nVender = c.oportunidades.filter((o) => A_VENDER.includes(o.situacao)).length;
   return (
-    <li className={cn(aberta && "bg-gray-50/50")}>
+    <li
+      className={cn(
+        "overflow-hidden rounded-2xl border bg-white shadow-sm transition-shadow",
+        aberta ? "border-gray-200 bg-gray-50/50 shadow-md" : "border-gray-100 hover:shadow-md"
+      )}
+    >
       {/* Linha da empresa: clicar abre os serviços. */}
       <button
         type="button"
