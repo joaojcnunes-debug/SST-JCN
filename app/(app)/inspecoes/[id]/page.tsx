@@ -105,7 +105,7 @@ export default function InspecaoEditorPage({ params }: Props) {
   const { data, isLoading, error } = useInspecao(id);
   // v311: o editor não bloqueia, mas com a sessão do associado aberta avisa a atividade
   // (sem isso o tempo pausaria sozinho em 30 min enquanto ele edita aqui).
-  useAguardandoInicio(id, data?.inspecao?.elaboracao_status);
+  useAguardandoInicio(id, data?.inspecao?.elaboracao_status, data?.inspecao?.elaboracao_responsavel);
   // v259: só para o número da aba (1 = já tem AEP/AET nesta inspeção).
   const { data: aepDaInspecao } = useLaudoErgoDaInspecao("aep", id);
   const { data: aetDaInspecao } = useLaudoErgoDaInspecao("aet", id);

@@ -113,7 +113,7 @@ export default function PgrPage({ params }: Props) {
   }
 
   // 30/10: associado só abre o documento com a própria sessão de tempo aberta (supervisor/admin abrem direto).
-  const inicio = useAguardandoInicio(id, data?.inspecao.elaboracao_status);
+  const inicio = useAguardandoInicio(id, data?.inspecao.elaboracao_status, data?.inspecao.elaboracao_responsavel);
 
   if (isLoading || inicio.carregando) return <LoadingSkeleton rows={10} />;
   if (!data) return null;
