@@ -32,6 +32,7 @@ import { useTarefaHistorico } from "@/lib/hooks/useTarefaHistorico";
 import { confirmar } from "@/components/ui/confirm";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
 import { proximaGeracao } from "@/lib/gestao/recorrencia";
+import { horaDe, minutos, MIN_DIA } from "@/lib/gestao/calendario";
 import { useMeuQuadro } from "@/lib/hooks/useGestaoAcesso";
 import { pendenciasParaConcluir, mensagemPendencias, eventosAlteracao, type EventoAtividade } from "@/lib/gestao/alteracao-tarefa";
 
@@ -75,6 +76,7 @@ export default function TarefaModal({
   podeEditar,
   podeComentar,
   etiquetasSugeridas = [],
+  inicial = null,
 }: {
   open: boolean;
   onClose: () => void;
@@ -88,6 +90,8 @@ export default function TarefaModal({
   /** Nível "ver e comentar" (comment/comment_all): comenta sem editar. Omitido = igual a podeEditar. */
   podeComentar?: boolean;
   etiquetasSugeridas?: string[];
+  /** Tarefa NOVA criada pelo calendário (v0.3.914): já vem com o dia (prazo) e, na grade, a hora (1 hora). */
+  inicial?: { prazo: string; hora?: string } | null;
 }) {
   const salvar = useSalvarTarefa();
   const excluir = useExcluirTarefa();
@@ -171,11 +175,13 @@ export default function TarefaModal({
     setTitulo(tarefa?.titulo ?? "");
     setDescricao(tarefa?.descricao ?? "");
     setPrioridade(tarefa?.prioridade ?? "Media");
-    setPrazo(tarefa?.prazo ?? "");
+    // Tarefa nova pelo calendário: o dia clicado vira o prazo (e, na grade, a hora com 1 hora de duração).
+    const ini = tarefa ? null : inicial;
+    setPrazo(tarefa?.prazo ?? ini?.prazo ?? "");
     setDataInicio(tarefa?.data_inicio ?? "");
     // Coluna TIME volta 'HH:MM:SS'; o <input type="time"> trabalha em 'HH:MM'.
-    setHoraInicio(tarefa?.hora_inicio?.slice(0, 5) ?? "");
-    setHoraFim(tarefa?.hora_fim?.slice(0, 5) ?? "");
+    setHoraInicio(tarefa?.hora_inicio?.slice(0, 5) ?? ini?.hora ?? "");
+    setHoraFim(tarefa?.hora_fim?.slice(0, 5) ?? (ini?.hora ? horaDe(Math.min(minutos(ini.hora) + 60, MIN_DIA - 1)) : ""));
     setStatus(tarefa?.status ?? statusInicial);
     setStatusSalvo(tarefa?.status ?? statusInicial);
     setRecTipo(tarefa?.recorrencia?.tipo ?? "");
@@ -186,7 +192,7 @@ export default function TarefaModal({
     setNovaSub("");
     setValoresCampos((tarefa?.campos as Record<string, unknown>) ?? {});
     camposCarregados.current = (tarefa?.campos as Record<string, unknown>) ?? {};
-  }, [open, tarefa, statusInicial]);
+  }, [open, tarefa, statusInicial, inicial]);
 
   // Pré-popula responsável + seguidores a partir dos vínculos existentes (v187/F1.2).
   // Guard: inicializa UMA vez por abertura de tarefa e re-sincroniza só quando a assinatura

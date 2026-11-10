@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { format } from "date-fns";
 import { ArrowLeft, KanbanSquare, Menu as MenuIcon, Plus, Search, X, LayoutList, CalendarDays, GanttChartSquare, SlidersHorizontal, Tags, Tag, Zap, Settings, ChevronDown, Clock, CheckSquare, CheckCheck, BarChart3, FileText, Bell, Trash2, Users, UserSquare, ListChecks, Sun, Moon, Share2, MoreHorizontal, BellOff, ArrowDownUp, Check } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUserStore, useTema } from "@/lib/store";
@@ -10,7 +11,7 @@ import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import {
   useQuadros, useTarefas, useSubtarefasDoQuadro, useAbrirSubtarefa, useUsuarios, useReordenar, useUsuariosLista, useSalvarTarefa, useAcaoMassa,
   useSalvarVinculados, useRegistrarAtividade,
-  useMinhasTarefas, useMinhasTarefasAgenda, buscarTarefa, useTodosStatus, useNotificacoes, useMarcarLida, useLimparNotificacoes,
+  useMinhasTarefas, useMinhasTarefasAgenda, useTarefasDeResponsaveis, useVinculadosQuadro, buscarTarefa, useTodosStatus, useNotificacoes, useMarcarLida, useLimparNotificacoes,
   usePreferenciaVisao, useSalvarPreferenciaVisao,
   useStatusQuadro, statusPadrao, useCamposQuadro, useEtiquetasQuadro,
   useEspacos, usePastas, useTodasDependencias, useAutomacaoTick, useSyncGoogleAgenda, useTempoQuadro, useAnexosCountQuadro,
@@ -37,7 +38,7 @@ import FormulariosManagerModal from "@/components/gestao/FormulariosManagerModal
 import ModelosManagerModal from "@/components/gestao/ModelosManagerModal";
 import CalendarioModal from "@/components/gestao/CalendarioModal";
 import MembrosModal from "@/components/gestao/MembrosModal";
-import { useMeuPapelGestao, useMeuNivel, nivelPodeEditar, nivelPodeComentar, useColaboradores } from "@/lib/hooks/useGestaoAcesso";
+import { useMeuPapelGestao, useMeuNivel, nivelPodeEditar, nivelPodeComentar, useColaboradores, useEquipes, useEquipeMembros } from "@/lib/hooks/useGestaoAcesso";
 import ColaboradoresView from "@/components/gestao/ColaboradoresView";
 import TarefaCard from "@/components/gestao/TarefaCard";
 import FiltrosPanel from "@/components/gestao/FiltrosPanel";
@@ -50,6 +51,8 @@ import BarraAcoesMassa from "@/components/gestao/BarraAcoesMassa";
 import { ConfirmHost, confirmar } from "@/components/ui/confirm";
 import VistaLista from "@/components/gestao/VistaLista";
 import VistaCalendario from "@/components/gestao/VistaCalendario";
+import LateralCalendario, { type CalDe } from "@/components/gestao/calendario/LateralCalendario";
+import { passaFiltros, criadorDe, mapaApelidos, produtosDa, type CtxFiltro, type Criador, type TarefaFiltravel } from "@/lib/gestao/filtros";
 import VistaTimeline from "@/components/gestao/VistaTimeline";
 import { buscar } from "@/lib/busca/texto";
 import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
@@ -58,6 +61,20 @@ function diasAte(iso: string): number {
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
   return Math.round((new Date(iso + "T00:00:00").getTime() - hoje.getTime()) / 86_400_000);
+}
+
+/** Calendário de uma pessoa/equipe junta várias listas: status (por lista) e os filtros de pessoa não se aplicam. */
+const IGNORAR_CAL_OUTROS: ReadonlySet<keyof FiltrosGestao> = new Set<keyof FiltrosGestao>(["status", "responsavel", "semResponsavel", "equipe", "seguidor"]);
+
+/** Textos em que a busca da barra procura (título, descrição, responsável, etiquetas e campos do formulário). */
+function textosDaBusca(t: GestaoTarefa) {
+  return [
+    t.titulo,
+    t.descricao,
+    t.responsavel,
+    ...(t.etiquetas ?? []),
+    ...Object.values(t.campos ?? {}).map((v) => (Array.isArray(v) ? v.join(" ") : v == null ? "" : String(v))),
+  ];
 }
 
 const VISTAS: { value: VistaGestao; label: string; icon: typeof KanbanSquare }[] = [
@@ -133,10 +150,15 @@ export default function GestaoChabraPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState<GestaoTarefa | null>(null);
   const [statusNovo, setStatusNovo] = useState<StatusTarefa>("A_FAZER");
+  // v0.3.914: tarefa nova criada pelo calendário (clique num dia/horário vazio) já vem com a data.
+  const [inicialNova, setInicialNova] = useState<{ prazo: string; hora?: string } | null>(null);
 
   const [busca, setBusca] = useState("");
   const [filtros, setFiltros] = useState<FiltrosGestao>(FILTRO_VAZIO);
   const [vista, setVista] = useState<VistaGestao>("quadro");
+  // Etapa 2 do calendário: "Calendário de" (esta lista, uma pessoa ou uma equipe) e o período na tela.
+  const [calDe, setCalDe] = useState<CalDe>({ tipo: "lista" });
+  const [periodoCal, setPeriodoCal] = useState<[string, string]>(["", ""]);
   const [agruparPor, setAgruparPor] = useState<AgruparPor | null>(null);
   const [soMinhas, setSoMinhas] = useState(false);
   const [dropAlvo, setDropAlvo] = useState<{ col: StatusTarefa; beforeId: string | null } | null>(null);
@@ -187,9 +209,11 @@ export default function GestaoChabraPage() {
   // Calendário do MEU QUADRO: além das tarefas do quadro, mostra as que estou alocado em qualquer
   // outro quadro (pedido do operador 2026-10-20 — "criada na Recepção e não aparece no meu calendário").
   const ehMeuQuadro = !!quadro?.dono_email && !!user?.email && quadro.dono_email.toLowerCase() === user.email.toLowerCase();
-  const calendarioPessoal = ehMeuQuadro && vista === "calendario" && !meuEspacoView && !inboxView;
+  // Calendário de uma pessoa ou equipe: tarefas de todas as listas que eu vejo (no lugar das da lista).
+  const calDeOutros = vista === "calendario" && !meuEspacoView && !inboxView && calDe.tipo !== "lista";
+  const calendarioPessoal = ehMeuQuadro && vista === "calendario" && !meuEspacoView && !inboxView && !calDeOutros;
   const { data: alocadasAgenda = [] } = useMinhasTarefasAgenda(calendarioPessoal);
-  const { data: todosStatus = [] } = useTodosStatus(meuEspacoView || inboxView || calendarioPessoal);
+  const { data: todosStatus = [] } = useTodosStatus(meuEspacoView || inboxView || calendarioPessoal || calDeOutros);
   const statusGlobalMap = useMemo(() => new Map(todosStatus.map((s) => [`${s.id_quadro}|${s.slug}`, s])), [todosStatus]);
   const { data: notificacoes = [] } = useNotificacoes();
   const marcarLida = useMarcarLida();
@@ -338,39 +362,73 @@ export default function GestaoChabraPage() {
     return m;
   }, [tempoEntries]);
 
+  // ── Etapa 2 do calendário: equipe, seguidor, criada por, região e produtos; calendário de pessoa/equipe ──
+  const { data: equipesTodas = [] } = useEquipes();
+  const { data: membrosEquipes = [] } = useEquipeMembros();
+  const { data: vincQuadro } = useVinculadosQuadro(quadro?.id_quadro);
+  const nomePorEmail = useMemo(() => new Map(usuariosEmail.map((u) => [u.email.toLowerCase(), u.nome])), [usuariosEmail]);
+  const apelidosRunrun = useMemo(() => mapaApelidos(usuariosEmail), [usuariosEmail]);
+  /** E-mails dos membros de cada equipe — só os que eu vejo (a RLS mostra a gestor e a supervisor). */
+  const membrosPorEquipe = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const x of membrosEquipes) {
+      const e = x.usuario_email.toLowerCase();
+      if (!nomePorEmail.has(e)) continue; // conta que não aparece na lista de pessoas: fora
+      if (!m.has(x.id_equipe)) m.set(x.id_equipe, []);
+      m.get(x.id_equipe)!.push(e);
+    }
+    return m;
+  }, [membrosEquipes, nomePorEmail]);
+  // Só equipes em que vejo alguém além de mim (quem não é gestor/supervisor só se vê na própria equipe).
+  const equipesVisiveis = useMemo(() => {
+    const eu = (user?.email ?? "").toLowerCase();
+    return equipesTodas
+      .filter((e) => e.ativo !== false && (membrosPorEquipe.get(e.id) ?? []).some((m) => m !== eu))
+      .map((e) => ({ id: e.id, nome: e.nome }));
+  }, [equipesTodas, membrosPorEquipe, user?.email]);
+
+  const emailsCalDe = calDe.tipo === "pessoa" ? [calDe.email] : calDe.tipo === "equipe" ? membrosPorEquipe.get(calDe.id) ?? [] : [];
+  const { data: tarefasDe = [], isFetching: buscandoDe } = useTarefasDeResponsaveis(emailsCalDe, periodoCal[0], periodoCal[1], calDeOutros);
+  const aoPeriodoCal = useCallback((a: string, b: string) => setPeriodoCal((p) => (p[0] === a && p[1] === b ? p : [a, b])), []);
+
+  const chaveCriador = useCallback((t: TarefaFiltravel) => criadorDe(t, nomePorEmail, apelidosRunrun)?.chave ?? null, [nomePorEmail, apelidosRunrun]);
+  const baseOpcoes = calDeOutros ? tarefasDe : items;
+  const criadoresOpcoes = useMemo(() => {
+    const m = new Map<string, Criador>();
+    for (const t of baseOpcoes) {
+      const c = criadorDe(t, nomePorEmail, apelidosRunrun);
+      if (c) m.set(c.chave, c);
+    }
+    return [...m.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [baseOpcoes, nomePorEmail, apelidosRunrun]);
+  const produtosOpcoes = useMemo(
+    () => [...new Set([...filtros.produtos, ...baseOpcoes.flatMap((t) => produtosDa(t.campos))])].sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [baseOpcoes, filtros.produtos],
+  );
+  const nomesDaEquipe = useMemo(
+    () => (membrosPorEquipe.get(filtros.equipe) ?? []).map((e) => nomePorEmail.get(e) ?? "").filter(Boolean),
+    [membrosPorEquipe, filtros.equipe, nomePorEmail],
+  );
+
   const temFiltro = !!(busca.trim() || soMinhas || contarFiltros(filtros));
   // Busca tolerante (acento, ordem das palavras, erro de digitação) sobre título,
   // descrição, responsável, etiquetas e campos do formulário. Resolvida uma vez
   // aqui e consultada por id no predicado, que roda coluna a coluna no quadro.
   const { idsDaBusca, buscaAproximada } = useMemo(() => {
     if (!busca.trim()) return { idsDaBusca: null, buscaAproximada: false };
-    const r = buscar(items, busca, (t) => [
-      t.titulo,
-      t.descricao,
-      t.responsavel,
-      ...(t.etiquetas ?? []),
-      ...Object.values(t.campos ?? {}).map((v) => (Array.isArray(v) ? v.join(" ") : v == null ? "" : String(v))),
-    ]);
+    const r = buscar(items, busca, textosDaBusca);
     return { idsDaBusca: new Set(r.itens.map((t) => t.id_tarefa)), buscaAproximada: r.aproximado };
   }, [items, busca]);
+  const ctxFiltro: CtxFiltro = {
+    hoje: format(new Date(), "yyyy-MM-dd"),
+    concluida: (t) => statusMap.get(t.status)?.tipo === "concluido",
+    nomesDaEquipe,
+    seguidoresDe: (id) => (vincQuadro?.get(id) ?? []).filter((v) => v.tipo === "seguidor").map((v) => v.usuario_email),
+    chaveCriador,
+  };
   const passaFiltro = (t: GestaoTarefa) => {
     if (soMinhas && !temResponsavel(t.responsavel, user?.nome)) return false;
-    if (filtros.semResponsavel && (t.responsavel ?? "").trim()) return false;
-    if (filtros.responsavel && !temResponsavel(t.responsavel, filtros.responsavel)) return false;
-    if (filtros.prioridades.length && !filtros.prioridades.includes(t.prioridade)) return false;
-    if (filtros.status.length && !filtros.status.includes(t.status)) return false;
-    if (filtros.etiquetas.length && !filtros.etiquetas.some((e) => (t.etiquetas ?? []).includes(e))) return false;
-    if (filtros.prazo) {
-      if (filtros.prazo === "sem") { if (t.prazo) return false; }
-      else {
-        if (!t.prazo) return false;
-        const d = diasAte(t.prazo);
-        const concl = statusMap.get(t.status)?.tipo === "concluido";
-        if (filtros.prazo === "atrasadas" && !(d < 0 && !concl)) return false;
-        if (filtros.prazo === "hoje" && d !== 0) return false;
-        if (filtros.prazo === "semana" && !(d >= 0 && d <= 7)) return false;
-      }
-    }
+    if (!passaFiltros(t, filtros, ctxFiltro)) return false;
     if (idsDaBusca && !idsDaBusca.has(t.id_tarefa)) return false;
     return true;
   };
@@ -380,6 +438,18 @@ export default function GestaoChabraPage() {
     [statusList, quadro],
   );
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.slug, s])), [statuses]);
+  // Tarefa de outra lista: o status se resolve pela lista dela.
+  const concluidaEmQualquerLista = (t: { id_quadro: string; status: string }) =>
+    (t.id_quadro === quadro?.id_quadro ? statusMap.get(t.status)?.tipo : statusGlobalMap.get(`${t.id_quadro}|${t.status}`)?.tipo) === "concluido";
+  const idsBuscaDe = useMemo(() => {
+    if (!calDeOutros || !busca.trim()) return null;
+    return new Set(buscar(tarefasDe, busca, textosDaBusca).itens.map((t) => t.id_tarefa));
+  }, [calDeOutros, tarefasDe, busca]);
+  const tarefasCalOutros = calDeOutros
+    ? tarefasDe.filter((t) =>
+        passaFiltros(t, filtros, { ...ctxFiltro, concluida: concluidaEmQualquerLista, ignorar: IGNORAR_CAL_OUTROS }) &&
+        (!idsBuscaDe || idsBuscaDe.has(t.id_tarefa)))
+    : [];
   const statusInicialSlug = statuses.find((s) => s.tipo === "nao_iniciado")?.slug ?? statuses[0]?.slug ?? "A_FAZER";
 
   // Colunas do Kanban = status do quadro + quaisquer slugs órfãos presentes nas tarefas (nada some).
@@ -465,6 +535,14 @@ export default function GestaoChabraPage() {
   function novaTarefa(status: StatusTarefa) {
     setEditando(null);
     setStatusNovo(status);
+    setInicialNova(null);
+    setModalOpen(true);
+  }
+
+  function novaTarefaNoDia(dia: string, hora?: string) {
+    setEditando(null);
+    setStatusNovo(statusInicialSlug);
+    setInicialNova({ prazo: dia, hora });
     setModalOpen(true);
   }
 
@@ -760,8 +838,11 @@ export default function GestaoChabraPage() {
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
             <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar tarefa…" className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-marca-primary focus:outline-none" />
           </div>
-          <FiltrosPanel filtros={filtros} onChange={setFiltros} statuses={statuses} etiquetas={etiquetasCat} usuarios={usuarios} idQuadro={quadro?.id_quadro ?? ""} />
-          {user?.nome && (
+          {vista !== "calendario" && (
+            <FiltrosPanel filtros={filtros} onChange={setFiltros} idQuadro={quadro?.id_quadro ?? ""}
+              opcoes={{ statuses, etiquetas: etiquetasCat, usuarios, pessoas: usuariosEmail, equipes: equipesVisiveis, criadores: criadoresOpcoes, produtos: produtosOpcoes }} />
+          )}
+          {user?.nome && !calDeOutros && (
             <button type="button" onClick={() => setSoMinhas((v) => !v)} className={`rounded-lg px-3 py-2 text-sm font-medium transition ${soMinhas ? "bg-marca-primary text-white" : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
               Minhas
             </button>
@@ -997,13 +1078,33 @@ export default function GestaoChabraPage() {
           />
         ) : vista === "calendario" ? (
           <VistaCalendario
-            tarefas={calendarioPessoal ? [...items.filter(passaFiltro), ...alocadasAgenda.filter((t) => t.id_quadro !== quadro.id_quadro)] : items.filter(passaFiltro)}
+            tarefas={calDeOutros ? tarefasCalOutros : calendarioPessoal ? [...items.filter(passaFiltro), ...alocadasAgenda.filter((t) => t.id_quadro !== quadro.id_quadro)] : items.filter(passaFiltro)}
             statuses={statuses}
-            podeEditar={calendarioPessoal ? (t) => podeEditar && t.id_quadro === quadro.id_quadro : podeEditar}
-            concluida={calendarioPessoal ? (t) => (t.id_quadro === quadro.id_quadro ? statusMap.get(t.status)?.tipo : statusGlobalMap.get(`${t.id_quadro}|${t.status}`)?.tipo) === "concluido" : undefined}
-            rotulo={calendarioPessoal ? (t) => quadros.find((q) => q.id_quadro === t.id_quadro)?.nome ?? "Lista" : undefined}
-            inicioSemPrazo={calendarioPessoal}
+            podeEditar={calDeOutros || calendarioPessoal ? (t) => podeEditar && t.id_quadro === quadro.id_quadro : podeEditar}
+            concluida={calDeOutros || calendarioPessoal ? concluidaEmQualquerLista : undefined}
+            rotulo={calDeOutros || calendarioPessoal ? (t) => quadros.find((q) => q.id_quadro === t.id_quadro)?.nome ?? "Lista" : undefined}
+            inicioSemPrazo={calDeOutros || calendarioPessoal}
+            statusDe={calDeOutros || calendarioPessoal ? (t) => (t.id_quadro === quadro.id_quadro ? statusMap.get(t.status) : statusGlobalMap.get(`${t.id_quadro}|${t.status}`)) : undefined}
+            onCriarNoDia={podeEditar && !calDeOutros ? novaTarefaNoDia : undefined}
             onAbrir={(t) => { if (t.id_quadro !== quadro.id_quadro) setQuadroId(t.id_quadro); setEditando(t); setModalOpen(true); }}
+            onPeriodo={aoPeriodoCal}
+            carregando={calDeOutros && buscandoDe}
+            nFiltros={contarFiltros(filtros)}
+            lateral={
+              <LateralCalendario
+                calDe={calDe}
+                onCalDe={setCalDe}
+                eu={user?.email ?? null}
+                pessoas={usuariosEmail}
+                equipes={equipesVisiveis}
+                filtros={filtros}
+                onFiltros={setFiltros}
+                opcoes={{ statuses, etiquetas: etiquetasCat, usuarios, pessoas: usuariosEmail, equipes: equipesVisiveis, criadores: criadoresOpcoes, produtos: produtosOpcoes }}
+                esconder={calDeOutros ? IGNORAR_CAL_OUTROS : undefined}
+                idQuadro={quadro.id_quadro}
+                nomeLista={quadro.nome}
+              />
+            }
           />
         ) : vista === "painel" ? (
           <PainelGestao tarefas={items.filter(passaFiltro)} statuses={statuses} tempoPorTarefa={tempoPorTarefa} />
@@ -1041,6 +1142,7 @@ export default function GestaoChabraPage() {
           podeEditar={podeEditar}
           podeComentar={podeComentar}
           etiquetasSugeridas={etiquetasSugeridas}
+          inicial={inicialNova}
         />
       )}
 
