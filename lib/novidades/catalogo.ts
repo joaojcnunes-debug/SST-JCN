@@ -54,6 +54,17 @@ export const CATALOGO: Novidade[] = [
     versoes: ["0.3.260"],
   },
   {
+    id: "relatorio-assinatura-imagem-grava",
+    data: "2026-11-10",
+    tipo: "correcao",
+    titulo: "Relatório: assinar com a imagem do técnico volta a funcionar",
+    texto:
+      "Faltava uma informação no banco: abrir o relatório gerava um erro escondido e assinar o PDF com a imagem do " +
+      "técnico não era gravado. Agora a assinatura por imagem é registrada e o relatório abre sem erro.",
+    onde: "Inspeções › Relatório › Assinatura",
+    versoes: ["0.3.259"],
+  },
+  {
     id: "menu-da-foto-os-e-sair",
     data: "2026-11-10",
     tipo: "melhoria",

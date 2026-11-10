@@ -139,7 +139,8 @@ export function usePdfAssinado(tabelaNome?: string, docId?: string) {
         .select("pdf_path, assinado_em, assinado_por, tipo_assinatura")
         .eq("tabela", tabelaNome!)
         .eq("doc_id", docId!)
-        .single();
+        // maybeSingle: documento ainda não assinado não tem linha (single respondia 406 no console).
+        .maybeSingle();
       return (data as PdfAssinado | null) ?? null;
     },
   });
