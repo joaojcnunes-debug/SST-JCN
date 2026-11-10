@@ -118,6 +118,8 @@ export interface GestaoTarefa {
   origem?: Record<string, unknown> | null;
   /** Só no app (filtro "Mostrar subtarefas"): título da tarefa-mãe, para o cartão/linha. */
   titulo_mae?: string;
+  /** v338 (Painel v354): empresa do cadastro (empresas). */
+  id_empresa?: string | null;
   /** Só no app: subtarefa da lista que ainda não tem tarefa filha (id em gestao_subtarefas).
    *  É um cartão de exibição — não arrasta nem edita na linha; ao abrir vira filha (v300). */
   sub_linha?: string;
@@ -1587,6 +1589,8 @@ export function useTarefasDeResponsaveis(emails: string[], ini: string, fim: str
 export interface TarefaAgenda extends GestaoTarefa {
   /** E-mails (em minúsculas) das pessoas escolhidas na Agenda que são responsáveis por esta tarefa. */
   emails_agenda: string[];
+  /** v338: a empresa da atividade — a da tarefa ou, numa subtarefa sem empresa, a da tarefa-mãe. */
+  empresa_agenda: string | null;
 }
 
 /**
@@ -1620,16 +1624,21 @@ export function useAgendaDe(emails: string[], ini: string, fim: string, enabled 
         const emailsT = (vinc ?? []).map((v) => v.usuario_email.toLowerCase());
         const ja = porId.get(t.id_tarefa);
         if (ja) ja.emails_agenda = [...new Set([...ja.emails_agenda, ...emailsT])];
-        else porId.set(t.id_tarefa, { ...(t as GestaoTarefa), emails_agenda: [...new Set(emailsT)] });
+        else porId.set(t.id_tarefa, { ...(t as GestaoTarefa), emails_agenda: [...new Set(emailsT)], empresa_agenda: (t as GestaoTarefa).id_empresa ?? null });
       }
       const out = [...porId.values()];
       // A filha mostra de qual tarefa ela é (a mãe pode estar fora do período ou sem data).
       const maes = [...new Set(out.map((t) => t.id_tarefa_pai).filter((x): x is string => !!x))];
       if (maes.length) {
-        const { data: m, error: e2 } = await sb.from("gestao_tarefas").select("id_tarefa,titulo").in("id_tarefa", maes);
+        const { data: m, error: e2 } = await sb.from("gestao_tarefas").select("id_tarefa,titulo,id_empresa").in("id_tarefa", maes);
         if (e2) throw e2;
-        const titulo = new Map(((m ?? []) as { id_tarefa: string; titulo: string }[]).map((x) => [x.id_tarefa, x.titulo]));
-        for (const t of out) if (t.id_tarefa_pai) t.titulo_mae = titulo.get(t.id_tarefa_pai) ?? undefined;
+        const mae = new Map(((m ?? []) as { id_tarefa: string; titulo: string; id_empresa: string | null }[]).map((x) => [x.id_tarefa, x]));
+        for (const t of out) {
+          if (!t.id_tarefa_pai) continue;
+          const x = mae.get(t.id_tarefa_pai);
+          t.titulo_mae = x?.titulo ?? undefined;
+          t.empresa_agenda = t.empresa_agenda ?? x?.id_empresa ?? null;
+        }
       }
       return out;
     },
@@ -1730,6 +1739,7 @@ export function useSalvarTarefa() {
           campos: t.campos ?? {},
           recorrencia: t.recorrencia ?? null,
           pontos: t.pontos ?? null,
+          id_empresa: t.id_empresa ?? null,
           created_by: email,
           created_at: now,
           updated_at: now,
@@ -2206,6 +2216,82 @@ export function useExcluirModelo() {
     onError: (e) => toast.error(mensagemErro(e, "Não foi possível excluir o modelo.")),
   });
 }
+
+// ---- v338: tarefa ligada à Empresa do cadastro ----
+export interface EmpresaSugerida { id_empresa: string; nome: string; municipio: string | null; por: "cnpj" | "nome" }
+
+/** Sugestão pelo CNPJ ou pelo nome no título (a pessoa confirma; nada é gravado). Só para tarefa sem empresa. */
+export function useEmpresaSugerida(idTarefa: string | null | undefined, ativo: boolean) {
+  return useQuery({
+    queryKey: ["gestao-empresa-sugerida", idTarefa],
+    enabled: !!idTarefa && ativo,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await (sb as unknown as {
+        rpc: (fn: string, a: Record<string, unknown>) => Promise<{ data: EmpresaSugerida[] | null; error: { message: string } | null }>;
+      }).rpc("gestao_empresa_sugerida", { p_id_tarefa: idTarefa });
+      if (error) return [] as EmpresaSugerida[]; // sugestão é ajuda: sem ela a tela segue igual
+      return data ?? [];
+    },
+  });
+}
+
+export interface NomeEmpresa { nome: string; municipio: string | null }
+
+/** Nomes das empresas ligadas às tarefas da tela (cartões). Só as que a pessoa vê (RLS de empresas). */
+export function useNomesEmpresas(ids: (string | null | undefined)[]) {
+  const unicos = [...new Set(ids.filter((x): x is string => !!x))].sort();
+  return useQuery({
+    queryKey: ["gestao-empresas-nomes", unicos.join(",")],
+    enabled: unicos.length > 0,
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const mapa = new Map<string, NomeEmpresa>();
+      for (let i = 0; i < unicos.length; i += 80) {
+        const { data, error } = await sb.from("empresas").select("id_empresa, nome_empresa, nome_fantasia, municipio").in("id_empresa", unicos.slice(i, i + 80));
+        if (error) throw error;
+        for (const e of (data ?? []) as unknown as { id_empresa: string; nome_empresa: string; nome_fantasia: string | null; municipio: string | null }[]) {
+          mapa.set(e.id_empresa, { nome: e.nome_fantasia?.trim() || e.nome_empresa, municipio: e.municipio });
+        }
+      }
+      return mapa;
+    },
+  });
+}
+
+export interface TarefaDaEmpresa {
+  id_tarefa: string;
+  titulo: string;
+  id_quadro: string;
+  quadro: string | null;
+  status: string;
+  status_nome: string | null;
+  status_cor: string | null;
+  concluida: boolean;
+  prazo: string | null;
+  prioridade: PrioridadeTarefa;
+  responsavel: string | null;
+  created_at: string;
+}
+
+/** Ficha da empresa: as tarefas dela que a pessoa vê na Gestão (a RLS da Gestão decide; SECURITY INVOKER). */
+export function useTarefasDaEmpresa(idEmpresa: string | null | undefined) {
+  return useQuery({
+    queryKey: ["gestao-tarefas-da-empresa", idEmpresa],
+    enabled: !!idEmpresa,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await (sb as unknown as {
+        rpc: (fn: string, a: Record<string, unknown>) => Promise<{ data: TarefaDaEmpresa[] | null; error: { message: string } | null }>;
+      }).rpc("gestao_tarefas_da_empresa", { p_id_empresa: idEmpresa });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
 
 // ---- v315 (Painel v325): campos que vieram de outro quadro (ex.: Produtos do Comercial), só leitura ----
 export interface GestaoCampoOrigem {

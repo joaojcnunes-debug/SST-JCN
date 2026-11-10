@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Search, Users } from "lucide-react";
 import VistaCalendario from "@/components/gestao/VistaCalendario";
-import { useAgendaDe, type GestaoQuadro, type GestaoStatus, type GestaoTarefa, type TarefaAgenda } from "@/lib/hooks/useGestao";
+import { useAgendaDe, useNomesEmpresas, type GestaoQuadro, type GestaoStatus, type GestaoTarefa, type TarefaAgenda } from "@/lib/hooks/useGestao";
 import { normalizarTexto } from "@/lib/busca/texto";
+import { tituloNaAgenda } from "@/lib/gestao/agenda";
 import { cn } from "@/lib/utils";
 
 type Tipo = "tudo" | "tarefas" | "subtarefas";
@@ -37,6 +38,13 @@ export default function AgendaView({
   onAbrir: (t: GestaoTarefa) => void;
 }) {
   const [escolhidos, setEscolhidos] = useState<string[]>(() => (eu ? [eu.toLowerCase()] : []));
+  // Abrindo a página direto, o login pode chegar depois da montagem: marca "eu" uma vez, quando ele chegar.
+  const marcouEu = useRef(!!eu);
+  useEffect(() => {
+    if (marcouEu.current || !eu) return;
+    marcouEu.current = true;
+    setEscolhidos((s) => (s.length ? s : [eu.toLowerCase()]));
+  }, [eu]);
   const [busca, setBusca] = useState("");
   const [tipo, setTipo] = useState<Tipo>("tudo");
   const [periodo, setPeriodo] = useState<[string, string]>(["", ""]);
@@ -44,6 +52,8 @@ export default function AgendaView({
 
   const { data: tarefas = [], isFetching } = useAgendaDe(escolhidos, periodo[0], periodo[1]);
 
+  // v338: a empresa de cada atividade (a da tarefa ou a da tarefa-mãe) vem antes do título, para quem olha saber onde ir.
+  const { data: nomesEmpresas } = useNomesEmpresas(tarefas.map((t) => t.empresa_agenda));
   const nomePorEmail = useMemo(() => new Map(pessoas.map((p) => [p.email.toLowerCase(), p.nome])), [pessoas]);
   const nomeQuadro = useMemo(() => new Map(quadros.map((q) => [q.id_quadro, q.nome])), [quadros]);
   const ordenadas = useMemo(() => {
@@ -53,14 +63,19 @@ export default function AgendaView({
   const termo = normalizarTexto(busca);
   const pessoasVisiveis = termo ? ordenadas.filter((p) => normalizarTexto(p.nome).includes(termo)) : ordenadas;
 
-  // O calendário mostra os responsáveis pelo texto `responsavel`: aqui ele vira os nomes das pessoas da agenda
-  // (só para desenhar — a janela da tarefa relê a tarefa do banco).
+  // Só para desenhar (a janela da tarefa relê a tarefa do banco e a Agenda não arrasta):
+  //  - o texto `responsavel` vira os nomes das pessoas da agenda;
+  //  - o título ganha a empresa na frente ("Empresa · título"); a subtarefa sem empresa ligada leva a tarefa-mãe.
   const visiveis = useMemo(
     () =>
       tarefas
         .filter((t) => (tipo === "tudo" ? true : tipo === "subtarefas" ? !!t.id_tarefa_pai : !t.id_tarefa_pai))
-        .map((t): TarefaAgenda => ({ ...t, responsavel: t.emails_agenda.map((e) => nomePorEmail.get(e) ?? e).join(", ") })),
-    [tarefas, tipo, nomePorEmail],
+        .map((t): TarefaAgenda => ({
+          ...t,
+          titulo: tituloNaAgenda(t, t.empresa_agenda ? nomesEmpresas?.get(t.empresa_agenda)?.nome ?? null : null),
+          responsavel: t.emails_agenda.map((e) => nomePorEmail.get(e) ?? e).join(", "),
+        })),
+    [tarefas, tipo, nomePorEmail, nomesEmpresas],
   );
   const nSub = tarefas.filter((t) => t.id_tarefa_pai).length;
 

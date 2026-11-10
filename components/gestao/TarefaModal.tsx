@@ -4,7 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
-import { Trash2, Loader2, Plus, Square, CheckSquare, X, ArrowRight, Sparkles, Maximize2, CornerDownRight, MessageSquare } from "lucide-react";
+import { Trash2, Loader2, Plus, Square, CheckSquare, X, ArrowRight, Sparkles, Maximize2, CornerDownRight, MessageSquare, Building2, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import Modal from "@/components/ui/Modal";
 import Dica from "@/components/ui/Dica";
 import { DICAS_GESTAO_TAREFA } from "@/lib/dicas/gestao";
@@ -18,7 +20,7 @@ import {
   useAddComentario, useExcluirComentario,
   useDependencias, useAddDependencia, useExcluirDependencia,
   useUsuarios, gerarIaGestao, useRegistrarAtividade, useCamposDeOrigem,
-  PRIORIDADES,
+  PRIORIDADES, useEmpresaSugerida, useNomesEmpresas,
   type GestaoTarefa, type StatusTarefa, type PrioridadeTarefa, type Subtarefa, type GestaoSubtarefa, type GestaoStatus, type GestaoCampo, type GestaoVinculado,
 } from "@/lib/hooks/useGestao";
 import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
@@ -157,6 +159,8 @@ export default function TarefaModal({
   const [recInt, setRecInt] = useState(1);
   const [etiquetas, setEtiquetas] = useState<string[]>([]);
   const [pontos, setPontos] = useState("");
+  // v338 (Painel v354): empresa do cadastro. Sem empresa, sugere pelo CNPJ ou pelo nome no título; a pessoa confirma.
+  const [idEmpresa, setIdEmpresa] = useState<string | null>(null);
   const [subtarefas, setSubtarefas] = useState<(Subtarefa & { id?: string })[]>([]);
   const [novaSub, setNovaSub] = useState("");
   const [valoresCampos, setValoresCampos] = useState<Record<string, unknown>>({});
@@ -188,6 +192,7 @@ export default function TarefaModal({
     setRecInt(tarefa?.recorrencia?.intervalo ?? 1);
     setEtiquetas(tarefa?.etiquetas ?? []);
     setPontos(tarefa?.pontos != null ? String(tarefa.pontos) : "");
+    setIdEmpresa(tarefa?.id_empresa ?? null);
     setSubtarefas(tarefa?.subtarefas ?? []);
     setNovaSub("");
     setValoresCampos((tarefa?.campos as Record<string, unknown>) ?? {});
@@ -248,6 +253,9 @@ export default function TarefaModal({
   }, [open, tarefa, subtarefasTabela]);
 
   const ro = !podeEditar;
+  const { data: sugestoesEmpresa = [] } = useEmpresaSugerida(tarefa?.id_tarefa, open && !!tarefa && !tarefa.id_tarefa_pai && !tarefa.id_empresa && podeEditar);
+  const { data: nomesEmpresa } = useNomesEmpresas(open ? [idEmpresa, tarefa?.id_empresa] : []);
+  const nomeEmpresaDe = (id: string | null | undefined) => (id ? nomesEmpresa?.get(id)?.nome ?? null : null);
   // Comentar não exige editar: o banco aceita o INSERT de quem tem nível >= comment (policy
   // gestao_coment_ins_comment, v197). Excluir comentário continua só para quem edita.
   const podeComentarEf = podeEditar || !!podeComentar;
@@ -373,6 +381,8 @@ export default function TarefaModal({
       status,
       etiquetas,
       pontos: pontos.trim() === "" ? null : Math.max(0, parseInt(pontos, 10) || 0),
+      // v338: a janela da subtarefa não mostra a empresa — não manda (fica a que estiver gravada).
+      ...(ehSub ? {} : { id_empresa: idEmpresa }),
       // subtarefas NAO vai mais no payload da tarefa (F2.1/v199): persiste na tabela abaixo.
       ...(tarefa?.id_tarefa ? { camposAlterados } : { campos: valoresCampos }),
       recorrencia: recTipo
@@ -410,6 +420,11 @@ export default function TarefaModal({
     const eventos: EventoAtividade[] = !tarefa
       ? [{ acao: "criada" }]
       : eventosAlteracao({ ...tarefa, status: statusSalvo }, { status, responsavel: respNome, prazo: prazo || null, prioridade, titulo: titulo.trim() }, nomeStatus);
+    if (tarefa && !ehSub && (idEmpresa ?? null) !== (tarefa.id_empresa ?? null)) {
+      eventos.push({ acao: "empresa", payload: { de: nomeEmpresaDe(tarefa.id_empresa) ?? "—", para: nomeEmpresaDe(idEmpresa) ?? "—" } });
+      qc.invalidateQueries({ queryKey: ["gestao-tarefas-da-empresa"] });
+      qc.invalidateQueries({ queryKey: ["gestao-empresa-sugerida", idSalvo] });
+    }
     if (eventos.length) registrarAtiv.mutate({ id_tarefa: idSalvo, ator: userNome, eventos });
 
     // Automações rodam no servidor (v120: trigger em gestao_tarefas + gestao_automacao_prazos).
@@ -571,6 +586,42 @@ export default function TarefaModal({
             <input type="number" min="0" value={pontos} disabled={ro} onChange={(e) => setPontos(e.target.value)} placeholder="—" className={inputCls} />
           </div>
         </div>
+
+        {!ehSub && (
+          // v338 (Painel v354): empresa do cadastro. A Agenda mostra a empresa de cada atividade (a da subtarefa vem da mãe).
+          <div>
+            <label className="mb-1 flex items-center gap-1 text-xs font-medium text-gray-600"><Building2 className="size-3.5" /> Empresa</label>
+            {ro ? (
+              idEmpresa ? (
+                <Link href={`/empresas/${idEmpresa}`} className="block truncate py-1.5 text-sm font-medium text-marca-primary hover:underline">{nomeEmpresaDe(idEmpresa) ?? idEmpresa}</Link>
+              ) : (
+                <p className="py-1.5 text-sm text-gray-400">—</p>
+              )
+            ) : (
+              <div className="flex items-center gap-1">
+                <div className="min-w-0 flex-1">
+                  <EmpresaSelect value={idEmpresa} onChange={(v) => setIdEmpresa(v || null)} allowAll placeholder="Buscar empresa…" />
+                </div>
+                {idEmpresa && (
+                  <Link href={`/empresas/${idEmpresa}`} target="_blank" title="Abrir a ficha da empresa" aria-label="Abrir a ficha da empresa" className="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-marca-primary">
+                    <ExternalLink className="size-4" />
+                  </Link>
+                )}
+              </div>
+            )}
+            {!ro && !idEmpresa && sugestoesEmpresa.length > 0 && (
+              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-gray-500">
+                <span>{sugestoesEmpresa.length > 1 ? "Sugeridas pelo título:" : sugestoesEmpresa[0].por === "cnpj" ? "Sugerida pelo CNPJ do título:" : "Sugerida pelo título:"}</span>
+                {sugestoesEmpresa.map((s) => (
+                  <button key={s.id_empresa} type="button" onClick={() => setIdEmpresa(s.id_empresa)} title="Usar esta empresa (grava ao salvar)"
+                    className="rounded-full border border-marca-primary/40 bg-marca-light/50 px-2 py-0.5 font-medium text-marca-primary hover:bg-marca-light">
+                    {s.nome}{s.municipio ? ` · ${s.municipio}` : ""}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {(campos.length > 0 || camposOrigem.length > 0) && (
           // Campos personalizados na mesma grade dos campos fixos (antes ficavam numa caixa fechada).

@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-empresa-na-tarefa-agenda",
+    data: "2026-11-10",
+    tipo: "novidade",
+    titulo: "Gestão: ligue a tarefa a uma empresa e veja a empresa na Agenda",
+    texto:
+      "A janela da tarefa tem o campo Empresa, ligado ao cadastro de Empresas. Se o título já tem o nome ou o CNPJ da " +
+      "empresa, o sistema sugere: clique na sugestão e salve. O cartão mostra a empresa, e a ficha da empresa ganhou a " +
+      "aba Tarefas. Na Agenda, cada atividade aparece com a empresa na frente; a subtarefa usa a empresa da tarefa de que faz parte.",
+    onde: "Gestão › abrir uma tarefa › Empresa; Gestão › Agenda; Empresas › ficha › Tarefas",
+    impacto: "Nenhuma tarefa muda sozinha: a empresa só é ligada quando alguém escolhe e salva.",
+    versoes: ["0.3.264"],
+  },
+  {
     id: "gestao-agenda-pessoas",
     data: "2026-11-10",
     tipo: "novidade",

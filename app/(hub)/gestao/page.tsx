@@ -11,7 +11,7 @@ import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import {
   useQuadros, useTarefas, useSubtarefasDoQuadro, useAbrirSubtarefa, useUsuarios, useReordenar, useUsuariosLista, useSalvarTarefa, useAcaoMassa,
   useSalvarVinculados, useRegistrarAtividade,
-  useMinhasTarefas, useMinhasTarefasAgenda, useTarefasDeResponsaveis, useVinculadosQuadro, buscarTarefa, useTodosStatus, useNotificacoes, useMarcarLida, useLimparNotificacoes,
+  useMinhasTarefas, useMinhasTarefasAgenda, useTarefasDeResponsaveis, useNomesEmpresas, useVinculadosQuadro, buscarTarefa, useTodosStatus, useNotificacoes, useMarcarLida, useLimparNotificacoes,
   usePreferenciaVisao, useSalvarPreferenciaVisao,
   useStatusQuadro, statusPadrao, useCamposQuadro, useEtiquetasQuadro,
   useEspacos, usePastas, useTodasDependencias, useAutomacaoTick, useSyncGoogleAgenda, useTempoQuadro, useAnexosCountQuadro,
@@ -312,6 +312,8 @@ export default function GestaoChabraPage() {
 
   const qc = useQueryClient();
   const abrirSub = useAbrirSubtarefa();
+  // v338: nome da empresa ligada, no cartão.
+  const { data: nomesEmpresas } = useNomesEmpresas(tarefas.map((t) => t.id_empresa));
   const { data: usuariosEmail = [] } = useUsuarios();
   const { data: subsQuadro } = useSubtarefasDoQuadro(quadro?.id_quadro, mostrar !== "tarefas");
   const subItens = useMemo(() => {
@@ -1066,6 +1068,7 @@ export default function GestaoChabraPage() {
                           selecionado={selecionados.has(t.id_tarefa)}
                           onToggleSel={() => toggleSel(t.id_tarefa)}
                           onAbrir={() => abrirItem(t)}
+                          empresa={t.id_empresa ? nomesEmpresas?.get(t.id_empresa)?.nome ?? null : null}
                           onDragStart={() => setDragId(t.id_tarefa)}
                           onDragEnd={() => { setDragId(null); setColHover(null); setDropAlvo(null); }}
                           /* Coluna com "Ordenar por": a posição de soltar não vale (a ordem é a escolhida) — só troca de coluna. */
