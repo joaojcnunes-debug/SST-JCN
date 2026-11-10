@@ -5,6 +5,7 @@ import { Bell, UserPlus, ArrowRightLeft, MessageSquare, AtSign, Check, CheckChec
 import { PRIORIDADES, useAprovacoesPendentes, useDecidirAprovacao, type GestaoAprovacao, type GestaoNotificacao, type GestaoTarefa, type GestaoStatus, type GestaoQuadro } from "@/lib/hooks/useGestao";
 import { useUserStore } from "@/lib/store";
 import { useMeusNiveisQuadros, nivelPodeEditar } from "@/lib/hooks/useGestaoAcesso";
+import { useComentariosParaMim, type ComentarioParaMim } from "@/lib/hooks/useGestao";
 
 function quando(iso: string): string {
   const d = new Date(iso);
@@ -23,6 +24,8 @@ function IconeNotif({ tipo }: { tipo: string }) {
   if (tipo === "status") return <ArrowRightLeft className="size-4 text-indigo-500" />;
   if (tipo === "comentario") return <MessageSquare className="size-4 text-amber-500" />;
   if (tipo === "mencao") return <AtSign className="size-4 text-pink-500" />;
+  if (tipo === "comentario_atribuido") return <MessageSquare className="size-4 text-marca-primary" />;
+  if (tipo === "prazo_atendimento") return <AlertTriangle className="size-4 text-red-500" />;
   return <Bell className="size-4 text-gray-400" />;
 }
 
@@ -35,6 +38,7 @@ export default function CaixaEntrada({
   onMarcarLida,
   onAbrirTarefa,
   souGestor,
+  onAbrirComentario,
 }: {
   /** Owner/admin da Gestão: decide qualquer aprovação (inclusive as sem aprovador). */
   souGestor: boolean;
@@ -45,7 +49,10 @@ export default function CaixaEntrada({
   onAbrirNotif: (n: GestaoNotificacao) => void;
   onMarcarLida: (id: string) => void;
   onAbrirTarefa: (t: GestaoTarefa) => void;
+  /** v341 (Painel v353): abrir a tarefa de um comentário atribuído a mim. */
+  onAbrirComentario?: (c: ComentarioParaMim) => void;
 }) {
+  const { data: paraMim = [] } = useComentariosParaMim();
   const naoLidas = useMemo(() => notificacoes.filter((n) => !n.lida), [notificacoes]);
   // Lidas ficam recolhidas: são o histórico que "Marcar todas como lidas" produz e que
   // "Limpar notificações" apaga — sem esta seção o Limpar não teria efeito visível.
@@ -85,7 +92,7 @@ export default function CaixaEntrada({
       .sort((a, b) => (a.prazo ?? "").localeCompare(b.prazo ?? ""));
   }, [tarefas, statusMap]);
 
-  const vazio = naoLidas.length === 0 && atencao.length === 0 && pendencias.length === 0;
+  const vazio = naoLidas.length === 0 && atencao.length === 0 && pendencias.length === 0 && paraMim.length === 0;
 
   return (
     <div className="mt-5 space-y-6">
@@ -118,6 +125,30 @@ export default function CaixaEntrada({
           <p className="text-xs text-gray-400">Sem notificações novas nem prazos próximos.</p>
         </div>
       )}
+
+        {paraMim.length > 0 && (
+          <section>
+            <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+              <MessageSquare className="size-4 text-marca-primary" />
+              Comentários para você resolver <span className="text-gray-400">({paraMim.length})</span>
+            </h2>
+            <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+              {paraMim.map((c) => (
+                <li key={c.id_comentario}>
+                  <button type="button" onClick={() => onAbrirComentario?.(c)} className="flex w-full items-start gap-3 px-3 py-2.5 text-left hover:bg-gray-50">
+                    <MessageSquare className="mt-0.5 size-4 shrink-0 text-amber-500" />
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 whitespace-pre-wrap break-words text-sm text-gray-800">{c.texto}</p>
+                      <p className="mt-0.5 truncate text-[11px] text-gray-400">
+                        {c.autor ?? "Alguém"} · {quando(c.created_at)} · em “{c.gestao_tarefas?.titulo ?? c.id_tarefa}”
+                      </p>
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
       {naoLidas.length > 0 && (
         <section>

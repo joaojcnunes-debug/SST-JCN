@@ -7,7 +7,7 @@ import { mensagemErro } from "@/lib/errors";
 import {
   Trash2, Loader2, Plus, Square, CheckSquare, X, ArrowRight, Sparkles, Maximize2, CornerDownRight, MessageSquare,
   Columns3, ArrowRightLeft, UserRound, Flag, Tag, CalendarDays, CalendarCheck, Repeat, Clock, Users, Gauge, List, Link2,
-  PanelRightClose, PanelRightOpen, ListChecks,
+  PanelRightClose, PanelRightOpen, ListChecks, Timer, Hourglass,
   Building2, ExternalLink,
   type LucideIcon,
 } from "lucide-react";
@@ -27,6 +27,8 @@ import {
   useDependencias, useAddDependencia, useExcluirDependencia,
   useUsuarios, gerarIaGestao, useRegistrarAtividade, useCamposDeOrigem, useQuadros, useChecklist, useAddChecklist,
   PRIORIDADES, useEmpresaSugerida, useNomesEmpresas,
+  useResolverComentario, useMoverForcandoRequisito, ehErroRequisito, useSlaTarefas, useTempoTarefa, totalSegundos, formatarDuracao,
+  type GestaoTempo,
   type GestaoTarefa, type StatusTarefa, type PrioridadeTarefa, type Subtarefa, type GestaoSubtarefa, type GestaoStatus, type GestaoCampo, type GestaoVinculado,
 } from "@/lib/hooks/useGestao";
 import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
@@ -37,6 +39,8 @@ import CampoData from "@/components/gestao/CampoData";
 import ChecklistTarefa from "@/components/gestao/ChecklistTarefa";
 import { isoLocal } from "@/lib/gestao/datas-rapidas";
 import { linkTarefa } from "@/lib/gestao/link-tarefa";
+import { situacaoResposta, situacaoResolucao, fmtPrazo, fmtMeta, type SituacaoSla } from "@/lib/gestao/sla";
+import { entrouNaColunaEm, formatarTempoLongo } from "@/lib/gestao/tempo-etapas";
 import { BotaoTempo, RegistroTempo } from "@/components/gestao/TempoTracker";
 import AnexosTarefa from "@/components/gestao/AnexosTarefa";
 import HistoricoTarefa from "@/components/gestao/HistoricoTarefa";
@@ -71,6 +75,23 @@ function ValorOrigem({ valor }: { valor: unknown }) {
 /** Campo sem valor: mostra "Adicionar" no painel (como no Runrun). `false` conta como vazio (caixa de seleção). */
 function campoVazio(v: unknown): boolean {
   return v == null || v === "" || v === false || (Array.isArray(v) && v.length === 0);
+}
+
+/** v353: uma linha do prazo de atendimento (1ª resposta ou resolução) no painel. */
+function LinhaSla({ rotulo, meta, sit }: { rotulo: string; meta: number | null; sit: SituacaoSla }) {
+  const cor = { estourado: "text-red-600", perto: "text-amber-700", cumprido: "text-marca-primary", cumprido_atrasado: "text-amber-700", no_prazo: "text-gray-800" }[sit.estado];
+  const quando = (iso: string | null) => (iso ? fmtPrazo(iso) : "—");
+  const txt =
+    sit.estado === "cumprido" ? `cumprida (${quando(sit.em)})`
+    : sit.estado === "cumprido_atrasado" ? `cumprida com atraso (${quando(sit.em)})`
+    : sit.estado === "estourado" ? `atrasada — era até ${quando(sit.prazo)}`
+    : `até ${quando(sit.prazo)}${sit.estado === "perto" ? " · perto de vencer" : ""}`;
+  return (
+    <p className="leading-snug">
+      <span className="text-gray-500">{rotulo}:</span> <span className={`font-medium ${cor}`}>{txt}</span>{" "}
+      <span className="text-[11px] text-gray-400">(meta {fmtMeta(meta)} úteis)</span>
+    </p>
+  );
 }
 
 /**
@@ -125,6 +146,7 @@ const EMPTY_VINCULADOS: GestaoVinculado[] = [];
 const EMPTY_USUARIOS: { nome: string; email: string }[] = [];
 const EMPTY_SUBTAREFAS: GestaoSubtarefa[] = [];
 const EMPTY_CHECKLIST: { feito: boolean }[] = [];
+const EMPTY_TEMPO: GestaoTempo[] = [];
 
 export default function TarefaModal({
   open,
@@ -241,18 +263,38 @@ export default function TarefaModal({
   const [rascunhoChecklist, setRascunhoChecklist] = useState<string[]>([]);
   const { data: checklist = EMPTY_CHECKLIST } = useChecklist(tarefa?.id_tarefa);
   const addChecklist = useAddChecklist();
+  // v353: tempo estimado (horas + minutos, gravado em minutos no Salvar), comentário atribuído, requisito forçado
+  // pelo Admin e prazo de atendimento (só nos quadros com prazo ligado).
+  const [estH, setEstH] = useState("");
+  const [estM, setEstM] = useState("");
+  const [atribuirA, setAtribuirA] = useState("");
+  const resolverComentario = useResolverComentario();
+  const forcarRequisito = useMoverForcandoRequisito();
+  const isAdmin = useUserStore((s) => s.user?.perfil === "Admin");
+  const meuEmail = useUserStore((s) => s.user?.email ?? null);
+  const { data: slaDaTarefa } = useSlaTarefas(tarefa && !tarefa.id_tarefa_pai ? tarefa.id_quadro : null, tarefa ? [tarefa.id_tarefa] : null);
+  const sla = tarefa ? slaDaTarefa?.get(tarefa.id_tarefa) ?? null : null;
+  const { data: tempoEntries = EMPTY_TEMPO } = useTempoTarefa(tarefa?.id_tarefa);
   const tituloRef = useRef<HTMLInputElement>(null);
   const painelRef = useRef<HTMLElement>(null);
   const { data: quadros } = useQuadros();
   const idDescricao = useId();
   const { data: timeline } = useTarefaHistorico(tarefa?.id_tarefa);
   const nComentarios = (timeline ?? []).filter((i) => i.kind === "comentario").length;
+  // v353: desde quando a tarefa está na coluna atual (última mudança de status gravada pelo banco).
+  const entrouEm = useMemo(
+    () => (tarefa ? entrouNaColunaEm(tarefa.created_at, (timeline ?? []).filter((i) => i.kind === "movimentacao" && i.tipo === "status").map((i) => ({ de: null, para: null, em: i.created_at }))) : null),
+    [tarefa, timeline],
+  );
 
   useEffect(() => {
     if (!open) return;
     setAba("detalhes");
     setCamposAbertos(new Set());
     setRascunhoChecklist([]);
+    setAtribuirA("");
+    setEstH(tarefa?.tempo_estimado_min != null ? String(Math.floor(tarefa.tempo_estimado_min / 60)) : "");
+    setEstM(tarefa?.tempo_estimado_min != null ? String(tarefa.tempo_estimado_min % 60) : "");
     setTitulo(tarefa?.titulo ?? "");
     setDescricao(tarefa?.descricao ?? "");
     setPrioridade(tarefa?.prioridade ?? "Media");
@@ -410,10 +452,24 @@ export default function TarefaModal({
       await salvar.mutateAsync({ id_tarefa: tarefa.id_tarefa, id_quadro: tarefa.id_quadro, status: novo });
       registrarAtiv.mutate({ id_tarefa: tarefa.id_tarefa, ator: userNome, eventos: [{ acao: "status", payload: { de: nomeStatus(anterior), para: nomeStatus(novo) } }] });
       toast.success(`Status: ${nomeStatus(novo)}`);
-    } catch {
+    } catch (e) {
       // useSalvarTarefa já avisou o erro e devolveu o cartão à coluna de antes
       setStatusSalvo(anterior);
       setStatus(anterior);
+      // v353: requisito da etapa — o Admin pode forçar (fica no histórico da tarefa).
+      if (ehErroRequisito(e) && isAdmin && await confirmar({
+        title: "Forçar a mudança de coluna?",
+        description: `${(e as Error).message} Como Admin, você pode forçar mesmo assim; fica registrado no histórico da tarefa.`,
+        confirmLabel: "Forçar",
+        variant: "primary",
+      })) {
+        try {
+          await forcarRequisito.mutateAsync({ id_tarefa: tarefa.id_tarefa, status: novo });
+          setStatusSalvo(novo);
+          setStatus(novo);
+          toast.success(`Status: ${nomeStatus(novo)} (forçado)`);
+        } catch { /* o hook já avisou */ }
+      }
     }
   }
 
@@ -450,6 +506,7 @@ export default function TarefaModal({
         if (JSON.stringify(valoresCampos[k] ?? null) !== JSON.stringify(orig[k] ?? null)) camposAlterados[k] = valoresCampos[k] ?? null;
       }
     }
+    const estimadoMin = estH.trim() === "" && estM.trim() === "" ? null : Math.max(0, (parseInt(estH || "0", 10) || 0) * 60 + (parseInt(estM || "0", 10) || 0));
     const idSalvo = await salvar.mutateAsync({
       id_tarefa: tarefa?.id_tarefa,
       id_quadro: idQuadro,
@@ -466,6 +523,7 @@ export default function TarefaModal({
       pontos: pontos.trim() === "" ? null : Math.max(0, parseInt(pontos, 10) || 0),
       // v338: a janela da subtarefa não mostra a empresa — não manda (fica a que estiver gravada).
       ...(ehSub ? {} : { id_empresa: idEmpresa }),
+      tempo_estimado_min: estimadoMin,
       // subtarefas NAO vai mais no payload da tarefa (F2.1/v199): persiste na tabela abaixo.
       ...(tarefa?.id_tarefa ? { camposAlterados } : { campos: valoresCampos }),
       recorrencia: recTipo
@@ -548,9 +606,10 @@ export default function TarefaModal({
     const t = tarefa;
     const texto = novoComentario.trim();
     addComentario.mutate(
-      { id_tarefa: t.id_tarefa, texto, autor: userNome },
+      { id_tarefa: t.id_tarefa, texto, autor: userNome, atribuido_a: atribuirA || null },
       { onSuccess: () => {
         setNovoComentario("");
+        setAtribuirA("");
         invalidarTimeline();
         // Avisos de comentário e de menção (@nome): gerados no banco por gatilho (v295).
       } },
@@ -567,6 +626,10 @@ export default function TarefaModal({
   const totalChecklist = tarefa ? checklist.length : rascunhoChecklist.length;
   const feitosChecklist = tarefa ? checklist.filter((i) => i.feito).length : 0;
   const atrasada = !!prazo && prazo < isoLocal(new Date()) && statusMap.get(status)?.tipo !== "concluido";
+  const estimadoAtual = (parseInt(estH || "0", 10) || 0) * 60 + (parseInt(estM || "0", 10) || 0);
+  const gastoSeg = totalSegundos(tempoEntries);
+  const pctEstimativa = estimadoAtual > 0 ? Math.round((gastoSeg / (estimadoAtual * 60)) * 100) : 0;
+  const passouEstimativa = estimadoAtual > 0 && gastoSeg > estimadoAtual * 60;
   const feitas = subtarefas.filter((s) => s.feito).length;
 
   const nomeQuadro = quadros?.find((q) => q.id_quadro === (tarefa?.id_quadro ?? idQuadro))?.nome ?? null;
@@ -686,7 +749,6 @@ export default function TarefaModal({
               </label>
             )}
             <div className="flex items-center gap-2">
-              {tarefa && <BotaoTempo idTarefa={tarefa.id_tarefa} />}
               <button type="button" onClick={handleSalvar} disabled={salvar.isPending} className="inline-flex items-center gap-2 rounded-lg bg-marca-primary px-5 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50">
                 {salvar.isPending && <Loader2 className="size-4 animate-spin" />}
                 {tarefa ? "Salvar" : "Criar tarefa"}
@@ -715,7 +777,8 @@ export default function TarefaModal({
             className="-mx-2 w-[calc(100%+1rem)] rounded-md border border-transparent bg-transparent px-2 py-1 text-xl font-semibold text-gray-900 placeholder:font-normal placeholder:text-gray-400 hover:border-gray-200 focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:hover:border-transparent"
           />
           {tarefa && (
-            <p className="mt-0.5 text-xs text-gray-500">
+            <div className="mt-0.5 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-gray-500">
               <span className="font-medium text-gray-600">#{tarefa.id_tarefa}</span>
               <button
                 type="button"
@@ -732,6 +795,8 @@ export default function TarefaModal({
                 </>
               )}
             </p>
+            {!ro && <BotaoTempo idTarefa={tarefa.id_tarefa} compacto />}
+            </div>
           )}
         </div>
 
@@ -898,6 +963,12 @@ export default function TarefaModal({
             idTarefa={tarefa.id_tarefa}
             ro={ro}
             podeComentar={podeComentarEf}
+            usuarios={usuariosFull}
+            meuEmail={meuEmail}
+            podeResolverTodos={podeEditar}
+            atribuirA={atribuirA}
+            setAtribuirA={setAtribuirA}
+            onResolver={(id, resolvido) => resolverComentario.mutate({ id_comentario: id, id_tarefa: tarefa.id_tarefa, resolvido })}
             novoComentario={novoComentario}
             setNovoComentario={setNovoComentario}
             onEnviar={enviarComentario}
@@ -913,7 +984,7 @@ export default function TarefaModal({
 
         {tarefa && abaAtiva === "anexos" && <AnexosTarefa idTarefa={tarefa.id_tarefa} podeEditar={podeEditar} />}
 
-        {tarefa && abaAtiva === "historico" && <HistoricoTarefa idTarefa={tarefa.id_tarefa} statuses={statuses} />}
+        {tarefa && abaAtiva === "historico" && <HistoricoTarefa idTarefa={tarefa.id_tarefa} statuses={statuses} statusAtual={statusSalvo} criadaEm={tarefa.created_at} />}
 
         {tarefa && abaAtiva === "dependencias" && (
             <div className="space-y-2">
@@ -980,6 +1051,14 @@ export default function TarefaModal({
                 {statuses.map((s) => <option key={s.slug} value={s.slug}>{s.nome}</option>)}
               </select>
             </div>
+            {(statusMap.get(status)?.requer_checklist || statusMap.get(status)?.requer_anexo) && (
+              <p className="mt-1 text-[11px] text-gray-500">
+                Para entrar aqui: {[statusMap.get(status)?.requer_checklist && "checklist todo marcado", statusMap.get(status)?.requer_anexo && "um anexo"].filter(Boolean).join(" e ")}
+              </p>
+            )}
+            {tarefa && entrouEm && status === statusSalvo && (
+              <p className="mt-0.5 text-[11px] text-gray-500">Nesta coluna há {formatarTempoLongo(Date.now() - new Date(entrouEm).getTime())}</p>
+            )}
           </LinhaCampo>
           <LinhaCampo icone={UserRound} rotulo={responsaveisEmails.length > 1 ? `Responsáveis (${responsaveisEmails.length})` : "Responsável"} campo="responsavel">
             {pessoas(
@@ -1114,16 +1193,42 @@ export default function TarefaModal({
           )}
         </div>
 
-        {tarefa && (
-          <>
-            <hr className="my-3 border-gray-200" />
+        <hr className="my-3 border-gray-200" />
+        <div className="space-y-0.5">
+          {tarefa && (
             <LinhaCampo icone={Clock} rotulo="Tempo gasto">
               <div className="pt-1">
                 <RegistroTempo idTarefa={tarefa.id_tarefa} podeEditar={podeEditar} semRotulo />
+                {estimadoAtual > 0 && (
+                  <div className="mt-1 flex items-center gap-2 px-1" title="Tempo gasto × estimado">
+                    <span className="h-1.5 flex-1 rounded-full bg-gray-100" aria-hidden>
+                      <span className={`block h-full rounded-full ${passouEstimativa ? "bg-red-500" : "bg-marca-primary"}`} style={{ width: `${Math.min(100, pctEstimativa)}%` }} />
+                    </span>
+                    <span className={`shrink-0 text-[11px] ${passouEstimativa ? "font-semibold text-red-600" : "text-gray-500"}`}>
+                      {pctEstimativa}% de {formatarDuracao(estimadoAtual * 60)}
+                    </span>
+                  </div>
+                )}
               </div>
             </LinhaCampo>
-          </>
-        )}
+          )}
+          <LinhaCampo icone={Hourglass} rotulo="Estimativa" campo="estimativa">
+            {campoOuAdicionar("estimativa", estH.trim() !== "" || estM.trim() !== "", "Estimativa", () => (
+              <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                <input type="number" min="0" value={estH} disabled={ro} onChange={(e) => setEstH(e.target.value)} aria-label="Horas estimadas" className={`${caixaPainel} w-16`} /> h
+                <input type="number" min="0" max="59" value={estM} disabled={ro} onChange={(e) => setEstM(e.target.value)} aria-label="Minutos estimados" className={`${caixaPainel} w-16`} /> min
+              </div>
+            ))}
+          </LinhaCampo>
+          {sla && (
+            <LinhaCampo icone={Timer} rotulo="Atendimento">
+              <div className="space-y-1 py-1 text-sm">
+                <LinhaSla rotulo="1ª resposta" meta={sla.meta_resposta} sit={situacaoResposta(sla)} />
+                <LinhaSla rotulo="Resolução" meta={sla.meta_resolucao} sit={situacaoResolucao(sla)} />
+              </div>
+            </LinhaCampo>
+          )}
+        </div>
 
         <hr className="my-3 border-gray-200" />
 

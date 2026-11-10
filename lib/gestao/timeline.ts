@@ -10,6 +10,10 @@ export interface ComentarioRow {
   autor: string | null;
   texto: string;
   created_at: string;
+  /** v353: comentário atribuído a alguém (e-mail) e quando/por quem foi resolvido. */
+  atribuido_a?: string | null;
+  resolvido_em?: string | null;
+  resolvido_por?: string | null;
 }
 
 export interface HistoricoRow {
@@ -30,6 +34,9 @@ export type TimelineItem =
       ator: string | null;
       created_at: string;
       texto: string;
+      atribuido_a?: string | null;
+      resolvido_em?: string | null;
+      resolvido_por?: string | null;
     }
   | {
       key: string;
@@ -60,6 +67,9 @@ export function mergeTimeline(
       ator: c.autor,
       created_at: c.created_at,
       texto: c.texto,
+      atribuido_a: c.atribuido_a ?? null,
+      resolvido_em: c.resolvido_em ?? null,
+      resolvido_por: c.resolvido_por ?? null,
     });
   }
 

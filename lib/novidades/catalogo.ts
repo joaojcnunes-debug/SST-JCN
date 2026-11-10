@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-requisitos-estimativa-prazo-comentario",
+    data: "2026-11-10",
+    tipo: "novidade",
+    titulo: "Gestão: requisitos da coluna, tempo estimado, prazo de atendimento e comentário para alguém",
+    texto:
+      "Cada coluna pode exigir checklist completo ou um anexo para a tarefa entrar nela. A tarefa ganhou tempo estimado " +
+      "(com a barra de gasto × estimado) e mostra há quanto tempo está na coluna. No botão Prazo da lista, o gestor liga " +
+      "o prazo de atendimento (1ª resposta e resolução por prioridade, em horário comercial), com selo no cartão e aviso " +
+      "quando está para vencer. Ao comentar, dá para atribuir o comentário a alguém: ele vira pendência dessa pessoa até ser resolvido.",
+    onde: "Gestão › abrir uma tarefa; Status do quadro; botão Prazo",
+    impacto: "Nada muda sozinho: nenhuma coluna exige nada e nenhum quadro conta prazo até alguém ligar.",
+    versoes: ["0.3.268"],
+  },
+  {
     id: "gestao-janela-duas-colunas-checklist",
     data: "2026-11-10",
     tipo: "novidade",

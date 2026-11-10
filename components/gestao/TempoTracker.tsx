@@ -23,7 +23,7 @@ function useRelogio(ativo: boolean) {
 const decorrido = (e: GestaoTempo, agora: number) => Math.round((agora - new Date(e.inicio).getTime()) / 1000);
 
 /** Iniciar/Parar do rodapé da tarefa, ao lado do Salvar. */
-export function BotaoTempo({ idTarefa }: { idTarefa: string }) {
+export function BotaoTempo({ idTarefa, compacto = false }: { idTarefa: string; compacto?: boolean }) {
   const email = useUserStore((s) => s.user?.email ?? null);
   const { data: entries = [] } = useTempoTarefa(idTarefa);
   const iniciar = useIniciarTempo();
@@ -42,7 +42,7 @@ export function BotaoTempo({ idTarefa }: { idTarefa: string }) {
       type="button"
       onClick={toggle}
       disabled={ocupado}
-      className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
+      className={`inline-flex items-center gap-1.5 rounded-lg font-semibold disabled:opacity-50 ${compacto ? "px-2.5 py-1 text-xs" : "px-4 py-2 text-sm"} ${
         rodandoAqui
           ? "bg-red-600 text-white hover:bg-red-700"
           : "border border-marca-primary text-marca-primary hover:bg-marca-light/50"

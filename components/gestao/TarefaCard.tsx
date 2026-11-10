@@ -1,6 +1,7 @@
 "use client";
 
-import { CalendarClock, CheckSquare, Repeat, Clock, Flag, Check, Paperclip, Target, ShieldQuestion, Building2 } from "lucide-react";
+import { CalendarClock, CheckSquare, Repeat, Clock, Flag, Check, Paperclip, Target, ShieldQuestion, Building2, Timer } from "lucide-react";
+import { resumoSla, type SlaTarefa } from "@/lib/gestao/sla";
 import {
   formatarDuracao,
   useVinculadosQuadro, useUsuarios, useAprovacaoTarefa,
@@ -37,6 +38,7 @@ export default function TarefaCard({
   selecionado = false,
   onToggleSel,
   empresa,
+  sla,
 }: {
   t: GestaoTarefa;
   statusMap: Map<string, GestaoStatus>;
@@ -56,7 +58,10 @@ export default function TarefaCard({
   selecionavel?: boolean;
   selecionado?: boolean;
   onToggleSel?: () => void;
+  /** v353: prazo de atendimento (só nos quadros com prazo ligado). */
+  sla?: SlaTarefa;
 }) {
+  const resumoPrazo = sla ? resumoSla(sla) : null;
   const { data: vincMap } = useVinculadosQuadro(t.id_quadro);
   const { data: usuariosFull = [] } = useUsuarios();
   const aguardandoAprovacao = useAprovacaoTarefa(t.id_tarefa);
@@ -154,6 +159,16 @@ export default function TarefaCard({
         {t.prazo && (
           <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium ${atrasada ? "bg-red-50 text-red-600" : "bg-gray-100 text-gray-500"}`}>
             <CalendarClock className="size-3" /> {fmtPrazo(t.prazo)}
+          </span>
+        )}
+        {resumoPrazo && (
+          <span
+            className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium ${
+              resumoPrazo.estado === "estourado" ? "bg-red-50 text-red-600" : resumoPrazo.estado === "perto" ? "bg-amber-50 text-amber-700" : "bg-gray-100 text-gray-500"
+            }`}
+            title="Prazo de atendimento (horário comercial)"
+          >
+            <Timer className="size-3" /> {resumoPrazo.rotulo}
           </span>
         )}
         {subs.length > 0 && (

@@ -8,6 +8,7 @@ import { gerarId } from "@/lib/utils";
 import { mensagemErro } from "@/lib/errors";
 import { useUserStore } from "@/lib/store";
 import { comPadrao, type FiltrosGestao } from "@/lib/gestao/filtros";
+import type { SlaTarefa } from "@/lib/gestao/sla";
 
 /** Slug de status. Os 4 defaults existem em todo quadro; quadros podem ter status customizados. */
 export type StatusTarefa = string;
@@ -53,6 +54,9 @@ export interface GestaoStatus {
   cor: string;
   ordem: number;
   tipo: TipoStatus;
+  /** v353: para ENTRAR nesta coluna — checklist todo marcado / pelo menos um anexo. */
+  requer_checklist?: boolean;
+  requer_anexo?: boolean;
 }
 
 export interface Subtarefa {
@@ -111,6 +115,8 @@ export interface GestaoTarefa {
   campos: Record<string, unknown>;
   recorrencia: Recorrencia | null;
   pontos: number | null;
+  /** v353: tempo estimado, em minutos. */
+  tempo_estimado_min?: number | null;
   created_by: string | null;
   created_at: string;
   updated_at: string | null;
@@ -404,6 +410,8 @@ export function useSalvarStatus() {
       if (s.cor !== undefined) patch.cor = s.cor;
       if (s.ordem !== undefined) patch.ordem = s.ordem;
       if (s.tipo !== undefined) patch.tipo = s.tipo;
+      if (s.requer_checklist !== undefined) patch.requer_checklist = s.requer_checklist;
+      if (s.requer_anexo !== undefined) patch.requer_anexo = s.requer_anexo;
       const { error } = await sb.from("gestao_status").update(patch as never).eq("id", s.id);
       if (error) throw error;
       return s.id;
@@ -1022,6 +1030,162 @@ export interface GestaoAtividade {
 }
 
 /** Histórico de atividades de uma tarefa (mais recente primeiro). */
+/** v353: resolve (ou reabre) um comentário atribuído — quem recebeu ou quem edita o quadro. */
+export function useResolverComentario() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id_comentario: string; id_tarefa: string; resolvido: boolean }) => {
+      const sb = createSupabaseBrowserClient();
+      const { error } = await sb.rpc("gestao_comentario_resolver" as never, { p_id: p.id_comentario, p_resolvido: p.resolvido } as never);
+      if (error) throw error;
+    },
+    onSuccess: (_d, p) => {
+      qc.invalidateQueries({ queryKey: ["gestao-tarefa-timeline", p.id_tarefa] });
+      qc.invalidateQueries({ queryKey: ["gestao-comentarios-para-mim"] });
+    },
+    onError: (e) => toast.error(mensagemErro(e, "Não foi possível resolver o comentário.")),
+  });
+}
+
+export interface ComentarioParaMim {
+  id_comentario: string;
+  id_tarefa: string;
+  autor: string | null;
+  texto: string;
+  created_at: string;
+  gestao_tarefas: { titulo: string; id_quadro: string } | null;
+}
+
+/** v353: comentários atribuídos a mim e ainda não resolvidos (Caixa de entrada). */
+export function useComentariosParaMim() {
+  const email = useUserStore((s) => s.user?.email ?? null);
+  return useQuery({
+    queryKey: ["gestao-comentarios-para-mim", email],
+    enabled: !!email,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("gestao_comentarios")
+        .select("id_comentario,id_tarefa,autor,texto,created_at,gestao_tarefas(titulo,id_quadro)")
+        .ilike("atribuido_a", email!)
+        .is("resolvido_em", null)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data ?? []) as unknown as ComentarioParaMim[];
+    },
+  });
+}
+
+/** v353: Admin muda a coluna sem cumprir o requisito da etapa (fica no histórico). */
+export function useMoverForcandoRequisito() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id_tarefa: string; status: string }) => {
+      const sb = createSupabaseBrowserClient();
+      const { error } = await sb.rpc("gestao_mover_forcando_requisito" as never, { p_id_tarefa: p.id_tarefa, p_status: p.status } as never);
+      if (error) throw error;
+    },
+    onSuccess: (_d, p) => {
+      qc.invalidateQueries({ queryKey: ["gestao-tarefas"] });
+      qc.invalidateQueries({ queryKey: ["gestao-minhas"] });
+      qc.invalidateQueries({ queryKey: ["gestao-tarefa-timeline", p.id_tarefa] });
+      qc.invalidateQueries({ queryKey: ["gestao-atividades", p.id_tarefa] });
+    },
+    onError: (e) => toast.error(mensagemErro(e, "Não foi possível forçar a mudança.")),
+  });
+}
+
+/** O erro é o do gatilho dos requisitos da etapa (v353)? */
+export function ehErroRequisito(e: unknown): boolean {
+  const m = (e as { message?: string } | null)?.message ?? String(e ?? "");
+  return m.includes("Requisito da etapa");
+}
+
+/** v353: prazos de atendimento das tarefas do quadro (vazio se o quadro não tem prazo ligado). */
+export function useSlaTarefas(idQuadro: string | null | undefined, ids?: string[] | null) {
+  return useQuery({
+    queryKey: ["gestao-sla", idQuadro, ids ?? null],
+    enabled: !!idQuadro,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.rpc("gestao_sla_tarefas" as never, { p_id_quadro: idQuadro, p_ids: ids ?? null } as never);
+      if (error) throw error;
+      return new Map(((data ?? []) as unknown as SlaTarefa[]).map((s) => [s.id_tarefa, s]));
+    },
+  });
+}
+
+export interface SlaQuadro {
+  id_quadro: string;
+  ativo: boolean;
+  metas: Record<string, { resposta: number; resolucao: number }>;
+  hora_inicio: string;
+  hora_fim: string;
+  dias: number[];
+  vigente_desde: string;
+}
+
+export function useSlaQuadro(idQuadro: string | null | undefined) {
+  return useQuery({
+    queryKey: ["gestao-sla-quadro", idQuadro],
+    enabled: !!idQuadro,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.from("gestao_sla_quadros" as never).select("*").eq("id_quadro", idQuadro!).maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as unknown as SlaQuadro | null;
+    },
+  });
+}
+
+export function useSalvarSlaQuadro() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (c: Omit<SlaQuadro, "vigente_desde">) => {
+      const sb = createSupabaseBrowserClient();
+      const { error } = await sb.from("gestao_sla_quadros" as never).upsert(c as never, { onConflict: "id_quadro" });
+      if (error) throw error;
+    },
+    onSuccess: (_d, c) => {
+      qc.invalidateQueries({ queryKey: ["gestao-sla-quadro", c.id_quadro] });
+      qc.invalidateQueries({ queryKey: ["gestao-sla", c.id_quadro] });
+    },
+    onError: (e) => toast.error(mensagemErro(e, "Não foi possível salvar o prazo de atendimento.")),
+  });
+}
+
+export interface AutomacaoLogTarefa {
+  id: string;
+  id_automacao: string | null;
+  gatilho: string;
+  resultado: string;
+  detalhe: string | null;
+  created_at: string;
+  gestao_automacoes: { nome: string } | null;
+}
+
+/** v353 (item 9): o que as automações fizeram nesta tarefa (gestao_automacao_log). */
+export function useAutomacaoLogTarefa(idTarefa: string | null | undefined, ativo = true) {
+  return useQuery({
+    queryKey: ["gestao-automacao-log-tarefa", idTarefa],
+    enabled: !!idTarefa && ativo,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("gestao_automacao_log")
+        .select("id,id_automacao,gatilho,resultado,detalhe,created_at,gestao_automacoes(nome)")
+        .eq("id_tarefa", idTarefa!)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as unknown as AutomacaoLogTarefa[];
+    },
+  });
+}
+
 export function useAtividades(idTarefa: string | null | undefined) {
   return useQuery({
     queryKey: ["gestao-atividades", idTarefa],
@@ -1756,6 +1920,7 @@ export function useSalvarTarefa() {
           recorrencia: t.recorrencia ?? null,
           pontos: t.pontos ?? null,
           id_empresa: t.id_empresa ?? null,
+          tempo_estimado_min: t.tempo_estimado_min ?? null,
           created_by: email,
           created_at: now,
           updated_at: now,
@@ -2521,13 +2686,14 @@ export function useComentarios(idTarefa: string | null | undefined) {
 export function useAddComentario() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (p: { id_tarefa: string; texto: string; autor: string | null }) => {
+    mutationFn: async (p: { id_tarefa: string; texto: string; autor: string | null; atribuido_a?: string | null }) => {
       const sb = createSupabaseBrowserClient();
       const { error } = await sb.from("gestao_comentarios").insert({
         id_comentario: gerarId("CMT"),
         id_tarefa: p.id_tarefa,
         autor: p.autor,
         texto: p.texto,
+        ...(p.atribuido_a ? { atribuido_a: p.atribuido_a.toLowerCase() } : {}),
         created_at: new Date().toISOString(),
       } as never);
       if (error) throw error;

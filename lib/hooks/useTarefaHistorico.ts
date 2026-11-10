@@ -26,7 +26,7 @@ export function useTarefaHistorico(idTarefa: string | null | undefined) {
       const [coment, hist] = await Promise.all([
         sb
           .from("gestao_comentarios")
-          .select("id_comentario,id_tarefa,autor,texto,created_at")
+          .select("id_comentario,id_tarefa,autor,texto,created_at,atribuido_a,resolvido_em,resolvido_por")
           .eq("id_tarefa", idTarefa!)
           .order("created_at", { ascending: true }),
         sb

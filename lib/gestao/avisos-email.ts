@@ -29,6 +29,8 @@ const ROTULO_TIPO: Record<string, string> = {
   status: "Uma tarefa sua mudou de status",
   comentario: "Novo comentário numa tarefa sua",
   mencao: "Você foi mencionado num comentário",
+  comentario_atribuido: "Um comentário foi atribuído a você",
+  prazo_atendimento: "Prazo de atendimento de uma tarefa",
   quadro: "Nova tarefa num quadro seu",
   prazo: "Prazo de uma tarefa sua",
   automacao: "Mensagem automática da Gestão",

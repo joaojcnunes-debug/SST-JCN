@@ -90,6 +90,13 @@ export async function GET(req: NextRequest) {
     // silencioso; o próximo tick tenta de novo
   }
 
+  // v341 (Painel v353): prazo de atendimento (75% da resolução e estouros, uma vez cada). Best-effort.
+  try {
+    await sb.rpc("gestao_sla_avisar" as never);
+  } catch {
+    // silencioso; o próximo tick tenta de novo
+  }
+
   // v299: relógio das automações (esperas, agenda, tarefa parada, data de início). O banco limita a
   // 1 execução a cada 5 min; no JCN o pg_cron também chama a cada 10 min. Best-effort.
   try {
