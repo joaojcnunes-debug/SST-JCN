@@ -271,13 +271,14 @@ export default function FormularioPublico({ token }: { token: string }) {
     // Formulário aberto a gente de fora, como o login e o portal do cliente:
     // continua claro sempre. O tema é preferência de quem usa o painel interno.
     <div className="force-light min-h-screen bg-[#f0f7f0] px-4 py-10">
-      <div className="mx-auto max-w-lg">
+      {/* 0.3.252 (do Painel): era max-w-lg (512 px) e as caixas de múltipla escolha ficavam espremidas. */}
+      <div className="mx-auto max-w-3xl">
         <div className="mb-5 text-center">
           <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#0b1e33] to-[#0ea5e9] text-2xl">🛡️</div>
           <p className="mt-2 text-sm font-semibold text-[#00432F]">JCN Consultoria · Gestão</p>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
           {carregando ? (
             <p className="flex items-center justify-center gap-2 py-8 text-sm text-gray-400"><Loader2 className="size-4 animate-spin" /> Carregando…</p>
           ) : erroCarga ? (

@@ -41,6 +41,61 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "comercial-setores-da-maquina",
+    data: "2026-11-10",
+    tipo: "correcao",
+    titulo: "Oportunidades: o setor da máquina aparece certo",
+    texto:
+      "Na Apreciação NR-12, a coluna Setor mostrava \"Setor não informado\" para máquinas cadastradas com setor, e a " +
+      "máquina de vários setores mostrava só um. Agora ela lê os setores da máquina como o resto do sistema.",
+    onde: "Comercial › Oportunidades",
+    versoes: ["0.3.252"],
+  },
+  {
+    id: "documento-responsavel-inicia",
+    data: "2026-11-10",
+    tipo: "correcao",
+    titulo: "Documento: o responsável consegue iniciar e retomar",
+    texto:
+      "Quem é o responsável pelo documento, mesmo sem estar na lista de associados, agora consegue Iniciar e Retomar o " +
+      "tempo. Antes o documento aparecia em Minhas inspeções, mas o Iniciar dava erro.",
+    onde: "Inspeções › Documento",
+    versoes: ["0.3.252"],
+  },
+  {
+    id: "gestao-meu-espaco-status-exclusao",
+    data: "2026-11-10",
+    tipo: "melhoria",
+    titulo: "Gestão: abre no Meu Espaço, status move o cartão e o excluído some na hora",
+    texto:
+      "A Gestão abre sempre no Meu Espaço, e abrir uma tarefa por ali não leva mais para o quadro. Na janela da tarefa, " +
+      "escolher outro status já grava e move o cartão, sem precisar de Salvar. O que você exclui (tarefa, várias tarefas " +
+      "ou lista) some da tela na hora. A caixa da descrição ficou maior e pode ser esticada.",
+    onde: "Gestão",
+    versoes: ["0.3.252"],
+  },
+  {
+    id: "formularios-publicos-largos-modo-escuro",
+    data: "2026-11-10",
+    tipo: "correcao",
+    titulo: "Formulários da Gestão: mais largos e com a letra visível no modo escuro",
+    texto:
+      "Os formulários públicos ficaram mais largos, e o texto digitado volta a aparecer para quem usa o sistema no modo escuro.",
+    onde: "Gestão › Formulários",
+    versoes: ["0.3.252"],
+  },
+  {
+    id: "escala-padrao-data-passada",
+    data: "2026-11-10",
+    tipo: "correcao",
+    titulo: "Escala: consultar uma data passada não regrava o histórico",
+    texto:
+      "No Padrão semanal, com \"Padrão vigente em\" numa data passada, abrir uma célula e salvar começa a valer hoje, " +
+      "em vez de regravar o que valia naquela data. Para mudar o passado, escolha a data em \"Passa a valer em\".",
+    onde: "Escala › Padrão semanal",
+    versoes: ["0.3.252"],
+  },
+  {
     id: "modulos-cards-diretos-contam",
     data: "2026-11-10",
     tipo: "correcao",

@@ -390,9 +390,14 @@ function EditorCelula({
   const [situacao, setSituacao] = useState<SituacaoEscala>(
     inicial?.tipo === "situacao" ? inicial.situacao : "Home office"
   );
-  // Começa na data que a tela está mostrando ("Padrão vigente em"), não sempre em hoje:
-  // salvar e limpar usam esta mesma data (0.3.231).
-  const [vigencia, setVigencia] = useState(emData);
+  // Começa na data futura que a tela está mostrando ("Padrão vigente em"): salvar e limpar
+  // usam esta mesma data (0.3.231). Data passada na tela é só consulta ("o que valia em
+  // março?"): aí começa em hoje, para abrir a célula e salvar não regravar o histórico
+  // (0.3.252, correção do Painel). Quem quer mesmo uma data passada escolhe em "Passa a valer em".
+  const [vigencia, setVigencia] = useState(() => {
+    const hoje = hojeIso();
+    return emData > hoje ? emData : hoje;
+  });
 
   const dia = DIAS_UTEIS.find((d) => d.valor === celula.dia);
   const valido = modo === "unidades" ? escolhidas.length > 0 : true;

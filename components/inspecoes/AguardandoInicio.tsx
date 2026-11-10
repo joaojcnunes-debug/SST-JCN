@@ -14,7 +14,7 @@ import { ArrowLeft, Loader2, Play } from "lucide-react";
 import { useAgora, useAtividadeSessao, useIniciarSessao, useSessoesDocumentos } from "@/lib/hooks/useDocumentoSessoes";
 import { useInspecaoAssociados } from "@/lib/hooks/useInspecaoAssociados";
 import { ehSupervisor, useCurrentUser } from "@/lib/hooks/useUsuario";
-import { associadoAguardandoInicio, ehAssociado } from "@/lib/inspecoes/inicio";
+import { associadoAguardandoInicio, estaNoDocumento } from "@/lib/inspecoes/inicio";
 import { MINUTOS_INATIVIDADE, minhaSessaoAberta } from "@/lib/inspecoes/sessoes";
 
 /**
@@ -26,6 +26,7 @@ import { MINUTOS_INATIVIDADE, minhaSessaoAberta } from "@/lib/inspecoes/sessoes"
 export function useAguardandoInicio(
   idInspecao: string,
   elaboracaoStatus: string | null | undefined,
+  responsavel?: string | null,
 ): { carregando: boolean; aguardando: boolean; jaTrabalhou: boolean } {
   const user = useCurrentUser();
   const agora = useAgora();
@@ -34,13 +35,13 @@ export function useAguardandoInicio(
   const minha = minhaSessaoAberta(sessoes.data ?? [], user?.id_usuario, agora);
   useAtividadeSessao(idInspecao, !!minha);
 
-  if (!user || ehSupervisor(user) || !ehAssociado(user, associados ?? [])) {
+  if (!user || ehSupervisor(user) || !estaNoDocumento(user, associados ?? [], responsavel)) {
     return { carregando: !!user && !ehSupervisor(user) && isLoading, aguardando: false, jaTrabalhou: false };
   }
   if (sessoes.isLoading) return { carregando: true, aguardando: false, jaTrabalhou: false };
   return {
     carregando: false,
-    aguardando: associadoAguardandoInicio(user, false, associados ?? [], elaboracaoStatus, !!minha),
+    aguardando: associadoAguardandoInicio(user, false, associados ?? [], elaboracaoStatus, !!minha, responsavel),
     jaTrabalhou: (sessoes.data ?? []).some((s) => s.id_usuario === user.id_usuario),
   };
 }

@@ -159,6 +159,9 @@ export default function TarefaModal({
   const [horaInicio, setHoraInicio] = useState("");
   const [horaFim, setHoraFim] = useState("");
   const [status, setStatus] = useState<StatusTarefa>(statusInicial);
+  // Status já gravado no banco: na tarefa existente, escolher outro status grava NA HORA e o cartão muda
+  // de coluna (0.3.252, do Painel); o "Salvar" compara com este para não registrar a mesma mudança duas vezes.
+  const [statusSalvo, setStatusSalvo] = useState<StatusTarefa>(statusInicial);
   const [recTipo, setRecTipo] = useState<"" | "diaria" | "semanal" | "mensal">("");
   const [recInt, setRecInt] = useState(1);
   const [etiquetas, setEtiquetas] = useState<string[]>([]);
@@ -181,6 +184,7 @@ export default function TarefaModal({
     setHoraInicio(tarefa?.hora_inicio?.slice(0, 5) ?? "");
     setHoraFim(tarefa?.hora_fim?.slice(0, 5) ?? "");
     setStatus(tarefa?.status ?? statusInicial);
+    setStatusSalvo(tarefa?.status ?? statusInicial);
     setRecTipo(tarefa?.recorrencia?.tipo ?? "");
     setRecInt(tarefa?.recorrencia?.intervalo ?? 1);
     setEtiquetas(tarefa?.etiquetas ?? []);
@@ -290,6 +294,38 @@ export default function TarefaModal({
     setNovaSub("");
   }
 
+  const nomeStatus = (slug: string) => statuses.find((s) => s.slug === slug)?.nome ?? slug;
+
+  /** Guarda de conclusão: tarefas de que esta depende e ainda não estão concluídas (vazio = pode concluir). */
+  function bloqueiaConcluir(slug: StatusTarefa): GestaoTarefa[] {
+    if (statusMap.get(slug)?.tipo !== "concluido" || !deps?.dependeDe.length) return [];
+    return pendenciasParaConcluir(deps.dependeDe.map((d) => d.tarefa), tarefaMap, (s) => statusMap.get(s)?.tipo);
+  }
+
+  /** Escolher outro status numa tarefa existente grava na hora e o cartão muda de coluna.
+   *  Tarefa nova (ainda sem id) ou de outro quadro que não o desta janela: vale só no "Salvar". */
+  async function mudarStatus(novo: StatusTarefa) {
+    setStatus(novo);
+    if (!tarefa?.id_tarefa || ro || novo === statusSalvo || tarefa.id_quadro !== idQuadro) return;
+    const pendentes = bloqueiaConcluir(novo);
+    if (pendentes.length > 0) {
+      toast.error(mensagemPendencias(pendentes));
+      setStatus(statusSalvo);
+      return;
+    }
+    const anterior = statusSalvo;
+    setStatusSalvo(novo);
+    try {
+      await salvar.mutateAsync({ id_tarefa: tarefa.id_tarefa, id_quadro: tarefa.id_quadro, status: novo });
+      registrarAtiv.mutate({ id_tarefa: tarefa.id_tarefa, ator: userNome, eventos: [{ acao: "status", payload: { de: nomeStatus(anterior), para: nomeStatus(novo) } }] });
+      toast.success(`Status: ${nomeStatus(novo)}`);
+    } catch {
+      // useSalvarTarefa já avisou o erro e devolveu o cartão à coluna de antes
+      setStatusSalvo(anterior);
+      setStatus(anterior);
+    }
+  }
+
   async function handleSalvar() {
     if (!titulo.trim()) {
       toast.error("Informe o título da tarefa.");
@@ -300,12 +336,10 @@ export default function TarefaModal({
       return;
     }
     // Guarda de conclusão: bloqueia concluir se há dependências não concluídas (mesma regra da Lista).
-    if (statusMap.get(status)?.tipo === "concluido" && deps?.dependeDe.length) {
-      const pendentes = pendenciasParaConcluir(deps.dependeDe.map((d) => d.tarefa), tarefaMap, (s) => statusMap.get(s)?.tipo);
-      if (pendentes.length > 0) {
-        toast.error(mensagemPendencias(pendentes));
-        return;
-      }
+    const pendentes = bloqueiaConcluir(status);
+    if (pendentes.length > 0) {
+      toast.error(mensagemPendencias(pendentes));
+      return;
     }
     // Responsável agora vem do vínculo (por e-mail); o texto `responsavel` (nome) é
     // mantido em compat p/ ICS/notificar. O trigger-espelho server-side também o reflete.
@@ -372,10 +406,10 @@ export default function TarefaModal({
     // Avisos (atribuição, seguidor, status) e e-mail: gerados no banco por gatilho (v295).
 
     // Histórico de atividades
-    const nomeStatus = (slug: string) => statuses.find((s) => s.slug === slug)?.nome ?? slug;
+    // Mudança de status já gravada na hora (mudarStatus) já entrou no histórico: compara com o gravado.
     const eventos: EventoAtividade[] = !tarefa
       ? [{ acao: "criada" }]
-      : eventosAlteracao(tarefa, { status, responsavel: respNome, prazo: prazo || null, prioridade, titulo: titulo.trim() }, nomeStatus);
+      : eventosAlteracao({ ...tarefa, status: statusSalvo }, { status, responsavel: respNome, prazo: prazo || null, prioridade, titulo: titulo.trim() }, nomeStatus);
     if (eventos.length) registrarAtiv.mutate({ id_tarefa: idSalvo, ator: userNome, eventos });
 
     // Automações rodam no servidor (v120: trigger em gestao_tarefas + gestao_automacao_prazos).
@@ -454,7 +488,7 @@ export default function TarefaModal({
               </button>
             )}
           </div>
-          <textarea value={descricao} disabled={ro} onChange={(e) => setDescricao(e.target.value)} rows={3} className={inputCls} />
+          <textarea value={descricao} disabled={ro} onChange={(e) => setDescricao(e.target.value)} rows={8} className={`${inputCls} resize-y`} />
         </div>
         {/* Datas lado a lado, horas logo abaixo; responsável desce para junto dos seguidores. */}
         <div className="grid grid-cols-2 gap-3">
@@ -484,7 +518,7 @@ export default function TarefaModal({
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.status}>Status</Dica></label>
-            <select value={status} disabled={ro} onChange={(e) => setStatus(e.target.value)} className={inputCls}>
+            <select value={status} disabled={ro} onChange={(e) => mudarStatus(e.target.value)} className={inputCls}>
               {statuses.map((s) => <option key={s.slug} value={s.slug}>{s.nome}</option>)}
             </select>
           </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient, type QueryKey } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
@@ -227,8 +227,21 @@ export function useExcluirQuadro() {
       const { error } = await sb.from("gestao_quadros").delete().eq("id_quadro", id_quadro);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["gestao-quadros"] }),
-    onError: (e) => toast.error(e instanceof Error ? e.message : mensagemErro(e)),
+    // A lista some da barra NA HORA; se não puder excluir (tem tarefas, erro), volta como estava (0.3.252).
+    onMutate: async (id_quadro) => {
+      await qc.cancelQueries({ queryKey: ["gestao-quadros"] });
+      const antes = qc.getQueriesData<unknown>({ queryKey: ["gestao-quadros"] });
+      for (const [chave, lista] of antes) {
+        if (!Array.isArray(lista) || !lista.some((q) => (q as { id_quadro?: string })?.id_quadro === id_quadro)) continue;
+        qc.setQueryData(chave, lista.filter((q) => (q as { id_quadro?: string })?.id_quadro !== id_quadro));
+      }
+      return { antes };
+    },
+    onError: (e, _id, ctx) => {
+      for (const [chave, lista] of ctx?.antes ?? []) qc.setQueryData(chave, lista);
+      toast.error(e instanceof Error ? e.message : mensagemErro(e));
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["gestao-quadros"] }),
   });
 }
 
@@ -1567,6 +1580,25 @@ export function useSalvarTarefa() {
       if (error) throw error;
       return id_tarefa;
     },
+    // Edição: o cartão muda de coluna NA HORA (antes da resposta do servidor), nas listas de quadro já
+    // carregadas; se a gravação falhar, volta como estava. Mudou de quadro: sai da lista do quadro antigo.
+    onMutate: async (entrada) => {
+      if (!entrada.id_tarefa) return { antes: [] as [QueryKey, GestaoTarefa[] | undefined][] };
+      await qc.cancelQueries({ queryKey: ["gestao-tarefas"] });
+      const antes = qc.getQueriesData<GestaoTarefa[]>({ queryKey: ["gestao-tarefas"] });
+      const t = entrada;
+      const patch: Partial<GestaoTarefa> & { camposAlterados?: unknown } = { ...entrada };
+      delete patch.subtarefas;
+      delete patch.camposAlterados;
+      for (const [chave, lista] of antes) {
+        if (!Array.isArray(lista) || !lista.some((x) => x.id_tarefa === t.id_tarefa)) continue;
+        const doQuadro = typeof chave[1] === "string" ? chave[1] : null;
+        qc.setQueryData<GestaoTarefa[]>(chave, doQuadro && t.id_quadro && t.id_quadro !== doQuadro
+          ? lista.filter((x) => x.id_tarefa !== t.id_tarefa)
+          : lista.map((x) => (x.id_tarefa === t.id_tarefa ? { ...x, ...patch } : x)));
+      }
+      return { antes };
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["gestao-tarefas"] });
       // Meu Espaço (vista agregada por e-mail) também mostra a tarefa salva.
@@ -1576,7 +1608,10 @@ export function useSalvarTarefa() {
       // invalidava, então movimentações/campos alterados não subiam até comentar.
       qc.invalidateQueries({ queryKey: ["gestao-tarefa-timeline"] });
     },
-    onError: (e) => toast.error(mensagemErro(e, "Não foi possível salvar a tarefa.")),
+    onError: (e, _t, ctx) => {
+      for (const [chave, lista] of ctx?.antes ?? []) qc.setQueryData(chave, lista);   // o cartão volta
+      toast.error(mensagemErro(e, "Não foi possível salvar a tarefa."));
+    },
   });
 }
 
@@ -1625,6 +1660,30 @@ export function useReordenar() {
   });
 }
 
+/** Exclusão de tarefa: o cartão (e as filhas dele) some NA HORA de todas as listas já carregadas — quadros,
+ *  Meu espaço e Agenda —, antes da resposta do servidor. Antes só as listas de quadro eram refeitas, e no
+ *  Meu espaço a tarefa excluída ficava até atualizar a página. Devolve o que havia, para o onError recolocar
+ *  se a exclusão falhar (0.3.252, do Painel). */
+const LISTAS_DE_TAREFAS: QueryKey[] = [["gestao-tarefas"], ["gestao-minhas"]];
+async function tirarTarefasDasListas(qc: QueryClient, ids: string[]) {
+  const fora = new Set(ids);
+  const sai = (x: unknown) => {
+    const t = x as { id_tarefa?: string; id_tarefa_pai?: string | null } | null;
+    return !!t && ((!!t.id_tarefa && fora.has(t.id_tarefa)) || (!!t.id_tarefa_pai && fora.has(t.id_tarefa_pai)));
+  };
+  await Promise.all(LISTAS_DE_TAREFAS.map((queryKey) => qc.cancelQueries({ queryKey })));
+  const antes = LISTAS_DE_TAREFAS.flatMap((queryKey) => qc.getQueriesData<unknown>({ queryKey }));
+  for (const [chave, lista] of antes) {
+    if (Array.isArray(lista) && lista.some(sai)) qc.setQueryData(chave, lista.filter((x) => !sai(x)));
+  }
+  return antes;
+}
+
+function refazerListasDeTarefas(qc: QueryClient) {
+  for (const queryKey of LISTAS_DE_TAREFAS) qc.invalidateQueries({ queryKey });
+  qc.invalidateQueries({ queryKey: ["gestao-subtarefas-quadro"] });
+}
+
 /** Ações em massa: atualiza um campo em várias tarefas, ou exclui várias. */
 export function useAcaoMassa() {
   const qc = useQueryClient();
@@ -1640,12 +1699,16 @@ export function useAcaoMassa() {
       const { error } = await sb.from("gestao_tarefas").update({ ...p.patch, updated_at: new Date().toISOString() } as never).in("id_tarefa", p.ids);
       if (error) throw error;
     },
+    onMutate: async (p) => ({ antes: p.excluir && p.ids.length ? await tirarTarefasDasListas(qc, p.ids) : [] }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["gestao-tarefas"] });
+      refazerListasDeTarefas(qc);
       // G1: ação em massa pode alterar status/prioridade/prazo → histórico via trigger v216.
       qc.invalidateQueries({ queryKey: ["gestao-tarefa-timeline"] });
     },
-    onError: (e) => toast.error(mensagemErro(e, "Não foi possível aplicar a ação.")),
+    onError: (e, _p, ctx) => {
+      for (const [chave, lista] of ctx?.antes ?? []) qc.setQueryData(chave, lista);   // os cartões voltam
+      toast.error(mensagemErro(e, "Não foi possível aplicar a ação."));
+    },
   });
 }
 
@@ -1657,8 +1720,12 @@ export function useExcluirTarefa() {
       const { error } = await sb.from("gestao_tarefas").delete().eq("id_tarefa", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["gestao-tarefas"] }),
-    onError: (e) => toast.error(mensagemErro(e, "Não foi possível excluir.")),
+    onMutate: async (id) => ({ antes: await tirarTarefasDasListas(qc, [id]) }),
+    onSuccess: () => refazerListasDeTarefas(qc),
+    onError: (e, _id, ctx) => {
+      for (const [chave, lista] of ctx?.antes ?? []) qc.setQueryData(chave, lista);   // o cartão volta
+      toast.error(mensagemErro(e, "Não foi possível excluir."));
+    },
   });
 }
 
