@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-acessos-so-por-equipe",
+    data: "2026-11-10",
+    tipo: "melhoria",
+    titulo: "Gestão: o acesso às listas agora é dado só por equipe",
+    texto:
+      "Em Membros e acessos, saíram as abas Dar acesso e Por lista: o acesso a espaços, pastas e listas é dado à equipe, e " +
+      "quem entra nela herda. O botão Compartilhar da lista abre em Equipes, com a lista já marcada: escolha a equipe e o nível.",
+    onde: "Gestão › Membros e acessos",
+    impacto: "Os acessos dados direto a uma pessoa continuam valendo; aparecem em Por pessoa, de onde dá para tirar.",
+    versoes: ["0.3.266"],
+  },
+  {
     id: "gestao-criar-na-coluna-aprovar-na-tarefa",
     data: "2026-11-10",
     tipo: "melhoria",

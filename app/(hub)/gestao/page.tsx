@@ -179,7 +179,8 @@ export default function GestaoChabraPage() {
   const [modelosOpen, setModelosOpen] = useState(false);
   const [calendarioOpen, setCalendarioOpen] = useState(false);
   const [membrosOpen, setMembrosOpen] = useState(false);
-  // v305: "Compartilhar" abre o mesmo modal já na aba "Por lista" desta lista
+  // "Compartilhar" abre o mesmo modal; desde a v0.3.910 na aba Equipes, com esta lista já marcada
+  // (antes abria em "Por lista", que saiu)
   const [membrosFoco, setMembrosFoco] = useState<string | null>(null);
   const [quadroAgrupar, setQuadroAgrupar] = useState<"status" | "responsavel" | "prioridade" | "etiqueta">("status");
   // Filtro "Mostrar": só tarefas (padrão), só subtarefas ou as duas. Com subtarefas o volume cresce
@@ -892,7 +893,7 @@ export default function GestaoChabraPage() {
             </button>
           )}
           {souGestor && quadro && (
-            <button type="button" onClick={() => { setMembrosFoco(quadro.id_quadro); setMembrosOpen(true); }} title="Quem acessa esta lista, e dar acesso a ela" className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
+            <button type="button" onClick={() => { setMembrosFoco(quadro.id_quadro); setMembrosOpen(true); }} title="Dar acesso a esta lista por equipe" className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
               <Share2 className="size-4" /> Compartilhar
             </button>
           )}

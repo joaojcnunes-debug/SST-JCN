@@ -54,7 +54,8 @@ export default function AbaEfetivo({
   d: DadosAcessos;
   modo: "pessoa" | "lista";
   quadroInicial?: string | null;
-  onDarAcesso: (idQuadro: string) => void;
+  /** Só no modo lista (desde a v0.3.910 o modal não usa mais o modo lista). */
+  onDarAcesso?: (idQuadro: string) => void;
   pedirMotivo: (titulo: string, resumo?: string) => Promise<string | null>;
   executar: (passos: Passo[], motivo: string, sucesso: string) => Promise<boolean>;
   gravando: boolean;
@@ -169,7 +170,7 @@ export default function AbaEfetivo({
         ) : (
           <>
             <BuscaUnica opcoes={opcoesLista} value={quadro} onChange={setQuadro} placeholder="Buscar lista pelo nome, pasta ou espaço…" />
-            {quadro && (
+            {quadro && onDarAcesso && (
               <button type="button" onClick={() => onDarAcesso(quadro)} className="inline-flex items-center gap-1 rounded-md border border-marca-primary px-2.5 py-1.5 text-sm font-medium text-marca-primary hover:bg-marca-light">
                 <UserPlus className="size-4" /> Dar acesso a esta lista
               </button>

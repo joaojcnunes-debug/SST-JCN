@@ -23,14 +23,18 @@ const ICONE: Record<TipoRecurso, typeof List> = { space: LayoutGrid, folder: Fol
  * ACESSO (a espaços, pastas ou listas); quem entra na equipe herda e já ganha entrada no módulo.
  * Papel `supervisor` = vê o Meu Quadro dos membros da equipe (edit). Várias pessoas entram de uma
  * vez; os acessos pedem motivo na hora de confirmar.
+ * v0.3.910: é a única aba que dá acesso; o "Compartilhar" da lista chega aqui com a lista já
+ * marcada em "Dar acesso" (recursosIniciais) — falta só escolher a equipe e o nível.
  */
 export default function EquipesTab({
   d,
+  recursosIniciais,
   pedirMotivo,
   executar,
   gravando,
 }: {
   d: DadosAcessos;
+  recursosIniciais?: string[];
   pedirMotivo: (titulo: string, resumo?: string) => Promise<string | null>;
   executar: (passos: Passo[], motivo: string, sucesso: string) => Promise<boolean>;
   gravando: boolean;
@@ -45,7 +49,8 @@ export default function EquipesTab({
   const [novas, setNovas] = useState<string[]>([]);
   const [novoPapel, setNovoPapel] = useState<PapelEquipe>("membro");
   const [novoNivel, setNovoNivel] = useState<GestaoNivel | "">("");
-  const [recursos, setRecursos] = useState<Set<string>>(new Set());
+  const [recursos, setRecursos] = useState<Set<string>>(() => new Set(recursosIniciais ?? []));
+  const listaDoCompartilhar = recursosIniciais?.length ? d.recursoDe("list", lerChave(recursosIniciais[0]).id).caminho : null;
 
   const equipe = d.equipes.find((e) => e.id === sel) ?? null;
   const membrosDa = useMemo(
@@ -124,7 +129,12 @@ export default function EquipesTab({
 
       {/* Detalhe da equipe */}
       {!equipe ? (
-        <div className="rounded-lg border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">Escolha ou crie uma equipe. Quem entra numa equipe herda os acessos dela e já entra na Gestão.</div>
+        <div className="rounded-lg border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">
+          {listaDoCompartilhar && (
+            <p className="mb-2 font-medium text-marca-primary">Para dar acesso à lista {listaDoCompartilhar}, escolha a equipe na lista de equipes: a lista já vem marcada em &quot;Dar acesso&quot;.</p>
+          )}
+          Escolha ou crie uma equipe. Quem entra numa equipe herda os acessos dela e já entra na Gestão.
+        </div>
       ) : (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
