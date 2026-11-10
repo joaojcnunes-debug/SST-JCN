@@ -4,6 +4,7 @@ import { normalizarMapaLista } from "@/lib/aep/evidencia";
 import { normalizarChecklistGestao } from "@/lib/aep/checklist-gestao";
 import { montarBiblioteca } from "@/lib/aep/biblioteca";
 import { normalizarInventario } from "@/lib/aep/inventario";
+import { setorVisivel } from "@/lib/aep/setores-ocultos";
 import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/client";
 import type { AepRelatorioLocal, AepSetorLocal } from "@/components/pdf/templates/AepTemplate";
@@ -138,7 +139,9 @@ function normalizarRelatorio(data: unknown): AepRelatorioLocal {
   return {
     ...rel,
     endereco_empresa: (rel.endereco_empresa as string | null) ?? null,
-    setores: Array.isArray(rel.setores) ? rel.setores.map(normalizarSetor) : [],
+    // Setor oculto não entra no PDF. Filtra no dado cru porque o normalizador
+    // daqui reconstrói o setor campo a campo e não traz a marca.
+    setores: Array.isArray(rel.setores) ? rel.setores.filter(setorVisivel).map(normalizarSetor) : [],
     checklist_gestao: normalizarChecklistGestao(rel.checklist_gestao),
   } as AepRelatorioLocal;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { normalizarRelatorio } from "@/lib/aep/normalizar-relatorio";
+import { normalizarRelatorio, normalizarRelatorioCompleto } from "@/lib/aep/normalizar-relatorio";
 import type { SituacaoQuestionario } from "@/lib/aep/sinalizacao";
 import { buscarAepsEntregues, buscarSituacaoQuestionario } from "@/lib/aep/sinalizacao-dados";
 import { montarCatalogoSetores } from "@/lib/aep/catalogo-setores";
@@ -301,7 +301,8 @@ export function useAepRelatorio(id: string) {
           .eq("id_relatorio", id)
           .single();
         if (error) throw error;
-        const relatorio = normalizarRelatorio(data);
+        // Completo: o editor de Setores precisa dos ocultos. A tela do laudo os retira.
+        const relatorio = normalizarRelatorioCompleto(data);
         // Mantém fresca só a cópia que o técnico levou — ver `LevarParaCampo`.
         void lerDocumentoCache(id).then((ja) => {
           if (ja) void guardarDocumentoCache(id, relatorio);

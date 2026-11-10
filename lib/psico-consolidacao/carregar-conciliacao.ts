@@ -6,6 +6,7 @@
 // A AEP vira linha só nos fatores "Sim" (`linhasDaAep`); para saber que a AEP AVALIOU um
 // setor sem nenhum "Sim", os setores de cada AEP também voltam (`setoresAep`).
 
+import { semSetoresOcultos } from "@/lib/aep/setores-ocultos";
 import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 import { carregarRiscosPsicossociais } from "@/lib/riscos-psicossociais/carregar";
 import type { AepRelatorio } from "@/lib/supabase/types";
@@ -56,7 +57,7 @@ export async function carregarFontesConciliacao(sb: Sb, idEmpresa?: string): Pro
       out.pendencias.push(...pendenciasDaAvaliacao(e.idEmpresa, av));
     }
   }
-  for (const a of aeps) {
+  for (const a of aeps.map(semSetoresOcultos)) {
     out.documentos.push(documentoDaAep(a));
     out.linhas.push(...linhasDaAep(a));
     out.pendencias.push(...pendenciasDaAep(a));

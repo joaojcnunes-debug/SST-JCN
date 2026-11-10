@@ -4,6 +4,7 @@
 // inteiro — o nível é o do laudo). A RLS de quem pede vale: empresa de outra
 // unidade não volta.
 
+import { semSetoresOcultos } from "@/lib/aep/setores-ocultos";
 import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 import { carregarRiscosPsicossociais } from "@/lib/riscos-psicossociais/carregar";
 import type { AepRelatorio } from "@/lib/supabase/types";
@@ -65,7 +66,7 @@ export async function carregarFontesDoGrupo(sb: Sb, idsEmpresa: string[]): Promi
   const documentos: DocumentoFonte[] = [];
   const linhas: LinhaFonte[] = [];
   const pendencias: PendenciaFonte[] = [];
-  for (const a of aeps) {
+  for (const a of aeps.map(semSetoresOcultos)) {
     documentos.push(documentoDaAep(a));
     linhas.push(...linhasDaAep(a));
     pendencias.push(...pendenciasDaAep(a));

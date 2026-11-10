@@ -2647,6 +2647,8 @@ export interface AepSetor {
   parecer_tecnico: string;
   recomendacoes: string;
   necessita_aet: boolean;
+  /** Setor oculto: sai do laudo, do PDF e dos painéis. Ver lib/aep/setores-ocultos.ts. */
+  oculto?: boolean;
 }
 
 export interface AepRelatorio {

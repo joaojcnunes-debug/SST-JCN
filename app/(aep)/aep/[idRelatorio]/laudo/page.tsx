@@ -3,6 +3,7 @@
 import { use, useMemo, useState } from "react";
 import { AlertTriangle, BadgeCheck, Download, FileSpreadsheet, Loader2 } from "lucide-react";
 import { useAepRelatorio, CLASS_COLOR_AEP, riscoMaximoSetor } from "@/lib/hooks/useAep";
+import { semSetoresOcultos } from "@/lib/aep/setores-ocultos";
 import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
 import HtmlConteudoAssinado from "@/components/ui/HtmlConteudoAssinado";
 import { useTextosPadrao } from "@/lib/hooks/useTextosPadrao";
@@ -392,7 +393,9 @@ export default function AepLaudoPage({
   params: Promise<{ idRelatorio: string }>;
 }) {
   const { idRelatorio } = use(params);
-  const { data: rel } = useAepRelatorio(idRelatorio);
+  const { data: relCompleto } = useAepRelatorio(idRelatorio);
+  // Setor oculto não entra no laudo: nem na prévia, nem nas contas, nem no inventário.
+  const rel = useMemo(() => (relCompleto ? semSetoresOcultos(relCompleto) : undefined), [relCompleto]);
   const { data: empresaFull } = useEmpresa((rel as { id_empresa?: string })?.id_empresa ?? null);
   const { data: capsAep = [] } = useTextosPadrao("aep");
   const { data: biblioteca } = useBibliotecaPsi();
