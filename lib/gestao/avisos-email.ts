@@ -32,6 +32,7 @@ const ROTULO_TIPO: Record<string, string> = {
   quadro: "Nova tarefa num quadro seu",
   prazo: "Prazo de uma tarefa sua",
   automacao: "Mensagem automática da Gestão",
+  etapa: "Uma tarefa entrou numa coluna que você segue",
 };
 
 function esc(s: string | null | undefined): string {

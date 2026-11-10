@@ -113,6 +113,8 @@ export interface GestaoTarefa {
   created_by: string | null;
   created_at: string;
   updated_at: string | null;
+  /** De onde veio (formulário, importação do Runrun: client/project/tipo…); o "Ordenar por" da coluna lê. */
+  origem?: Record<string, unknown> | null;
   /** Só no app (filtro "Mostrar subtarefas"): título da tarefa-mãe, para o cartão/linha. */
   titulo_mae?: string;
   /** Só no app: subtarefa da lista que ainda não tem tarefa filha (id em gestao_subtarefas).
@@ -874,7 +876,8 @@ export function useNotificacoes() {
     refetchInterval: 60_000,
     queryFn: async () => {
       const sb = createSupabaseBrowserClient();
-      const { data, error } = await sb.from("gestao_notificacoes").select("*").order("created_at", { ascending: false }).limit(50);
+      // v336: aviso de quem desligou o sino (Meu espaço › Notificações) é gravado só para o e-mail (canal 'email').
+      const { data, error } = await sb.from("gestao_notificacoes").select("*").neq("canal", "email").order("created_at", { ascending: false }).limit(50);
       if (error) throw error;
       return (data ?? []) as unknown as GestaoNotificacao[];
     },
@@ -909,6 +912,42 @@ export function useLimparNotificacoes() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["gestao-notificacoes"] }),
+  });
+}
+
+/** v336: meus avisos da Gestão — no sino e por e-mail. Sem escolha gravada, os dois vêm ligados. */
+export interface PreferenciasAviso { painel: boolean; email: boolean }
+
+export function usePreferenciasAviso() {
+  const email = useUserStore((s) => s.user?.email ?? null);
+  return useQuery({
+    queryKey: ["gestao-preferencias-aviso", email],
+    enabled: !!email,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.rpc("gestao_minhas_preferencias_aviso" as never);
+      if (error) throw error;
+      const linha = ((data ?? []) as unknown as PreferenciasAviso[])[0];
+      return linha ?? { painel: true, email: true };
+    },
+  });
+}
+
+export function useSalvarPreferenciasAviso() {
+  const qc = useQueryClient();
+  const email = useUserStore((s) => s.user?.email ?? null);
+  return useMutation({
+    mutationFn: async (p: PreferenciasAviso) => {
+      const sb = createSupabaseBrowserClient();
+      const { error } = await sb.rpc("gestao_salvar_preferencias_aviso" as never, { p_painel: p.painel, p_email: p.email } as never);
+      if (error) throw error;
+      return p;
+    },
+    onSuccess: (p) => {
+      qc.setQueryData(["gestao-preferencias-aviso", email], p);
+      qc.invalidateQueries({ queryKey: ["gestao-notificacoes"] });
+    },
+    onError: (e) => toast.error(mensagemErro(e, "Não foi possível salvar as notificações.")),
   });
 }
 
@@ -1507,6 +1546,36 @@ export function useMinhasTarefasAgenda(enabled = true) {
       // Só o que tem data entra na Agenda (prazo ou, sem prazo, a data de início).
       return tarefas.filter((t) => !t.id_tarefa_pai && (t.prazo || t.data_inicio));
     },
+  });
+}
+
+/** v335: colunas (slugs) deste quadro em que EU habilitei notificações (menu "…" da coluna). */
+export function useEtapasAvisadas(idQuadro: string | null | undefined) {
+  const email = useUserStore((s) => s.user?.email ?? null);
+  return useQuery({
+    queryKey: ["gestao-etapas-avisadas", idQuadro, email],
+    enabled: !!idQuadro && !!email,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.rpc("gestao_etapas_avisadas" as never, { p_id_quadro: idQuadro } as never);
+      if (error) throw error;
+      return (data ?? []) as unknown as string[];
+    },
+  });
+}
+
+/** v335: liga/desliga o aviso "uma tarefa entrou nesta coluna" para quem está logado. Devolve o estado novo. */
+export function useAlternarAvisoEtapa() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id_quadro: string; slug: string }) => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.rpc("gestao_etapa_aviso_alternar" as never, { p_id_quadro: p.id_quadro, p_slug: p.slug } as never);
+      if (error) throw error;
+      return data as unknown as boolean;
+    },
+    onSuccess: (_l, p) => qc.invalidateQueries({ queryKey: ["gestao-etapas-avisadas", p.id_quadro] }),
+    onError: (e) => toast.error(mensagemErro(e, "Não foi possível mudar as notificações da coluna.")),
   });
 }
 

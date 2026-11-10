@@ -41,6 +41,32 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "quadro-coluna-notificacoes-ordenar",
+    data: "2026-11-10",
+    tipo: "novidade",
+    titulo: "Quadros: notificações e ordenação em cada coluna",
+    texto:
+      "Cada coluna do quadro ganhou o botão \"…\". \"Habilitar notificações\" avisa você (no sino e por e-mail) quando " +
+      "uma tarefa entra naquela coluna. \"Ordenar por\" organiza a coluna por Início desejado, Entrega desejada, " +
+      "Criada em, Cliente, Projeto, Tipo ou Título; clique de novo para inverter. A ordenação é só sua: não muda o " +
+      "quadro dos colegas.",
+    onde: "Gestão › quadro › \"…\" no topo da coluna",
+    versoes: ["0.3.257"],
+  },
+  {
+    id: "meu-espaco-ligar-desligar-notificacoes",
+    data: "2026-11-10",
+    tipo: "novidade",
+    titulo: "Meu espaço: escolha onde receber os avisos da Gestão",
+    texto:
+      "No Meu espaço, o cartão \"Notificações\" tem duas chaves: \"No sistema\" (o sino da Gestão) e \"Por e-mail\". " +
+      "Desligue o e-mail para receber só no sino, desligue o sino para receber só por e-mail, ou desligue as duas. " +
+      "A escolha vale para todos os avisos: tarefas atribuídas, comentários, prazos, colunas que você segue e automações.",
+    onde: "Gestão › Meu espaço › Notificações",
+    impacto: "Quem não mexer continua recebendo no sino e por e-mail, como antes.",
+    versoes: ["0.3.257"],
+  },
+  {
     id: "gestao-tarefa-abas-campos-os",
     data: "2026-11-10",
     tipo: "melhoria",
