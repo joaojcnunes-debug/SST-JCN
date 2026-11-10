@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-calendario-runrun-pessoa-equipe",
+    data: "2026-11-10",
+    tipo: "novidade",
+    titulo: "Gestão: calendário novo, com Mês, Semana, Dia e o calendário de uma pessoa",
+    texto:
+      "O calendário das listas ganhou as visões Mês, Semana, Dia e Agenda. Na Semana e no Dia, as tarefas com hora " +
+      "aparecem na grade de horários. Arraste para mudar o dia ou a hora; clique num dia vazio para criar a tarefa já " +
+      "com a data. Na coluna da esquerda, \"Calendário de\" mostra as tarefas desta lista, de uma pessoa ou de uma " +
+      "equipe (em todas as listas que você vê), com filtros por seguidor, quem criou, situação, região, produtos e prazo.",
+    onde: "Gestão › abrir uma lista › Calendário",
+    impacto: "Só aparece o que você já podia abrir: as tarefas de outras listas seguem o acesso de cada lista.",
+    versoes: ["0.3.262"],
+  },
+  {
     id: "inicio-visao-geral-filtros",
     data: "2026-11-10",
     tipo: "melhoria",

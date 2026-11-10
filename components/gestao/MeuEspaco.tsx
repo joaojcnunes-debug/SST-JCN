@@ -157,6 +157,7 @@ export default function MeuEspaco({
           tarefas={mostrarConcluidas ? daAgenda : daAgenda.filter((t) => !concluida(t))}
           statuses={[]}
           concluida={concluida}
+          statusDe={(t) => statusMap.get(`${t.id_quadro}|${t.status}`)}
           podeEditar={podeEditar}
           rotulo={(t) => (t.id_quadro === idMeuQuadro ? "Meu Quadro" : nomeQuadro.get(t.id_quadro) ?? "Lista")}
           inicioSemPrazo

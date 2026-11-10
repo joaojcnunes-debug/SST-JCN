@@ -7,6 +7,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
 import { mensagemErro } from "@/lib/errors";
 import { useUserStore } from "@/lib/store";
+import { comPadrao, type FiltrosGestao } from "@/lib/gestao/filtros";
 
 /** Slug de status. Os 4 defaults existem em todo quadro; quadros podem ter status customizados. */
 export type StatusTarefa = string;
@@ -548,18 +549,10 @@ export function useExcluirEtiqueta() {
   });
 }
 
-export interface FiltrosGestao {
-  responsavel: string;
-  prioridades: string[];
-  status: string[];
-  etiquetas: string[];
-  prazo: "" | "atrasadas" | "sem" | "hoje" | "semana";
-  semResponsavel: boolean;
-}
-export const FILTRO_VAZIO: FiltrosGestao = { responsavel: "", prioridades: [], status: [], etiquetas: [], prazo: "", semResponsavel: false };
-export function contarFiltros(f: FiltrosGestao): number {
-  return (f.responsavel ? 1 : 0) + (f.prioridades.length ? 1 : 0) + (f.status.length ? 1 : 0) + (f.etiquetas.length ? 1 : 0) + (f.prazo ? 1 : 0) + (f.semResponsavel ? 1 : 0);
-}
+// Filtros das listas: a regra mora em lib/gestao/filtros.ts (etapa 2 do calendário, com equipe, seguidor,
+// criada por, região, produtos, situação e período). Reexportados aqui para quem já importava daqui.
+export { FILTRO_VAZIO, contarFiltros, comPadrao } from "@/lib/gestao/filtros";
+export type { FiltrosGestao } from "@/lib/gestao/filtros";
 
 export interface GestaoFiltroSalvo {
   id: string;
@@ -576,7 +569,8 @@ export function useFiltrosSalvos(idQuadro: string | null | undefined) {
       const sb = createSupabaseBrowserClient();
       const { data, error } = await sb.from("gestao_filtros_salvos").select("id,nome,criterios").eq("usuario_email", email!).eq("id_quadro", idQuadro!).order("nome", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as unknown as GestaoFiltroSalvo[];
+      // Filtro salvo antes de um campo existir chega sem ele: completa com o vazio.
+      return ((data ?? []) as unknown as GestaoFiltroSalvo[]).map((f) => ({ ...f, criterios: comPadrao(f.criterios) }));
     },
   });
 }
@@ -1545,6 +1539,46 @@ export function useMinhasTarefasAgenda(enabled = true) {
       // v300: a filha de uma subtarefa só abre pela subtarefa — fica fora, como nas outras vistas.
       // Só o que tem data entra na Agenda (prazo ou, sem prazo, a data de início).
       return tarefas.filter((t) => !t.id_tarefa_pai && (t.prazo || t.data_inicio));
+    },
+  });
+}
+
+/**
+ * Calendário de uma pessoa ou de uma equipe (etapa 2 do calendário do Runrun, 10/11/2026): as tarefas COM DATA
+ * no período [ini, fim] em que alguma das pessoas é RESPONSÁVEL, em todas as listas que EU vejo — a RLS de
+ * gestao_tarefas/gestao_tarefa_vinculados decide; nada aparece aqui que eu não abriria pela própria lista.
+ * Entra a tarefa cujo prazo ou início cai no período, ou que começa antes e termina depois dele.
+ */
+export function useTarefasDeResponsaveis(emails: string[], ini: string, fim: string, enabled: boolean) {
+  const lista = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))].sort();
+  return useQuery({
+    queryKey: ["gestao-tarefas-de", lista, ini, fim],
+    enabled: enabled && lista.length > 0 && !!ini && !!fim,
+    staleTime: 30 * 1000,
+    placeholderData: (anterior) => anterior,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("gestao_tarefas")
+        .select("*, gestao_tarefa_vinculados!inner(usuario_email,tipo)")
+        .in("gestao_tarefa_vinculados.usuario_email", lista)
+        .eq("gestao_tarefa_vinculados.tipo", "responsavel")
+        // v300: a filha de uma subtarefa só abre pela subtarefa — fica fora, como nas outras vistas.
+        .is("id_tarefa_pai", null)
+        .or(`and(prazo.gte.${ini},prazo.lte.${fim}),and(data_inicio.gte.${ini},data_inicio.lte.${fim}),and(data_inicio.lt.${ini},prazo.gt.${fim})`)
+        .order("prazo", { ascending: true })
+        .limit(3000);
+      if (error) throw error;
+      const vistos = new Set<string>();
+      const out: GestaoTarefa[] = [];
+      for (const r of (data ?? []) as unknown as (GestaoTarefa & { gestao_tarefa_vinculados?: unknown })[]) {
+        if (vistos.has(r.id_tarefa)) continue;
+        vistos.add(r.id_tarefa);
+        const { gestao_tarefa_vinculados: _v, ...t } = r;
+        void _v;
+        out.push(t as GestaoTarefa);
+      }
+      return out;
     },
   });
 }
