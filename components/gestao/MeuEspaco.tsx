@@ -6,6 +6,7 @@ import { KanbanSquare, LayoutList, CalendarDays, CalendarClock, CheckSquare, Lis
 import MinhasTarefas from "@/components/gestao/MinhasTarefas";
 import MeuQuadro from "@/components/gestao/MeuQuadro";
 import GoogleAgendaCard from "@/components/gestao/GoogleAgendaCard";
+import PreferenciasAvisoCard from "@/components/gestao/PreferenciasAvisoCard";
 import VistaCalendario from "@/components/gestao/VistaCalendario";
 import { PRIORIDADES, useSalvarTarefa, useMinhasTarefasAgenda, type GestaoTarefa, type GestaoStatus, type GestaoQuadro, type PrioridadeTarefa } from "@/lib/hooks/useGestao";
 import { useMeusNiveisQuadros, nivelPodeEditar, useMeuQuadro } from "@/lib/hooks/useGestaoAcesso";
@@ -125,8 +126,10 @@ export default function MeuEspaco({
   return (
     <div className="mt-4">
       {/* Etapa 1 Google Agenda: conectar/desconectar a conta Google do próprio usuário. */}
-      <div className="mb-4">
+      <div className="mb-4 space-y-3">
         <GoogleAgendaCard />
+        {/* v335: ligar/desligar os avisos no sino e por e-mail */}
+        <PreferenciasAvisoCard />
       </div>
       {/* v235: o quadro PESSOAL primeiro (criar/arrastar); abaixo, as tarefas em que estou vinculado. */}
       <MeuQuadro onAbrirCompleto={onAbrirQuadro} />

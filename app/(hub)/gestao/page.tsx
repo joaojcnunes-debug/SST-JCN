@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, KanbanSquare, Menu as MenuIcon, Plus, Search, X, LayoutList, CalendarDays, GanttChartSquare, SlidersHorizontal, Tags, Tag, Zap, Settings, ChevronDown, Clock, CheckSquare, CheckCheck, BarChart3, FileText, Bell, Trash2, Users, UserSquare, ListChecks, Sun, Moon, Share2 } from "lucide-react";
+import { ArrowLeft, KanbanSquare, Menu as MenuIcon, Plus, Search, X, LayoutList, CalendarDays, GanttChartSquare, SlidersHorizontal, Tags, Tag, Zap, Settings, ChevronDown, Clock, CheckSquare, CheckCheck, BarChart3, FileText, Bell, Trash2, Users, UserSquare, ListChecks, Sun, Moon, Share2, MoreHorizontal, BellOff, ArrowDownUp, Check } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUserStore, useTema } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
@@ -14,6 +14,7 @@ import {
   usePreferenciaVisao, useSalvarPreferenciaVisao,
   useStatusQuadro, statusPadrao, useCamposQuadro, useEtiquetasQuadro,
   useEspacos, usePastas, useTodasDependencias, useAutomacaoTick, useSyncGoogleAgenda, useTempoQuadro, useAnexosCountQuadro,
+  useEtapasAvisadas, useAlternarAvisoEtapa,
   corAvatar, formatarDuracao,
   PRIORIDADES, FILTRO_VAZIO, contarFiltros,
   type GestaoTarefa, type StatusTarefa, type VistaGestao, type AgruparPor, type GestaoStatus, type GestaoNotificacao, type PrioridadeTarefa, type FiltrosGestao,
@@ -24,6 +25,7 @@ import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import SelectVerde from "@/components/gestao/SelectVerde";
 import { useQueryClient } from "@tanstack/react-query";
 import { montarSubtarefas, itensMostrar, type MostrarItens } from "@/lib/gestao/subtarefas-vista";
+import { OPCOES_ORDEM, campoTemValor, ordenarTarefas, proximaOrdem, type CampoOrdem, type OrdemColuna } from "@/lib/gestao/ordenar-coluna";
 import NotificacoesSino from "@/components/gestao/NotificacoesSino";
 import TarefaModal from "@/components/gestao/TarefaModal";
 import StatusManagerModal from "@/components/gestao/StatusManagerModal";
@@ -157,6 +159,10 @@ export default function GestaoChabraPage() {
   // muito (milhares no Psicossocial), então cada coluna mostra LIMITE_COL por vez ("Mostrar mais").
   const [mostrar, setMostrar] = useState<MostrarItens>("tarefas");
   const [limiteCol, setLimiteCol] = useState<Record<string, number>>({});
+  // v335: menu "…" de cada coluna (como no Runrun): "Habilitar notificações" e "Ordenar por".
+  // A ordem é preferência de quem olha (localStorage por quadro e agrupamento), não muda o quadro dos outros.
+  const [menuCol, setMenuCol] = useState<string | null>(null);
+  const [ordemCols, setOrdemCols] = useState<Record<string, OrdemColuna>>({});
   const [online, setOnline] = useState(true);
   const [boardScrolled, setBoardScrolled] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
@@ -414,6 +420,47 @@ export default function GestaoChabraPage() {
     }
     return m;
   }, [gruposQuadro, items, quadroAgrupar]);
+
+  // v335: colunas que eu sigo (aviso quando uma tarefa entra nelas) e a ordem escolhida em cada coluna.
+  const { data: etapasAvisadas = [] } = useEtapasAvisadas(quadro?.id_quadro);
+  const alternarAviso = useAlternarAvisoEtapa();
+  const chaveOrdem = quadro ? `gestao-ordem-colunas:${quadro.id_quadro}:${quadroAgrupar}` : null;
+  useEffect(() => {
+    setMenuCol(null);
+    if (!chaveOrdem) { setOrdemCols({}); return; }
+    try {
+      const salvo = JSON.parse(localStorage.getItem(chaveOrdem) ?? "{}");
+      setOrdemCols(salvo && typeof salvo === "object" && !Array.isArray(salvo) ? salvo : {});
+    } catch {
+      setOrdemCols({});
+    }
+  }, [chaveOrdem]);
+  // Cliente/Projeto só aparecem no "Ordenar por" se alguma tarefa do quadro tem (vêm do Runrun).
+  const opcoesOrdem = useMemo(
+    () => OPCOES_ORDEM.filter((o) => (o.campo !== "cliente" && o.campo !== "projeto") || campoTemValor(items, o.campo)),
+    [items],
+  );
+
+  function mudarOrdem(slug: string, campo: CampoOrdem) {
+    const n = { ...ordemCols };
+    const prox = proximaOrdem(n[slug], campo);
+    if (prox) n[slug] = prox; else delete n[slug];
+    setOrdemCols(n);
+    setMenuCol(null);
+    if (chaveOrdem) {
+      try { localStorage.setItem(chaveOrdem, JSON.stringify(n)); } catch { /* sem storage: vale só nesta tela */ }
+    }
+  }
+
+  function alternarNotificacao(slug: string, nome: string) {
+    if (!quadro) return;
+    setMenuCol(null);
+    alternarAviso.mutate({ id_quadro: quadro.id_quadro, slug }, {
+      onSuccess: (ligado) => toast.success(ligado
+        ? `Você vai ser avisado quando uma tarefa entrar em "${nome}".`
+        : `Avisos de "${nome}" desligados.`),
+    });
+  }
 
   function novaTarefa(status: StatusTarefa) {
     setEditando(null);
@@ -814,7 +861,11 @@ export default function GestaoChabraPage() {
           <div className="flex gap-3 overflow-x-auto pb-2" onScroll={(e) => { const s = e.currentTarget.scrollLeft > 4; setBoardScrolled((p) => (p !== s ? s : p)); }}>
             {gruposQuadro.map((col) => {
               const todas = porGrupo[col.slug] ?? [];
-              const lista = todas.filter(passaFiltro);
+              // v335: "Ordenar por" da coluna (sem escolha = ordem do quadro, a de arrastar).
+              const ordemCol = ordemCols[col.slug];
+              const lista = ordenarTarefas(todas.filter(passaFiltro), ordemCol);
+              const seguindo = quadroAgrupar === "status" && etapasAvisadas.includes(col.slug);
+              const rotuloOrdem = ordemCol ? OPCOES_ORDEM.find((o) => o.campo === ordemCol.campo)?.label : null;
               const atrasadasCol = todas.filter((t) => t.prazo && diasAte(t.prazo) < 0 && statusMap.get(t.status)?.tipo !== "concluido").length;
               const tempoCol = todas.reduce((s, t) => s + (tempoPorTarefa.get(t.id_tarefa) ?? 0), 0);
               return (
@@ -837,12 +888,53 @@ export default function GestaoChabraPage() {
                       <span className="rounded-full bg-gray-200 px-1.5 text-[11px] font-semibold text-gray-600">{temFiltro ? `${lista.length}/${todas.length}` : todas.length}</span>
                       {atrasadasCol > 0 && <span className="rounded-full bg-red-50 px-1.5 text-[11px] font-semibold text-red-600" title="Atrasadas">{atrasadasCol} atras.</span>}
                       {tempoCol > 0 && <span className="inline-flex items-center gap-0.5 text-[11px] text-gray-400" title="Tempo total"><Clock className="size-3" />{formatarDuracao(tempoCol)}</span>}
+                      {seguindo && <span title="Você é avisado quando uma tarefa entra nesta coluna"><Bell className="size-3.5 text-marca-primary" /></span>}
+                      {ordemCol && rotuloOrdem && (
+                        <span className="inline-flex items-center gap-0.5 rounded bg-gray-200 px-1 text-[10px] font-medium text-gray-600" title={`Ordenada por ${rotuloOrdem} (${ordemCol.dir === "asc" ? "crescente" : "decrescente"})`}>
+                          <ArrowDownUp className="size-3" /> {rotuloOrdem} {ordemCol.dir === "asc" ? "↑" : "↓"}
+                        </span>
+                      )}
                     </div>
-                    {podeEditar && (
-                      <button type="button" onClick={() => novaTarefa(quadroAgrupar === "status" ? col.slug : statusInicialSlug)} className="rounded-md p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-700" title="Nova tarefa aqui">
-                        <Plus className="size-4" />
-                      </button>
-                    )}
+                    <div className="flex items-center">
+                      {podeEditar && (
+                        <button type="button" onClick={() => novaTarefa(quadroAgrupar === "status" ? col.slug : statusInicialSlug)} className="rounded-md p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-700" title="Nova tarefa aqui">
+                          <Plus className="size-4" />
+                        </button>
+                      )}
+                      {/* v335: menu "…" da coluna, como no Runrun */}
+                      <div className="relative">
+                        <button type="button" onClick={() => setMenuCol((m) => (m === col.slug ? null : col.slug))} aria-label={`Opções da coluna ${col.nome}`} aria-expanded={menuCol === col.slug} className="rounded-md p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-700" title="Opções da coluna">
+                          <MoreHorizontal className="size-4" />
+                        </button>
+                        {menuCol === col.slug && (
+                          <>
+                            <div className="fixed inset-0 z-30" onClick={() => setMenuCol(null)} />
+                            <div className="absolute right-0 top-full z-40 mt-1 w-60 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                              {quadroAgrupar === "status" && (
+                                <button type="button" onClick={() => alternarNotificacao(col.slug, col.nome)} disabled={alternarAviso.isPending} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60">
+                                  {seguindo ? <BellOff className="size-4 text-gray-400" /> : <Bell className="size-4 text-gray-400" />}
+                                  {seguindo ? "Desativar notificações" : "Habilitar notificações"}
+                                </button>
+                              )}
+                              <p className={`px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400 ${quadroAgrupar === "status" ? "mt-1 border-t border-gray-100 pt-2" : "pt-1"}`}>Ordenar por</p>
+                              <button type="button" onClick={() => mudarOrdem(col.slug, "manual")} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                {ordemCol ? <span className="size-3.5" /> : <Check className="size-3.5 text-marca-primary" />} Ordem do quadro
+                              </button>
+                              {opcoesOrdem.map((o) => {
+                                const ativa = ordemCol?.campo === o.campo;
+                                return (
+                                  <button key={o.campo} type="button" onClick={() => mudarOrdem(col.slug, o.campo)} title={ativa ? "Clique de novo para inverter" : undefined} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                    {ativa ? <Check className="size-3.5 text-marca-primary" /> : <span className="size-3.5" />}
+                                    <span className="flex-1">{o.label}</span>
+                                    {ativa && <span className="text-xs text-gray-400">{ordemCol.dir === "asc" ? "↑ crescente" : "↓ decrescente"}</span>}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="min-h-[40px] flex-1 space-y-2 overflow-y-auto overscroll-contain p-0.5">
@@ -866,8 +958,9 @@ export default function GestaoChabraPage() {
                           onAbrir={() => abrirItem(t)}
                           onDragStart={() => setDragId(t.id_tarefa)}
                           onDragEnd={() => { setDragId(null); setColHover(null); setDropAlvo(null); }}
-                          onDragOver={(e) => { if (dragId) { e.preventDefault(); e.stopPropagation(); setColHover(col.slug); setDropAlvo({ col: col.slug, beforeId: t.id_tarefa }); } }}
-                          onDrop={(e) => { e.stopPropagation(); soltarGrupo(col.slug, t.id_tarefa); }}
+                          /* Coluna com "Ordenar por": a posição de soltar não vale (a ordem é a escolhida) — só troca de coluna. */
+                          onDragOver={(e) => { if (dragId) { e.preventDefault(); e.stopPropagation(); setColHover(col.slug); setDropAlvo({ col: col.slug, beforeId: ordemCol ? null : t.id_tarefa }); } }}
+                          onDrop={(e) => { e.stopPropagation(); soltarGrupo(col.slug, ordemCol ? undefined : t.id_tarefa); }}
                         />
                       </div>
                     ))}
