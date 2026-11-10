@@ -52,7 +52,7 @@ export default function AcontecendoAgora() {
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Acontecendo agora</p>
         <span className="text-[11px] text-gray-400">· atualiza a cada {FEED_INTERVALO_MS / 1000} s</span>
       </div>
-      <div className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="divide-y divide-gray-100 overflow-hidden dark:divide-white/10 rounded-xl border border-gray-200 bg-white shadow-sm">
         {isLoading ? (
           <div className="flex items-center gap-2 p-4 text-sm text-gray-400">
             <Loader2 className="size-4 animate-spin" /> Carregando…

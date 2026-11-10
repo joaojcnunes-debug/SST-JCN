@@ -353,6 +353,7 @@ Alias de import: `@/*` → raiz.
     - Um ponto por empresa, agrupado por "município/UF", na cor da pior situação: vencido, vence em até 60 dias, em dia ou sem documento com validade.
     - A conta está em `lib/visao-geral/empresasSituacao.ts`, testada. As cidades com pior situação vêm primeiro.
   - **Acontecendo agora** (`AcontecendoAgora.tsx` + `useFeedVisaoGeral`): substitui a "Atividade recente".
+  - **0.3.261 (do Painel, ajustes do nosso MD da Visão geral):** o feed busca só os últimos **14 dias** (`FEED_JANELA_DIAS`) e, para Técnico com empresas vinculadas, só as empresas dele; o contador de riscos altos usa o mesmo filtro de vínculo. Os dois cortam a varredura da trilha que a RLS faz linha a linha. O feed não mostra toast quando falha (`meta: { silent: true }`; a tela já tem o aviso). A lista do Painel de empresas tem altura máxima (420 px) com rolagem.
     - Mostra os 15 últimos eventos de `auditoria_eventos` ligados a um documento (`doc_id`), sob a RLS, e busca de novo a cada 30 s.
     - O texto vem de `descreverEvento`/`quemGravou`; o link vai ao documento.
     - O que chega depois da 1ª carga entra com `.feed-novo`.

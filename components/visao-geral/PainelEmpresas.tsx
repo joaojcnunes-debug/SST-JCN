@@ -43,7 +43,7 @@ export default function PainelEmpresas() {
       ) : total === 0 ? (
         <p className="mt-4 text-sm text-gray-400">Nenhuma empresa cadastrada.</p>
       ) : (
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 max-h-[420px] space-y-4 overflow-y-auto pr-1">
           {grupos.map((g) => (
             <div key={g.cidade}>
               <p className="mb-2 text-xs font-medium text-gray-600">
