@@ -46,6 +46,7 @@ import { vePresencaAuditoria } from "@/lib/hooks/useUsuario";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { ModuloPermitido } from "@/lib/supabase/types";
+import { cartaoBloqueado } from "@/lib/acesso/telas-modulo";
 
 type Categoria = "seguranca" | "psicossocial" | "interno";
 
@@ -347,7 +348,11 @@ function InicioContent() {
 
   // Cards visíveis ordenados por pendência dentro de cada categoria.
   const cardsDisponiveis = CARDS.filter(
-    (c) => modulosPermitidos.has(c.modulo) && !(c.ocultarSeTiver && modulosPermitidos.has(c.ocultarSeTiver)),
+    (c) =>
+      modulosPermitidos.has(c.modulo) &&
+      !(c.ocultarSeTiver && modulosPermitidos.has(c.ocultarSeTiver)) &&
+      // Visualizar por tela (v347): o cartão da Sinalização some com a tela bloqueada.
+      !cartaoBloqueado(user, c.modulo, c.href),
   )
     .map((c, idx) => ({
       cfg: c,

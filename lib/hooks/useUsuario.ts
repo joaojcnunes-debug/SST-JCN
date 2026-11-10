@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
 import type { Usuario } from "@/lib/supabase/types";
 import { perfilEscreveNaRls, podeEditarLinhaDaUnidade } from "@/lib/acesso/linha-por-unidade";
+import { moduloDaRota, podeNoModulo } from "@/lib/acesso/permissoes-modulo";
 
 export function useCurrentUser() {
   return useUserStore((s) => s.user);
@@ -78,6 +79,16 @@ export function useVePresencaAuditoria() {
 export { perfilEscreveNaRls } from "@/lib/acesso/linha-por-unidade";
 
 /**
+ * Módulo da tela aberta, pelo endereço (`MODULO_DA_ROTA`); null fora dos módulos (Gestão, Empresas, Validades…).
+ * É o que faz os hooks abaixo usarem o Criar/Editar/Excluir DO MÓDULO marcado no cadastro (09/11/2026) sem cada
+ * tela precisar dizer em que módulo está. Fora dos módulos tudo segue com as chaves gerais, como antes — a Gestão
+ * inclusive (ver o aviso acima sobre `useCanEdit`).
+ */
+export function useModuloAtual() {
+  return moduloDaRota(usePathname() ?? "");
+}
+
+/**
  * Permissão de EDITAR dados (rascunhos, observações, situação de itens etc).
  *
  * V45+: leva em conta o flag granular `pode_editar`. Admin SEMPRE pode
@@ -86,9 +97,8 @@ export { perfilEscreveNaRls } from "@/lib/acesso/linha-por-unidade";
  */
 export function useCanEdit() {
   const user = useUserStore((s) => s.user);
-  if (!user) return false;
-  if (user.perfil === "Admin") return true;
-  return user.pode_editar === true;
+  const modulo = useModuloAtual();
+  return podeNoModulo(user, modulo, "editar");
 }
 
 /**
@@ -98,7 +108,10 @@ export function useCanEdit() {
  */
 export function usePodeEditarLinhaDaUnidade(idUnidadeDaEmpresa: string | null | undefined) {
   const user = useUserStore((s) => s.user);
-  return podeEditarLinhaDaUnidade(user, idUnidadeDaEmpresa);
+  const modulo = useModuloAtual();
+  // + o Editar do módulo (09/11/2026). Medido no dia: todo Técnico ativo tinha `pode_editar`, então conta antiga
+  // (sem grade) não perde o lápis.
+  return podeEditarLinhaDaUnidade(user, idUnidadeDaEmpresa) && podeNoModulo(user, modulo, "editar");
 }
 
 /**
@@ -112,11 +125,12 @@ export function usePodeEditarLinhaDaUnidade(idUnidadeDaEmpresa: string | null | 
  */
 export function useCanCreate(opts?: { exigeEditar?: boolean }) {
   const user = useUserStore((s) => s.user);
+  const modulo = useModuloAtual();
   if (!user) return false;
   if (user.perfil === "Admin") return true;
   if (!perfilEscreveNaRls(user.perfil)) return false;
-  if (user.pode_criar !== true) return false;
-  return opts?.exigeEditar === true ? user.pode_editar === true : true;
+  if (!podeNoModulo(user, modulo, "criar")) return false;
+  return opts?.exigeEditar === true ? podeNoModulo(user, modulo, "editar") : true;
 }
 
 /**
@@ -127,9 +141,8 @@ export function useCanCreate(opts?: { exigeEditar?: boolean }) {
  */
 export function useCanDelete() {
   const user = useUserStore((s) => s.user);
-  if (!user) return false;
-  if (user.perfil === "Admin") return true;
-  return user.pode_excluir === true;
+  const modulo = useModuloAtual();
+  return podeNoModulo(user, modulo, "excluir");
 }
 
 /**
@@ -148,6 +161,7 @@ export function useRequireCreate(
 ) {
   const router = useRouter();
   const user = useUserStore((s) => s.user);
+  const modulo = useModuloAtual();
   const avisouRef = useRef(false);
   const exigeEditar = opts?.exigeEditar === true;
 
@@ -156,8 +170,9 @@ export function useRequireCreate(
     if (user.perfil === "Admin") return;
 
     const perfilPermite = perfilEscreveNaRls(user.perfil);
-    const podeCriar = perfilPermite && user.pode_criar === true;
-    const passaNaRls = !exigeEditar || user.pode_editar === true;
+    const temCriar = podeNoModulo(user, modulo, "criar");
+    const podeCriar = perfilPermite && temCriar;
+    const passaNaRls = !exigeEditar || podeNoModulo(user, modulo, "editar");
     if (podeCriar && passaNaRls) return;
 
     if (!avisouRef.current) {
@@ -165,13 +180,13 @@ export function useRequireCreate(
       toast.error(
         !perfilPermite
           ? "Seu perfil é somente leitura no sistema — cadastrar exige perfil Técnico ou Admin. Peça ao administrador."
-          : user.pode_criar !== true
-            ? "Você não tem permissão para criar."
+          : !temCriar
+            ? "Você não tem permissão para criar neste módulo."
             : "Cadastrar neste módulo exige a permissão de editar. Peça ao administrador.",
       );
     }
     router.replace(redirectTo);
-  }, [user, redirectTo, router, exigeEditar]);
+  }, [user, modulo, redirectTo, router, exigeEditar]);
 }
 
 /**
@@ -218,6 +233,7 @@ export function usePodeQuimicos() {
 export function useRequireQuimicos(redirectTo: string = "/analise-quimicos") {
   const router = useRouter();
   const user = useUserStore((s) => s.user);
+  const modulo = useModuloAtual();
   const avisouRef = useRef(false);
 
   useEffect(() => {
@@ -226,8 +242,9 @@ export function useRequireQuimicos(redirectTo: string = "/analise-quimicos") {
     if (user.pode_escrever_quimicos === true) return;
 
     const perfilPermite = perfilEscreveNaRls(user.perfil);
-    const podeCriar = perfilPermite && user.pode_criar === true;
-    const passaNaRls = user.pode_editar === true;
+    const temCriar = podeNoModulo(user, modulo, "criar");
+    const podeCriar = perfilPermite && temCriar;
+    const passaNaRls = podeNoModulo(user, modulo, "editar");
     if (podeCriar && passaNaRls) return;
 
     if (!avisouRef.current) {
@@ -235,13 +252,13 @@ export function useRequireQuimicos(redirectTo: string = "/analise-quimicos") {
       toast.error(
         !perfilPermite
           ? "Seu perfil é somente leitura no sistema — cadastrar químicos exige perfil Técnico/Admin ou a permissão de escrita de químicos. Peça ao administrador."
-          : user.pode_criar !== true
-            ? "Você não tem permissão para criar."
+          : !temCriar
+            ? "Você não tem permissão para criar neste módulo."
             : "Cadastrar químicos exige a permissão de editar. Peça ao administrador.",
       );
     }
     router.replace(redirectTo);
-  }, [user, redirectTo, router]);
+  }, [user, modulo, redirectTo, router]);
 }
 
 /**
@@ -254,12 +271,13 @@ export function useRequireQuimicos(redirectTo: string = "/analise-quimicos") {
 export function useRequireEdit(redirectTo: string = "/inicio") {
   const router = useRouter();
   const user = useUserStore((s) => s.user);
+  const modulo = useModuloAtual();
   const avisouRef = useRef(false);
 
   useEffect(() => {
     if (!user) return;
     if (user.perfil === "Admin") return;
-    if (perfilEscreveNaRls(user.perfil) && user.pode_editar === true) return;
+    if (perfilEscreveNaRls(user.perfil) && podeNoModulo(user, modulo, "editar")) return;
 
     if (!avisouRef.current) {
       avisouRef.current = true;
@@ -270,5 +288,5 @@ export function useRequireEdit(redirectTo: string = "/inicio") {
       );
     }
     router.replace(redirectTo);
-  }, [user, redirectTo, router]);
+  }, [user, modulo, redirectTo, router]);
 }

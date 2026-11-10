@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import { useSidebarMini, useUserStore } from "@/lib/store";
 import { decidirVoltar } from "@/lib/navegacao/voltar";
+import { rotaBloqueada } from "@/lib/acesso/telas-modulo";
 import SidebarAlca from "@/components/layout/SidebarAlca";
 
 /**
@@ -238,6 +239,10 @@ export default function SidebarShell({
   const { data: configs } = useConfiguracoes();
   const [mobileOpen, setMobileOpen] = useState(false);
   const mini = useSidebarMini((s) => s.mini);
+  // Visualizar por tela (v347): a tela que a pessoa não vê some do menu; a seção que ficar vazia some junto.
+  const secoesVisiveis = sections
+    .map((s) => ({ ...s, items: s.items.filter((i) => !rotaBloqueada(user, i.href)) }))
+    .filter((s) => s.items.length > 0);
 
   // Quem desenha o recolhimento é o CSS (globals.css) a partir deste atributo.
   // O botão que alterna mora na ModuleTopbar; aqui só mantemos o <html> em dia.
@@ -332,7 +337,7 @@ export default function SidebarShell({
 
       {/* Seções de navegação */}
       <nav className="sidebar-nav flex-1 overflow-y-auto px-2 py-2">
-        {sections.map((section, idx) => (
+        {secoesVisiveis.map((section, idx) => (
           <div key={section.label} className={idx > 0 ? "mt-2.5" : ""}>
             {/* Separador visual entre seções */}
             {idx > 0 && <div className="mb-2 border-t border-white/[0.07]" />}

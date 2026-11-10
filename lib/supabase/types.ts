@@ -1178,6 +1178,18 @@ export interface Usuario {
   /** Permissão granular pra excluir relatórios/análises top-level. Admin contorna. */
   pode_excluir?: boolean;
   /**
+   * v333 (do Painel v345): Criar/Editar/Excluir POR MÓDULO (`{ "<modulo>": { criar, editar, excluir } }`, mais `geral` = Empresas e
+   * Validades). NULL = conta antiga: valem as três chaves acima em todo lugar. Regras em `lib/acesso/permissoes-modulo.ts`.
+   */
+  permissoes_modulos?: Partial<
+    Record<ModuloPermitido | "geral", { criar: boolean; editar: boolean; excluir: boolean }>
+  > | null;
+  /**
+   * v333: Visualizar POR TELA — as telas (rota principal, ex.: "/consolidacao-grupo/vendas") que a pessoa NÃO vê
+   * dentro dos módulos que tem. NULL ou vazia = vê todas. Catálogo e regras em `lib/acesso/telas-modulo.ts`.
+   */
+  telas_bloqueadas?: string[] | null;
+  /**
    * Capability de escrita de químicos desacoplada do perfil (F1.3-A / v189).
    * Serve a RLS (`pode_escrever_quimicos()`) e o front: um Visualizador com esta
    * flag escreve `analises_quimicos`/`base_referencia_quimicos` sem ser Técnico.
