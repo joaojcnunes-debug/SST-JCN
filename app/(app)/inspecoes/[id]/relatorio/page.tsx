@@ -31,9 +31,12 @@ import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import StorageImg from "@/components/ui/StorageImg";
 import { abrirMidiaAssinada } from "@/lib/storage/abrir-midia-assinada";
 import { useInspecao, useSalvarElaboracao } from "@/lib/hooks/useInspecao";
+import { useVoltaInspecao } from "@/lib/hooks/useVoltaInspecao";
+import { rotuloVolta } from "@/lib/inspecoes/volta";
 import { ehSupervisor, useCurrentUser } from "@/lib/hooks/useUsuario";
 import AssociadosElaboracao from "@/components/inspecoes/AssociadosElaboracao";
 import AguardandoInicio, { useAguardandoInicio } from "@/components/inspecoes/AguardandoInicio";
+import { soConsultaDocumento } from "@/lib/inspecoes/acoes-lista";
 import PainelTempoDocumento from "@/components/inspecoes/PainelTempoDocumento";
 import {
   MINUTOS_DESFAZER_CONCLUSAO,
@@ -46,8 +49,8 @@ import { ConfirmHost, confirmar } from "@/components/ui/confirm";
 import EnviarRiscosSgg from "@/components/inspecoes/EnviarRiscosSgg";
 import { useAssociarUsuario, useInspecaoAssociados } from "@/lib/hooks/useInspecaoAssociados";
 import { situacaoDocumento } from "@/lib/inspecoes/documento";
-import { estaNoDocumento } from "@/lib/inspecoes/inicio";
-import { FileSignature } from "lucide-react";
+import { ehResponsavelDocumento, estaNoDocumento, podeConcluirDocumento, responsavelAoConcluir } from "@/lib/inspecoes/inicio";
+import { FileSignature, Play } from "lucide-react";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
 import DocumentosEmpresaPainel from "@/components/empresas/DocumentosEmpresaPainel";
@@ -99,6 +102,7 @@ interface Props {
 
 export default function RelatorioChabraPage({ params }: Props) {
   const { id } = use(params);
+  const volta = useVoltaInspecao(id);
   const { data, isLoading } = useInspecao(id);
   const { data: empresa } = useEmpresa(data?.inspecao?.id_empresa);
   const { data: configs } = useConfiguracoes();
@@ -262,6 +266,8 @@ export default function RelatorioChabraPage({ params }: Props) {
   // A elaboração do documento (SGG) é feita por usuários internos — inclusive
   // Visualizadores (que leem a inspeção e montam o documento). Só Cliente não.
   const podeElaborar = !!user && user.perfil !== "Cliente";
+  // v334: quem tem a marca em Usuários só consulta: sem Assumir e sem Associar-me.
+  const soConsulta = soConsultaDocumento(user, ehSupervisor(user));
   const salvarElab = useSalvarElaboracao(id);
   // 28/10 (v309): quem já está no documento "inicia" (não precisa se associar de novo).
   // 10/11 (v332): o responsável sem linha de associado também conta, como na fila e no banco.
@@ -286,7 +292,7 @@ export default function RelatorioChabraPage({ params }: Props) {
 
   if (isLoading || inicio.carregando) return <LoadingSkeleton rows={10} />;
   if (!data || !ctx) return null;
-  if (inicio.aguardando) return <AguardandoInicio idInspecao={id} empresa={empresa?.nome_empresa} jaTrabalhou={inicio.jaTrabalhou} />;
+  if (inicio.aguardando) return <AguardandoInicio idInspecao={id} empresa={empresa?.nome_empresa} jaTrabalhou={inicio.jaTrabalhou} volta={volta} />;
 
   const { inspecao, responsaveis, paeContatos } = data;
 
@@ -371,17 +377,36 @@ export default function RelatorioChabraPage({ params }: Props) {
     inspecao.elaboracao_concluida_por === user.email.toLowerCase() &&
     agora < limiteDesfazer;
   const desfazerAte = new Date(limiteDesfazer).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  // 05/11: qualquer associado conclui. O Liberar segue com o responsável e o supervisor: ele para o tempo de todos.
+  const souResponsavel = ehResponsavelDocumento(user?.nome, inspecao.elaboracao_responsavel);
+  const podeConcluir = podeConcluirDocumento({
+    elaboracaoStatus: inspecao.elaboracao_status,
+    supervisor: ehSupervisor(user),
+    associado: souAssociado,
+    responsavel: souResponsavel,
+    soConsulta,
+  });
+  const podeLiberar = inspecao.elaboracao_status === "EM_ELABORACAO" && (souResponsavel || ehSupervisor(user));
+  // Atribuído e não iniciado: sem esta porta, o Concluir sumia e parecia que só saindo e assumindo de novo.
+  const podeIniciarNoCard = souAssociado && !soConsulta && (inspecao.elaboracao_status ?? "PENDENTE") === "PENDENTE";
 
   return (
     <div className="space-y-4">
       {/* Toolbar (não imprime) */}
       <div className="no-print flex items-center justify-between">
-        <Link
-          href={`/inspecoes/${id}`}
-          className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
-        >
-          <ArrowLeft className="size-4" /> Voltar ao editor
-        </Link>
+        <div className="flex flex-wrap items-center gap-4">
+          {volta && (
+            <Link href={volta} className="flex items-center gap-1 text-sm font-medium text-marca-primary hover:underline">
+              <ArrowLeft className="size-4" /> {rotuloVolta(volta)}
+            </Link>
+          )}
+          <Link
+            href={`/inspecoes/${id}`}
+            className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft className="size-4" /> Voltar ao editor
+          </Link>
+        </div>
         <div className="flex gap-2">
           <Link
             href={`/inspecoes/${id}/pgr`}
@@ -437,7 +462,7 @@ export default function RelatorioChabraPage({ params }: Props) {
           </div>
           {podeElaborar && (
             <div className="flex flex-wrap gap-2">
-              {!souAssociado && (inspecao.elaboracao_status ?? "PENDENTE") === "PENDENTE" && (
+              {!soConsulta && !souAssociado && (inspecao.elaboracao_status ?? "PENDENTE") === "PENDENTE" && (
                 <button
                   type="button"
                   disabled={salvarElab.isPending || !user?.nome}
@@ -459,43 +484,61 @@ export default function RelatorioChabraPage({ params }: Props) {
                   Assumir elaboração (eu)
                 </button>
               )}
-              {inspecao.elaboracao_status === "EM_ELABORACAO" && (inspecao.elaboracao_responsavel === user?.nome || ehSupervisor(user)) && (
-                <>
-                  <button
-                    type="button"
-                    disabled={salvarElab.isPending}
-                    onClick={async () => {
-                      // 30/10 (v314): confirmação antes — concluir conta como emitido e para o tempo de todos.
-                      const ok = await confirmar({
-                        title: "Concluir o documento?",
-                        description: `Ele passa a contar como emitido e enviado, e o tempo de quem está trabalhando nele para. Se for engano, você tem ${MINUTOS_DESFAZER_CONCLUSAO} minutos para desfazer; depois, só um supervisor reabre.`,
-                        confirmLabel: "Concluir",
-                        variant: "primary",
-                      });
-                      if (!ok) return;
-                      salvarElab.mutate(
-                        { elaboracao_status: "CONCLUIDO", elaboracao_concluida_em: new Date().toISOString() },
-                        {
-                          onSuccess: () => {
-                            toast.success("Documento concluído — enviado ao cliente");
-                            comemorar();
-                          },
+              {podeIniciarNoCard && (
+                <button
+                  type="button"
+                  disabled={iniciarSessao.isPending}
+                  onClick={() => iniciarSessao.mutate(id)}
+                  title="Põe o documento em elaboração e começa a contar o seu tempo. Depois disso, a opção Concluir aparece."
+                  className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
+                >
+                  {iniciarSessao.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />} Iniciar elaboração
+                </button>
+              )}
+              {podeConcluir && (
+                <button
+                  type="button"
+                  disabled={salvarElab.isPending}
+                  onClick={async () => {
+                    // 30/10 (v314): confirmação antes — concluir conta como emitido e para o tempo de todos.
+                    // 0.3.255: qualquer associado conclui; o crédito segue responsavelAoConcluir (lib/inspecoes/inicio).
+                    const responsavel = responsavelAoConcluir({
+                      nome: user?.nome,
+                      associado: souAssociado,
+                      primeiraConclusaoEm: inspecao.primeira_elaboracao_em,
+                      primeiraConclusaoPor: inspecao.primeira_elaboracao_por,
+                    });
+                    const ok = await confirmar({
+                      title: "Concluir o documento?",
+                      description: `Ele passa a contar${ehResponsavelDocumento(user?.nome, responsavel) ? " em seu nome" : ""} como emitido e enviado, e o tempo de quem está trabalhando nele para. Se for engano, você tem ${MINUTOS_DESFAZER_CONCLUSAO} minutos para desfazer; depois, só um supervisor reabre.`,
+                      confirmLabel: "Concluir",
+                      variant: "primary",
+                    });
+                    if (!ok) return;
+                    salvarElab.mutate(
+                      { elaboracao_status: "CONCLUIDO", elaboracao_concluida_em: new Date().toISOString(), elaboracao_responsavel: responsavel },
+                      {
+                        onSuccess: () => {
+                          toast.success("Documento concluído — enviado ao cliente");
+                          comemorar();
                         },
-                      );
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50"
-                  >
-                    <BadgeCheck className="size-4" /> Concluir (emitido e enviado)
-                  </button>
-                  <button
-                    type="button"
-                    disabled={salvarElab.isPending}
-                    onClick={() => salvarElab.mutate({ elaboracao_status: "PENDENTE", elaboracao_responsavel: null })}
-                    className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
-                  >
-                    Liberar
-                  </button>
-                </>
+                      },
+                    );
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50"
+                >
+                  <BadgeCheck className="size-4" /> Concluir (emitido e enviado)
+                </button>
+              )}
+              {podeLiberar && (
+                <button
+                  type="button"
+                  disabled={salvarElab.isPending}
+                  onClick={() => salvarElab.mutate({ elaboracao_status: "PENDENTE", elaboracao_responsavel: null })}
+                  className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                >
+                  Liberar
+                </button>
               )}
               {/* v314: quem concluiu desfaz sozinho por 10 min (volta a Em elaboração e reabre o tempo). */}
               {podeDesfazer && (
@@ -554,6 +597,7 @@ export default function RelatorioChabraPage({ params }: Props) {
             idInspecao={id}
             user={user}
             isAdmin={ehSupervisor(user)}
+            podeSeAssociar={!soConsulta}
             responsavelNome={inspecao.elaboracao_responsavel}
             elaboracaoStatus={inspecao.elaboracao_status}
             concluidaEm={inspecao.elaboracao_concluida_em}

@@ -10,6 +10,7 @@
 // atividade (useAtividadeSessao) — sem isso a sessão pausa sozinha com 30 min parada.
 
 import Link from "next/link";
+import { rotuloVolta } from "@/lib/inspecoes/volta";
 import { ArrowLeft, Loader2, Play } from "lucide-react";
 import { useAgora, useAtividadeSessao, useIniciarSessao, useSessoesDocumentos } from "@/lib/hooks/useDocumentoSessoes";
 import { useInspecaoAssociados } from "@/lib/hooks/useInspecaoAssociados";
@@ -50,10 +51,13 @@ export default function AguardandoInicio({
   idInspecao,
   empresa,
   jaTrabalhou,
+  volta,
 }: {
   idInspecao: string;
   empresa?: string | null;
   jaTrabalhou?: boolean;
+  /** Lista de onde o documento foi aberto, com os filtros (ver useVoltaInspecao). */
+  volta?: string | null;
 }) {
   const iniciar = useIniciarSessao();
   const rotulo = jaTrabalhou ? "Retomar" : "Iniciar";
@@ -78,10 +82,10 @@ export default function AguardandoInicio({
           {iniciar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />} {rotulo}
         </button>
         <Link
-          href="/inspecoes/minhas?papel=associado"
+          href={volta ?? "/inspecoes/minhas?papel=associado"}
           className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
         >
-          <ArrowLeft className="size-4" /> Minhas inspeções
+          <ArrowLeft className="size-4" /> {volta ? rotuloVolta(volta) : "Minhas inspeções"}
         </Link>
       </div>
     </div>

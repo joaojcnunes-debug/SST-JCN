@@ -23,6 +23,7 @@ import PrioridadeCalculada from "@/components/inspecoes/PrioridadeCalculada";
 import ComplexidadeCelula from "@/components/inspecoes/ComplexidadeCelula";
 import FiltroSuspenso from "@/components/ui/FiltroSuspenso";
 import { useFilaAtribuida, usePessoasAtribuicao, useResumoFila, type FiltrosFila } from "@/lib/hooks/useInspecoesAtribuidas";
+import { comVolta, enderecoDaLista } from "@/lib/inspecoes/volta";
 import { useCanCreate, useCanEdit, useIsSupervisor } from "@/lib/hooks/useUsuario";
 import { useUserStore } from "@/lib/store";
 import { PRIORIDADES_DESC, PRIORIDADE_INFO, diasEntre, hojeSP, textoEspera, type PrioridadeInspecao } from "@/lib/inspecoes/prioridade";
@@ -105,6 +106,9 @@ function MinhasInner() {
     router.replace(`${pathname}${s ? "?" + s : ""}`, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pessoa, papel, status, documento, prioridade, espera, periodo, q, ordem]);
+
+  // O documento aberto daqui leva este endereço, para o Voltar trazer a pessoa e os filtros de volta.
+  const aqui = enderecoDaLista(pathname, params.toString());
 
   // "pessoa" vazio = eu (o banco usa o e-mail de quem chama).
   const idUsuario = supervisor && pessoa && pessoa !== eu?.id_usuario ? pessoa : null;
@@ -358,7 +362,7 @@ function MinhasInner() {
                             idUsuario={eu?.id_usuario}
                             agora={agora}
                             podeApontar={i.situacao_documento !== "ENTREGUE"}
-                            onIniciou={() => router.push(`/inspecoes/${i.id_inspecao}/relatorio`)}
+                            onIniciou={() => router.push(comVolta(`/inspecoes/${i.id_inspecao}/relatorio`, aqui))}
                           />
                         )}
                         {/* 30/10: o associado só abre o documento com o tempo contando (supervisor/admin abrem direto). */}
@@ -367,7 +371,7 @@ function MinhasInner() {
                           i.situacao_documento === "ENTREGUE" ||
                           !!minhaSessaoAberta(sessoesPorDoc.get(i.id_inspecao) ?? [], eu?.id_usuario, agora)) && (
                           <Link
-                            href={papel === "associado" ? `/inspecoes/${i.id_inspecao}/relatorio` : `/inspecoes/${i.id_inspecao}`}
+                            href={comVolta(papel === "associado" ? `/inspecoes/${i.id_inspecao}/relatorio` : `/inspecoes/${i.id_inspecao}`, aqui)}
                             className="inline-block whitespace-nowrap rounded-md border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 hover:border-marca-primary hover:text-marca-primary"
                           >
                             {papel === "associado" ? "Abrir documento" : "Abrir inspeção"}

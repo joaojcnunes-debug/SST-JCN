@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { comVolta } from "@/lib/inspecoes/volta";
 import { Pencil, ChartBar, Trash2, RefreshCw } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import { fmtData } from "@/lib/utils";
@@ -44,10 +45,16 @@ export default function InspecaoRow({
   showEmpresa,
   podeEditarPrioridade,
   comAcoes = true,
+  comEditar = true,
+  volta,
 }: {
   insp: Inspecao;
-  /** 30/10: coluna Ações (Editar, Relatório, Excluir) — só supervisor/admin; o cabeçalho segue a mesma regra. */
+  /** Endereço da lista (com os filtros): o documento aberto daqui oferece voltar para ele. */
+  volta?: string;
+  /** 30/10: coluna Ações (Editar, Relatório, Excluir) — supervisor/admin e quem tem a marca da v332; o cabeçalho segue a mesma regra. */
   comAcoes?: boolean;
+  /** v332: quem tem só a marca vê a coluna com o Ver relatório, sem o Editar. */
+  comEditar?: boolean;
   /** v308: quem edita inspeção troca a prioridade direto na coluna. */
   podeEditarPrioridade?: boolean;
   /** Associados à elaboração do Documento SGG desta inspeção. */
@@ -222,15 +229,17 @@ export default function InspecaoRow({
       {comAcoes && (
         <td className={`${ACOES_FIXAS} ${FUNDO_ACOES}`}>
           <div className="flex items-center justify-end gap-1">
+            {comEditar && (
+              <Link
+                href={comVolta(`/inspecoes/${insp.id_inspecao}`, volta)}
+                className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-marca-light hover:text-marca-primary"
+                title="Editar inspeção"
+              >
+                <Pencil className="size-3.5" />
+              </Link>
+            )}
             <Link
-              href={`/inspecoes/${insp.id_inspecao}`}
-              className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-marca-light hover:text-marca-primary"
-              title="Editar inspeção"
-            >
-              <Pencil className="size-3.5" />
-            </Link>
-            <Link
-              href={`/inspecoes/${insp.id_inspecao}/relatorio`}
+              href={comVolta(`/inspecoes/${insp.id_inspecao}/relatorio`, volta)}
               className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-sky-50 hover:text-sky-600"
               title="Ver relatório"
             >

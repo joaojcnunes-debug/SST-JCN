@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { associadoAguardandoInicio, ehAssociado, ehResponsavelDocumento, estaNoDocumento } from "./inicio";
+import { associadoAguardandoInicio, ehAssociado, ehResponsavelDocumento, estaNoDocumento, podeConcluirDocumento, responsavelAoConcluir } from "./inicio";
 
 const eu = { id_usuario: "U1", nome: "Sarah Fonseca" };
 const naLista = [{ id_usuario: "U1", nome: "Sarah Fonseca" }, { id_usuario: "U2", nome: "Ana" }];
@@ -36,4 +36,29 @@ test("responsável é reconhecido sem diferenciar maiúsculas e espaços; vazio 
   assert.equal(ehResponsavelDocumento("Sarah Fonseca", "Ana"), false);
   assert.equal(ehResponsavelDocumento("", ""), false);
   assert.equal(ehResponsavelDocumento(null, null), false);
+});
+
+test("na 1ª conclusão o crédito vai para o associado que clicou; reabrir não muda a pessoa; quem está fora não leva", () => {
+  const base = { nome: "João", associado: true, primeiraConclusaoEm: null, primeiraConclusaoPor: null };
+  assert.equal(responsavelAoConcluir(base), "João");
+  // Supervisor fora do documento: null mantém o responsável atual.
+  assert.equal(responsavelAoConcluir({ ...base, associado: false }), null);
+  // Reconclusão: volta o nome da 1ª conclusão, mesmo com outra pessoa clicando.
+  assert.equal(responsavelAoConcluir({ ...base, primeiraConclusaoEm: "2026-10-01T12:00:00Z", primeiraConclusaoPor: "Maria" }), "Maria");
+  // 1ª conclusão antiga sem nome gravado: mantém o responsável atual.
+  assert.equal(responsavelAoConcluir({ ...base, primeiraConclusaoEm: "2026-10-01T12:00:00Z" }), null);
+});
+
+test("em elaboração, qualquer associado conclui, mesmo com outra pessoa como responsável", () => {
+  const base = { elaboracaoStatus: "EM_ELABORACAO", supervisor: false, associado: false, responsavel: false, soConsulta: false };
+  assert.equal(podeConcluirDocumento({ ...base, associado: true }), true);
+  assert.equal(podeConcluirDocumento({ ...base, responsavel: true }), true);
+  assert.equal(podeConcluirDocumento({ ...base, supervisor: true }), true);
+  // Quem não está no documento, ou só consulta, não conclui.
+  assert.equal(podeConcluirDocumento(base), false);
+  assert.equal(podeConcluirDocumento({ ...base, associado: true, soConsulta: true }), false);
+  // Ainda não iniciado ou já entregue: ninguém conclui, nem o supervisor.
+  for (const elaboracaoStatus of ["PENDENTE", null, "CONCLUIDO"]) {
+    assert.equal(podeConcluirDocumento({ ...base, elaboracaoStatus, associado: true, supervisor: true }), false);
+  }
 });

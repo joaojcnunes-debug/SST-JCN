@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { enderecoDaLista } from "@/lib/inspecoes/volta";
 import Link from "next/link";
 import { Plus, ChartBar, SlidersHorizontal, X, UserCheck, ListTodo, LayoutList, ClipboardList, FileText } from "lucide-react";
 import { Suspense } from "react";
@@ -24,6 +25,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { registrarSoftNaLixeira } from "@/lib/hooks/useLixeira";
 import { cn } from "@/lib/utils";
 import { FILTROS_ASSOCIACAO, FILTROS_STATUS } from "@/lib/inspecoes/pilulas";
+import { acoesDaLista } from "@/lib/inspecoes/acoes-lista";
 import FiltroSuspenso from "@/components/ui/FiltroSuspenso";
 import {
   FILTROS_VAZIOS,
@@ -106,6 +108,7 @@ function InspecoesInner() {
   // v229: trocar o técnico responsável é ato de supervisão (nível Aprovação), não só de Admin.
   const isAdmin = useIsSupervisor();
   const eu = useUserStore((s) => s.user);
+  const acoes = acoesDaLista(eu, isAdmin);
   const qc = useQueryClient();
   const [confirmDel, setConfirmDel] = useState<Inspecao | null>(null);
   const [editResp, setEditResp] = useState<Inspecao | null>(null);
@@ -499,7 +502,7 @@ function InspecoesInner() {
                   <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Status</th>
                   <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Associados</th>
                   <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 whitespace-nowrap">Status Assoc.</th>
-                  {isAdmin && (
+                  {acoes.coluna && (
                     <th className={cn(ACOES_FIXAS, "bg-gray-50 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400")}>Ações</th>
                   )}
                 </tr>
@@ -512,12 +515,15 @@ function InspecoesInner() {
                     associados={associadosMap?.get(i.id_inspecao) ?? []}
                     // 30/10: a lista é de consulta para técnicos e associados — as ações e a troca de
                     // prioridade/complexidade são de supervisor/admin; o resto age em Minhas inspeções.
-                    comAcoes={isAdmin}
+                    // v332: quem tem a marca em Usuários vê só o Ver relatório.
+                    comAcoes={acoes.coluna}
+                    comEditar={acoes.editar}
                     onDelete={isAdmin && canDelete ? setConfirmDel : undefined}
                     onEditResponsavel={isAdmin ? setEditResp : undefined}
                     onEditAssociados={isAdmin ? setEditAssoc : undefined}
                     showEmpresa={!f.empresa}
                     podeEditarPrioridade={isAdmin && canEdit}
+                    volta={enderecoDaLista(pathname, params.toString())}
                   />
                 ))}
               </tbody>

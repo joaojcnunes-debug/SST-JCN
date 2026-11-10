@@ -41,6 +41,42 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "inspecoes-botao-relatorio-marcados",
+    data: "2026-11-10",
+    tipo: "melhoria",
+    titulo: "Inspeções: botão Ver relatório na lista para quem for marcado",
+    texto:
+      "Quem tiver a marcação no cadastro vê o botão Ver relatório na lista de Inspeções, sem precisar passar por Minhas " +
+      "inspeções. Os botões Editar e Excluir continuam só com supervisores e administradores.",
+    onde: "Inspeções · Sistema › Usuários",
+    impacto: "Para quem não tem a marcação, a lista continua igual.",
+    versoes: ["0.3.255"],
+  },
+  {
+    id: "documento-qualquer-associado-conclui",
+    data: "2026-11-10",
+    tipo: "correcao",
+    titulo: "Documento: quem está associado consegue concluir",
+    texto:
+      "Com o documento em elaboração, qualquer pessoa associada vê a opção Concluir, mesmo com outra pessoa como " +
+      "responsável. Quando o documento ainda está como Atribuído, o card mostra o botão Iniciar elaboração. A partir de " +
+      "agora, o documento conta para a pessoa associada que fez a primeira conclusão, e ela passa a ser a responsável. " +
+      "Reabrir e concluir de novo não muda a pessoa, e os documentos já concluídos ficam como estão.",
+    onde: "Inspeções › Relatório › Documento",
+    versoes: ["0.3.255"],
+  },
+  {
+    id: "inspecoes-voltar-a-lista-com-filtros",
+    data: "2026-11-10",
+    tipo: "melhoria",
+    titulo: "Inspeções: o documento tem botão para voltar à lista como você deixou",
+    texto:
+      "Ao abrir um documento ou uma inspeção por Minhas inspeções ou pela lista de Inspeções, aparece o botão Voltar para " +
+      "a lista de onde você veio, com a pessoa e os filtros que você tinha escolhido. Não é mais preciso refazer a busca.",
+    onde: "Inspeções › Minhas inspeções e Inspeções › documento e editor",
+    versoes: ["0.3.255"],
+  },
+  {
     id: "quimicos-composicao-sem-cas",
     data: "2026-11-10",
     tipo: "correcao",
