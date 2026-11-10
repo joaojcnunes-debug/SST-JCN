@@ -55,3 +55,37 @@ export function ehAssociado(
     (a) => (!!a.id_usuario && a.id_usuario === user.id_usuario) || (!!nome && a.nome?.trim().toLowerCase() === nome),
   );
 }
+
+/**
+ * Quem conclui o documento em elaboração: qualquer associado (0.3.255, do Painel 0.3.872), o responsável
+ * e o supervisor. Quem só consulta (v334) não conclui por estar associado. Documento ainda
+ * pendente precisa ser iniciado antes: é o Iniciar que conta o tempo.
+ */
+export function podeConcluirDocumento(p: {
+  elaboracaoStatus: string | null | undefined;
+  supervisor: boolean;
+  associado: boolean;
+  responsavel: boolean;
+  soConsulta: boolean;
+}): boolean {
+  if (p.elaboracaoStatus !== "EM_ELABORACAO") return false;
+  return p.supervisor || p.responsavel || (p.associado && !p.soConsulta);
+}
+
+/**
+ * Quem fica como responsável ao concluir. `null` mantém o nome atual (a RPC preserva).
+ *
+ * Na 1ª conclusão, o associado que clicou passa a ser o responsável e leva o documento. O resto segue:
+ *  - reabrir e concluir de novo não muda a pessoa (v295): volta o nome da 1ª conclusão, para o
+ *    card e o dashboard mostrarem o mesmo;
+ *  - quem conclui sem estar no documento (supervisor) não leva o crédito.
+ */
+export function responsavelAoConcluir(p: {
+  nome: string | null | undefined;
+  associado: boolean;
+  primeiraConclusaoEm: string | null | undefined;
+  primeiraConclusaoPor: string | null | undefined;
+}): string | null {
+  if (p.primeiraConclusaoEm) return p.primeiraConclusaoPor?.trim() || null;
+  return p.associado ? p.nome?.trim() || null : null;
+}

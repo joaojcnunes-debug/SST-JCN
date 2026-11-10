@@ -6,6 +6,8 @@ import PrioridadeSelo from "@/components/inspecoes/PrioridadeInspecao";
 import { use, useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useVoltaInspecao } from "@/lib/hooks/useVoltaInspecao";
+import { rotuloVolta } from "@/lib/inspecoes/volta";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -96,6 +98,7 @@ interface Props {
 export default function InspecaoEditorPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
+  const volta = useVoltaInspecao(id);
   const qc = useQueryClient();
   const canEdit = useCanEdit();
   // v229: quem supervisiona (nível Aprovação) reabre inspeção de outro, não só Admin.
@@ -338,13 +341,19 @@ export default function InspecaoEditorPage({ params }: Props) {
 
   return (
     <div className="space-y-4">
-      <button
-        type="button"
-        onClick={() => router.back()}
-        className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
-      >
-        <ArrowLeft className="size-4" /> Voltar
-      </button>
+      {volta ? (
+        <Link href={volta} className="flex w-fit items-center gap-1 text-sm font-medium text-marca-primary hover:underline">
+          <ArrowLeft className="size-4" /> {rotuloVolta(volta)}
+        </Link>
+      ) : (
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+        >
+          <ArrowLeft className="size-4" /> Voltar
+        </button>
+      )}
 
       {/* Cabeçalho */}
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">

@@ -356,6 +356,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     grade: gradeComChaves(TODOS_MODULOS, null, { criar: true, editar: true, excluir: false }) as GradeModulos,
     // Visualizar por tela (0.3.253, v334): as telas que a pessoa NÃO vê dentro dos módulos. Vazia = vê todas.
     telas_bloqueadas: [] as string[],
+    // 0.3.255 (do Painel 0.3.862, v334): mostra o Ver relatório na lista para quem só consulta.
+    ve_relatorio_lista: false,
     // Assinatura digital
     assinatura_url: null as string | null,
     mostrar_assinatura_imagem: true,
@@ -434,6 +436,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
               excluir: defaultPerm(perfilDoUser, "excluir"),
             }),
         telas_bloqueadas: usuario?.telas_bloqueadas ?? [],
+        ve_relatorio_lista: usuario?.ve_relatorio_lista ?? false,
         assinatura_url: usuario?.assinatura_url ?? null,
         mostrar_assinatura_imagem: usuario?.mostrar_assinatura_imagem ?? true,
         tipo_certificado: usuario?.tipo_certificado ?? null,
@@ -589,6 +592,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             ...flagsGerais(form.modulos_permitidos, form.grade),
             permissoes_modulos: permissoesParaGravar(form.modulos_permitidos, form.grade),
             telas_bloqueadas: telasParaGravar(form.modulos_permitidos, form.telas_bloqueadas),
+            ve_relatorio_lista: form.ve_relatorio_lista,
             assinatura_url: form.assinatura_url,
             mostrar_assinatura_imagem: form.mostrar_assinatura_imagem,
             tipo_certificado: form.tipo_certificado,
@@ -938,6 +942,28 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             </p>
           </Field>
         </div>
+
+        {/* v334: só ao editar — a conta nova nasce sem a marca (a rota de criação não a grava).
+            Supervisor e Admin já veem as ações da lista, sem precisar dela. */}
+        {usuario && form.perfil !== "Cliente" && <Field label="Lista de Inspeções">
+          <label className="mt-1 flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={form.ve_relatorio_lista}
+              onChange={(e) =>
+                setForm({ ...form, ve_relatorio_lista: e.target.checked })
+              }
+              className="size-4 rounded border-gray-300 text-marca-primary focus:ring-marca-primary"
+            />
+            <span>
+              Mostrar o botão <strong>Ver relatório</strong> na lista
+            </span>
+          </label>
+          <p className="mt-1 text-[11px] text-gray-500">
+            Para quem só consulta: não libera Editar nem Excluir, nem empresas que a pessoa não vê, e tira
+            Assumir elaboração e Associar-me do relatório.
+          </p>
+        </Field>}
 
         {(form.perfil === "Tecnico" || form.perfil === "Cliente") && (
           <Field

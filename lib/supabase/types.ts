@@ -703,6 +703,9 @@ export interface Inspecao {
   elaboracao_concluida_em: string | null;
   /** v314 — e-mail de quem concluiu o documento (o Desfazer de 10 min); nulo fora de CONCLUIDO. */
   elaboracao_concluida_por?: string | null;
+  /** v295 — 1ª conclusão do documento e o responsável naquele momento, travados pelo gatilho. */
+  primeira_elaboracao_em?: string | null;
+  primeira_elaboracao_por?: string | null;
   /** V154 — data real de conclusão da inspeção (carimbada ao concluir). */
   concluida_em: string | null;
   /** V281 (JCN; painel v283) — e-mail de quem concluiu (gatilho). Nulo antes da auditoria. */
@@ -1189,6 +1192,8 @@ export interface Usuario {
    * dentro dos módulos que tem. NULL ou vazia = vê todas. Catálogo e regras em `lib/acesso/telas-modulo.ts`.
    */
   telas_bloqueadas?: string[] | null;
+  /** Só consulta (v334, do Painel v332): Ver relatório na lista, sem Assumir nem Associar-me. Só muda a tela, não mexe na RLS. */
+  ve_relatorio_lista?: boolean;
   /**
    * Capability de escrita de químicos desacoplada do perfil (F1.3-A / v189).
    * Serve a RLS (`pode_escrever_quimicos()`) e o front: um Visualizador com esta

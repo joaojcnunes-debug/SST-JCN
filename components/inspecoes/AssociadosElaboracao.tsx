@@ -23,10 +23,13 @@ export default function AssociadosElaboracao({
   responsavelNome,
   elaboracaoStatus,
   concluidaEm,
+  podeSeAssociar = true,
 }: {
   idInspecao: string;
   user: Usuario | null;
   isAdmin: boolean;
+  /** v332: quem só consulta o documento não vê o "Associar-me". */
+  podeSeAssociar?: boolean;
   /** Quem assumiu a elaboração pelo fluxo de status (elaboracao_responsavel). */
   responsavelNome?: string | null;
   /** Situação e data do documento — para limpar o responsável sem mudar o resto. */
@@ -134,6 +137,7 @@ export default function AssociadosElaboracao({
             e remove só a si mesmo (`podeRemover`). Documento entregue fica de
             fora: entrar nele depois daria crédito por trabalho já feito. */}
         {!isAdmin &&
+          podeSeAssociar &&
           user?.id_usuario &&
           user.nome &&
           !jaAssociados.has(user.id_usuario) &&

@@ -430,7 +430,10 @@ export function dataConclusaoDoc(l: DocumentoConcluido): string | null {
   return l.primeira_elaboracao_em || l.elaboracao_concluida_em || null;
 }
 
-/** Quem leva o documento concluído (o responsável na 1ª conclusão, se houver). */
+/**
+ * Quem leva o documento concluído (o responsável na 1ª conclusão, se houver).
+ * Desde 05/11/2026, o associado que faz a 1ª conclusão vira o responsável (`responsavelAoConcluir`).
+ */
 export function admDoDoc(l: DocumentoConcluido): string {
   return ((l.primeira_elaboracao_por || l.elaboracao_responsavel) ?? "").replace(/\s+/g, " ").trim() || SEM_RESPONSAVEL;
 }
