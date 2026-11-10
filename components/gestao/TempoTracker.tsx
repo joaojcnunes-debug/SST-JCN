@@ -55,8 +55,9 @@ export function BotaoTempo({ idTarefa }: { idTarefa: string }) {
   );
 }
 
-/** Registro de tempo no início da aba Detalhes: uma linha com o total; os apontamentos abrem ao clicar. */
-export function RegistroTempo({ idTarefa, podeEditar }: { idTarefa: string; podeEditar: boolean }) {
+/** Registro de tempo da tarefa: uma linha com o total; os apontamentos abrem ao clicar.
+ *  `semRotulo`: no painel de campos da janela, onde a linha já diz "Tempo gasto" (só o total, em letra normal). */
+export function RegistroTempo({ idTarefa, podeEditar, semRotulo = false }: { idTarefa: string; podeEditar: boolean; semRotulo?: boolean }) {
   const { data: entries = [] } = useTempoTarefa(idTarefa);
   const { data: timerAtivo } = useTimerAtivo();
   const manual = useAddTempoManual();
@@ -76,10 +77,10 @@ export function RegistroTempo({ idTarefa, podeEditar }: { idTarefa: string; pode
   }
 
   return (
-    <div className="text-xs text-gray-500">
-      <button type="button" onClick={() => setAberto((v) => !v)} aria-expanded={aberto} className="inline-flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-gray-50">
-        <Clock className="size-3.5 shrink-0" />
-        <span>Tempo: <span className="font-medium text-gray-700">{formatarDuracao(total)}</span></span>
+    <div className={`${semRotulo ? "text-sm" : "text-xs"} text-gray-500`}>
+      <button type="button" onClick={() => setAberto((v) => !v)} aria-expanded={aberto} aria-label={semRotulo ? `Tempo gasto: ${formatarDuracao(total)}. Ver apontamentos` : undefined} className="inline-flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-gray-50">
+        {!semRotulo && <Clock className="size-3.5 shrink-0" />}
+        <span>{!semRotulo && "Tempo: "}<span className="font-medium text-gray-700">{formatarDuracao(total)}</span></span>
         {rodando && <span className="font-medium text-red-600">· rodando</span>}
         <ChevronDown className={`size-3.5 shrink-0 transition ${aberto ? "rotate-180" : ""}`} />
       </button>

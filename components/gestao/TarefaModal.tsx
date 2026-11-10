@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
-import { Trash2, Loader2, Plus, Square, CheckSquare, X, ArrowRight, Sparkles, Maximize2, CornerDownRight, MessageSquare, Building2, ExternalLink } from "lucide-react";
+import {
+  Trash2, Loader2, Plus, Square, CheckSquare, X, ArrowRight, Sparkles, Maximize2, CornerDownRight, MessageSquare,
+  Columns3, ArrowRightLeft, UserRound, Flag, Tag, CalendarDays, CalendarCheck, Repeat, Clock, Users, Gauge, List, Link2,
+  PanelRightClose, PanelRightOpen, ListChecks,
+  Building2, ExternalLink,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import Modal from "@/components/ui/Modal";
@@ -19,7 +25,7 @@ import {
   useSubtarefas, useSalvarSubtarefas, useAbrirSubtarefa, useTituloTarefa, useComentariosDasSubtarefas,
   useAddComentario, useExcluirComentario,
   useDependencias, useAddDependencia, useExcluirDependencia,
-  useUsuarios, gerarIaGestao, useRegistrarAtividade, useCamposDeOrigem,
+  useUsuarios, gerarIaGestao, useRegistrarAtividade, useCamposDeOrigem, useQuadros, useChecklist, useAddChecklist,
   PRIORIDADES, useEmpresaSugerida, useNomesEmpresas,
   type GestaoTarefa, type StatusTarefa, type PrioridadeTarefa, type Subtarefa, type GestaoSubtarefa, type GestaoStatus, type GestaoCampo, type GestaoVinculado,
 } from "@/lib/hooks/useGestao";
@@ -27,6 +33,10 @@ import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
 import AprovacaoNaTarefa from "@/components/gestao/AprovacaoNaTarefa";
 import { nomesResponsaveis } from "@/lib/gestao/responsaveis";
 import CampoInput from "@/components/gestao/CampoInput";
+import CampoData from "@/components/gestao/CampoData";
+import ChecklistTarefa from "@/components/gestao/ChecklistTarefa";
+import { isoLocal } from "@/lib/gestao/datas-rapidas";
+import { linkTarefa } from "@/lib/gestao/link-tarefa";
 import { BotaoTempo, RegistroTempo } from "@/components/gestao/TempoTracker";
 import AnexosTarefa from "@/components/gestao/AnexosTarefa";
 import HistoricoTarefa from "@/components/gestao/HistoricoTarefa";
@@ -58,7 +68,55 @@ function ValorOrigem({ valor }: { valor: unknown }) {
   return <span className="whitespace-pre-wrap text-sm text-gray-800">{valor == null || valor === "" ? "—" : String(valor)}</span>;
 }
 
-type Aba = "detalhes" | "subtarefas" | "comentarios" | "anexos" | "historico" | "dependencias";
+/** Campo sem valor: mostra "Adicionar" no painel (como no Runrun). `false` conta como vazio (caixa de seleção). */
+function campoVazio(v: unknown): boolean {
+  return v == null || v === "" || v === false || (Array.isArray(v) && v.length === 0);
+}
+
+/**
+ * Linha do painel de campos (coluna da direita, como no Runrun): ícone + nome à esquerda e o valor
+ * à direita. `largo` põe o nome em cima e o valor na largura toda (múltipla escolha, ex.: Produtos).
+ */
+/** JCN (Etapa 7.9a): a dica de cada linha do painel de campos, pela chave da linha. */
+const DICA_DA_LINHA: Record<string, keyof typeof DICAS_GESTAO_TAREFA> = {
+  status: "status", responsavel: "responsaveis", prioridade: "prioridade", etiquetas: "etiquetas", inicio: "inicio",
+  termino: "termino", recorrencia: "recorrencia", seguidores: "seguidores", pontos: "pontos",
+};
+
+function LinhaCampo({ icone: Icone, rotulo, campo, largo = false, children }: {
+  icone: LucideIcon;
+  rotulo: string;
+  /** Chave da linha: o "Adicionar" põe o cursor no primeiro campo dela. */
+  campo?: string;
+  largo?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div data-campo={campo} className={largo ? "py-1.5" : "flex items-start gap-3 py-1"}>
+      <div className={`flex min-w-0 items-center gap-2 text-sm font-medium text-gray-600 ${largo ? "mb-1.5" : "w-32 shrink-0 pt-1.5"}`}>
+        <Icone className="size-4 shrink-0 text-gray-400" aria-hidden />
+        {campo && DICA_DA_LINHA[campo] ? (
+          <Dica texto={DICAS_GESTAO_TAREFA[DICA_DA_LINHA[campo]]}><span className="truncate">{rotulo}</span></Dica>
+        ) : (
+          <span className="truncate" title={rotulo}>{rotulo}</span>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
+
+function BotaoAdicionar({ rotulo, onClick }: { rotulo: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} aria-label={`Adicionar: ${rotulo}`} className="py-1.5 text-sm font-semibold text-marca-primary hover:underline">
+      Adicionar
+    </button>
+  );
+}
+
+const SemValor = () => <span className="inline-block py-1.5 text-sm text-gray-400">—</span>;
+
+type Aba = "detalhes" | "subtarefas" | "checklist" | "comentarios" | "anexos" | "historico" | "dependencias";
 
 // Defaults ESTÁVEIS (referência constante): sem eles, `const { data = [] }` cria um array
 // novo a cada render, tornando a dep do efeito de pré-população instável e disparando-o em
@@ -66,6 +124,7 @@ type Aba = "detalhes" | "subtarefas" | "comentarios" | "anexos" | "historico" | 
 const EMPTY_VINCULADOS: GestaoVinculado[] = [];
 const EMPTY_USUARIOS: { nome: string; email: string }[] = [];
 const EMPTY_SUBTAREFAS: GestaoSubtarefa[] = [];
+const EMPTY_CHECKLIST: { feito: boolean }[] = [];
 
 export default function TarefaModal({
   open,
@@ -171,16 +230,29 @@ export default function TarefaModal({
   // Abas no topo do modal (como no Runrun): detalhes (o formulário), subtarefas, comentários,
   // anexos, histórico e dependências. O tempo fica no início de Detalhes e no rodapé.
   const [aba, setAba] = useState<Aba>("detalhes");
-  // "Criar outra" (como no Jira, Painel 0.3.912): depois de criar, a janela fica aberta e limpa para a próxima.
-  // Fica marcado enquanto a tela estiver aberta (a janela não é desmontada ao fechar).
+  // Painel de campos à direita (como no Runrun): campo vazio aparece como "Adicionar" e só vira
+  // caixa de edição depois do clique (ou quando já tem valor). A seta esconde o painel na tela larga.
+  const [camposAbertos, setCamposAbertos] = useState<Set<string>>(() => new Set());
+  const [painelAberto, setPainelAberto] = useState(true);
+  // "Criar outra" (como no Jira): depois de criar, a janela fica aberta e limpa para a próxima. Fica marcado
+  // enquanto a tela estiver aberta (a janela não é desmontada ao fechar).
   const [criarOutra, setCriarOutra] = useState(false);
+  // v351: checklist. Na Nova tarefa os itens ficam aqui até "Criar tarefa"; na existente gravam na hora.
+  const [rascunhoChecklist, setRascunhoChecklist] = useState<string[]>([]);
+  const { data: checklist = EMPTY_CHECKLIST } = useChecklist(tarefa?.id_tarefa);
+  const addChecklist = useAddChecklist();
   const tituloRef = useRef<HTMLInputElement>(null);
+  const painelRef = useRef<HTMLElement>(null);
+  const { data: quadros } = useQuadros();
+  const idDescricao = useId();
   const { data: timeline } = useTarefaHistorico(tarefa?.id_tarefa);
   const nComentarios = (timeline ?? []).filter((i) => i.kind === "comentario").length;
 
   useEffect(() => {
     if (!open) return;
     setAba("detalhes");
+    setCamposAbertos(new Set());
+    setRascunhoChecklist([]);
     setTitulo(tarefa?.titulo ?? "");
     setDescricao(tarefa?.descricao ?? "");
     setPrioridade(tarefa?.prioridade ?? "Media");
@@ -413,6 +485,10 @@ export default function TarefaModal({
     // p/ NAO apagar subtarefas que uma automacao (esteira/checklists em tarefa_criada) acabou de
     // criar server-side. O trigger-espelho reescreve o jsonb.
     if (!ehSub) await salvarSub.mutateAsync({ id_tarefa: idSalvo, subtarefas: subsFinal, reconciliar: !!tarefa?.id_tarefa });
+    // v351: checklist feito na Nova tarefa. Se falhar, a tarefa já existe (o aviso sai do hook) e segue o fluxo.
+    if (!tarefa && rascunhoChecklist.length) {
+      try { await addChecklist.mutateAsync({ id_tarefa: idSalvo, textos: rascunhoChecklist, ordemInicial: 0 }); } catch { /* avisado */ }
+    }
 
     // Vínculos: N responsáveis + N seguidores (por e-mail). O espelho reflete os responsáveis.
     await salvarVinc.mutateAsync({
@@ -451,6 +527,7 @@ export default function TarefaModal({
       setDescricao("");
       setSubtarefas([]);
       setNovaSub("");
+      setRascunhoChecklist([]);
       setAba("detalhes");
       requestAnimationFrame(() => tituloRef.current?.focus());
       return;
@@ -482,13 +559,96 @@ export default function TarefaModal({
 
   const inputCls =
     "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-gray-50";
+  // Caixas do painel de campos: mais baixas e com fundo próprio (o painel é cinza); a largura vem de quem usa.
+  const caixaPainel =
+    "rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-gray-50";
+  const camposGrade = campos;
+  const camposOrigemGrade = camposOrigem;
+  const totalChecklist = tarefa ? checklist.length : rascunhoChecklist.length;
+  const feitosChecklist = tarefa ? checklist.filter((i) => i.feito).length : 0;
+  const atrasada = !!prazo && prazo < isoLocal(new Date()) && statusMap.get(status)?.tipo !== "concluido";
   const feitas = subtarefas.filter((s) => s.feito).length;
 
+  const nomeQuadro = quadros?.find((q) => q.id_quadro === (tarefa?.id_quadro ?? idQuadro))?.nome ?? null;
+  // "Criada por" só quando quem criou é uma pessoa (e-mail); importação, recorrência etc. ficam só com a data.
+  const criadaPor = tarefa?.created_by?.includes("@") ? nomeDe(tarefa.created_by) ?? tarefa.created_by : null;
+  const criadaEm = tarefa?.created_at ? new Date(tarefa.created_at) : null;
+  const corStatus = statusMap.get(status)?.cor ?? "#94a3b8";
+  const corPrioridade = PRIORIDADES.find((p) => p.value === prioridade)?.cor ?? "#94a3b8";
+
+  /** Item 4: link direto da tarefa (o mesmo dos avisos e e-mails: /gestao?quadro=…&tarefa=…). */
+  async function copiarLink() {
+    if (!tarefa) return;
+    const url = linkTarefa(window.location.origin, { id_quadro: tarefa.id_quadro, id_tarefa: tarefa.id_tarefa });
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link da tarefa copiado");
+    } catch {
+      // Sem a API da área de transferência (permissão negada / navegador antigo): cópia pelo jeito antigo.
+      const caixa = document.createElement("textarea");
+      caixa.value = url;
+      caixa.style.position = "fixed";
+      caixa.style.opacity = "0";
+      document.body.appendChild(caixa);
+      caixa.select();
+      const ok = document.execCommand("copy");
+      caixa.remove();
+      if (ok) toast.success("Link da tarefa copiado");
+      else toast.error(`Não deu para copiar. O link é: ${url}`);
+    }
+  }
+
+  function abrirCampo(chave: string) {
+    setCamposAbertos((s) => new Set(s).add(chave));
+    // Depois de o React desenhar a caixa, o cursor vai para ela.
+    requestAnimationFrame(() => {
+      painelRef.current?.querySelector<HTMLElement>(`[data-campo="${chave}"] :is(input, select, textarea)`)?.focus();
+    });
+  }
+
+  /** Campo com valor (ou já aberto pelo "Adicionar") mostra a caixa; vazio mostra "Adicionar" — ou "—" para quem só lê. */
+  function campoOuAdicionar(chave: string, cheio: boolean, rotulo: string, caixa: () => ReactNode) {
+    if (cheio || camposAbertos.has(chave)) return caixa();
+    return ro ? <SemValor /> : <BotaoAdicionar rotulo={rotulo} onClick={() => abrirCampo(chave)} />;
+  }
+
+  /** Responsáveis/seguidores: as pessoas escolhidas e, para quem edita, "Adicionar" → caixa de busca. */
+  function pessoas(chave: string, rotulo: string, emails: string[], remover: (em: string) => void, busca: ReactNode, destaque: boolean) {
+    return (
+      <div className="space-y-1.5">
+        {emails.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {emails.map((em) => {
+              const nome = nomeDe(em) ?? em;
+              return (
+                <span key={em} className={`inline-flex items-center gap-1 rounded-full py-0.5 pl-1 pr-2 text-xs font-medium ${destaque ? "bg-marca-light text-marca-primary" : "bg-gray-100 text-gray-700"}`}>
+                  <AvatarPessoa nome={nome} email={em} className="size-5 text-[9px]" />
+                  {nome}
+                  {!ro && (
+                    <button type="button" aria-label={`Remover ${rotulo.toLowerCase()} ${nome}`} onClick={() => remover(em)} className="text-gray-400 hover:text-red-600">
+                      <X className="size-3" />
+                    </button>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+        )}
+        {ro
+          ? emails.length === 0 && <SemValor />
+          : camposAbertos.has(chave)
+            ? busca
+            : <BotaoAdicionar rotulo={rotulo} onClick={() => abrirCampo(chave)} />}
+      </div>
+    );
+  }
+
   // Tarefa nova só tem Subtarefas (o resto precisa do id salvo); a janela de uma subtarefa
-  // não tem Subtarefas nem Dependências (v292).
+  // não tem Subtarefas nem Dependências (v300). Os campos ficam no painel da direita.
   const abas: { id: Aba; rotulo: string; contagem?: number }[] = [
-    { id: "detalhes", rotulo: "Detalhes" },
+    { id: "detalhes", rotulo: "Descrição" },
     ...(!ehSub ? [{ id: "subtarefas" as const, rotulo: "Subtarefas", contagem: subtarefas.length }] : []),
+    { id: "checklist" as const, rotulo: "Checklist", contagem: totalChecklist },
     ...(tarefa
       ? [
           { id: "comentarios" as const, rotulo: "Comentários", contagem: nComentarios },
@@ -505,7 +665,10 @@ export default function TarefaModal({
       open={open}
       onClose={onClose}
       title={ehSub ? "Subtarefa" : tarefa ? "Editar tarefa" : "Nova tarefa"}
-      size="xl"
+      size="3xl"
+      // Tela larga: duas colunas (como no Runrun), cada uma com a própria rolagem e altura fixa — a janela
+      // não pula ao trocar de aba. Celular: uma coluna só, o conteúdo e depois os campos.
+      corpoClassName="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-[0_1_70vh] lg:flex-row lg:overflow-hidden"
       footer={
         !ro ? (
           <div className="flex items-center justify-between">
@@ -533,10 +696,47 @@ export default function TarefaModal({
         ) : undefined
       }
     >
-      <div>
-        {abas.length > 1 && (
-          // Fila de abas presa no topo do corpo do modal (o -top-5/-mx-6 anulam o padding do Modal).
-          <div role="tablist" aria-label="Seções da tarefa" className="sticky -top-5 z-10 -mx-6 -mt-5 mb-4 flex gap-1 overflow-x-auto border-b border-gray-200 bg-white px-6 pt-2">
+      {/* Coluna da esquerda: título, número/autoria e as abas. */}
+      <div className="flex min-w-0 flex-1 flex-col lg:min-h-0">
+        <div className="px-6 pt-5">
+          {ehSub && (
+            <p className="mb-1 flex items-center gap-1.5 text-xs text-gray-500">
+              <CornerDownRight className="size-3.5 shrink-0" />
+              Subtarefa de <span className="truncate font-medium text-gray-700">{tituloPai ?? "…"}</span>
+            </p>
+          )}
+          <input
+            ref={tituloRef}
+            value={titulo}
+            disabled={ro}
+            onChange={(e) => setTitulo(e.target.value)}
+            placeholder="O que precisa ser feito?"
+            aria-label="Título (obrigatório)"
+            className="-mx-2 w-[calc(100%+1rem)] rounded-md border border-transparent bg-transparent px-2 py-1 text-xl font-semibold text-gray-900 placeholder:font-normal placeholder:text-gray-400 hover:border-gray-200 focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:hover:border-transparent"
+          />
+          {tarefa && (
+            <p className="mt-0.5 text-xs text-gray-500">
+              <span className="font-medium text-gray-600">#{tarefa.id_tarefa}</span>
+              <button
+                type="button"
+                onClick={copiarLink}
+                title="Copiar o link desta tarefa"
+                className="ml-1 inline-flex items-center gap-0.5 rounded px-1 align-middle font-medium text-gray-400 transition hover:bg-gray-100 hover:text-marca-primary"
+              >
+                <Link2 className="size-3.5" /> Copiar link
+              </button>
+              {criadaEm && (
+                <>
+                  {" · "}Criada{criadaPor && <> por <span className="font-medium text-gray-600">{criadaPor}</span></>}
+                  {" em "}{criadaEm.toLocaleDateString("pt-BR")} {criadaEm.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                </>
+              )}
+            </p>
+          )}
+        </div>
+
+        <div className="mt-3 flex items-end gap-2 border-b border-gray-200 px-6">
+          <div role="tablist" aria-label="Seções da tarefa" className="flex min-w-0 flex-1 gap-0.5 overflow-x-auto">
             {abas.map((a) => (
               <button
                 key={a.id}
@@ -544,7 +744,7 @@ export default function TarefaModal({
                 role="tab"
                 aria-selected={abaAtiva === a.id}
                 onClick={() => setAba(a.id)}
-                className={`-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition ${
+                className={`-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 py-2 text-sm font-medium transition ${
                   abaAtiva === a.id
                     ? "border-marca-primary text-marca-primary"
                     : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
@@ -555,230 +755,40 @@ export default function TarefaModal({
               </button>
             ))}
           </div>
-        )}
-        <div role="tabpanel">
+          <button
+            type="button"
+            onClick={() => setPainelAberto((v) => !v)}
+            aria-expanded={painelAberto}
+            aria-label={painelAberto ? "Esconder os campos" : "Mostrar os campos"}
+            title={painelAberto ? "Esconder os campos" : "Mostrar os campos"}
+            className="mb-1 hidden size-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 lg:flex"
+          >
+            {painelAberto ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
+          </button>
+        </div>
+
+        <div role="tabpanel" className="px-6 py-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
         {abaAtiva === "detalhes" && (
-        <div className="space-y-3">
-        {tarefa && <RegistroTempo idTarefa={tarefa.id_tarefa} podeEditar={podeEditar} />}
-        {ehSub && (
-          <p className="flex items-center gap-1.5 text-xs text-gray-500">
-            <CornerDownRight className="size-3.5 shrink-0" />
-            Subtarefa de <span className="truncate font-medium text-gray-700">{tituloPai ?? "…"}</span>
-          </p>
-        )}
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.titulo}>Título</Dica> *</label>
-          <input ref={tituloRef} value={titulo} disabled={ro} onChange={(e) => setTitulo(e.target.value)} placeholder="O que precisa ser feito?" className={inputCls} />
-        </div>
-        <div>
-            {/* Aprovação pendente (10/11/2026): decide aqui, sem depender da Caixa de entrada da aprovadora. */}
+          <div>
+            {/* Aprovação pendente (Painel 0.3.919): decide aqui, sem depender da Caixa de entrada da aprovadora. */}
             {tarefa?.id_tarefa && <AprovacaoNaTarefa idTarefa={tarefa.id_tarefa} podeEditarQuadro={podeEditar} onDecidido={onClose} />}
-          <div className="mb-1 flex items-center justify-between">
-            <label className="block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.descricao}>Descrição</Dica></label>
-            {!ro && (
-              <button type="button" onClick={iaDescricao} disabled={iaLoad !== null} className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-marca-primary hover:bg-marca-light/50 disabled:opacity-50">
-                {iaLoad === "desc" ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} Redigir com IA
-              </button>
-            )}
-          </div>
-          <textarea value={descricao} disabled={ro} onChange={(e) => setDescricao(e.target.value)} rows={8} className={`${inputCls} resize-y`} />
-        </div>
-        {/* Datas lado a lado, horas logo abaixo; responsável desce para junto dos seguidores. */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.inicio}>Data de início</Dica></label>
-            <input type="date" value={dataInicio} disabled={ro} max={prazo || undefined} onChange={(e) => setDataInicio(e.target.value)} className={inputCls} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.termino}>Data de término</Dica></label>
-            <input type="date" value={prazo} disabled={ro} min={dataInicio || undefined} onChange={(e) => setPrazo(e.target.value)} className={inputCls} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.hora_inicio}>Hora de início</Dica></label>
-            <input type="time" value={horaInicio} disabled={ro} onChange={(e) => setHoraInicio(e.target.value)} className={inputCls} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.hora_fim}>Hora fim</Dica></label>
-            <input type="time" value={horaFim} disabled={ro} onChange={(e) => setHoraFim(e.target.value)} className={inputCls} />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.prioridade}>Prioridade</Dica></label>
-            <select value={prioridade} disabled={ro} onChange={(e) => setPrioridade(e.target.value as PrioridadeTarefa)} className={inputCls}>
-              {PRIORIDADES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.status}>Status</Dica></label>
-            <select value={status} disabled={ro} onChange={(e) => mudarStatus(e.target.value)} className={inputCls}>
-              {statuses.map((s) => <option key={s.slug} value={s.slug}>{s.nome}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.pontos}>Pontos (esforço)</Dica></label>
-            <input type="number" min="0" value={pontos} disabled={ro} onChange={(e) => setPontos(e.target.value)} placeholder="—" className={inputCls} />
-          </div>
-        </div>
-
-        {!ehSub && (
-          // v338 (Painel v354): empresa do cadastro. A Agenda mostra a empresa de cada atividade (a da subtarefa vem da mãe).
-          <div>
-            <label className="mb-1 flex items-center gap-1 text-xs font-medium text-gray-600"><Building2 className="size-3.5" /> Empresa</label>
-            {ro ? (
-              idEmpresa ? (
-                <Link href={`/empresas/${idEmpresa}`} className="block truncate py-1.5 text-sm font-medium text-marca-primary hover:underline">{nomeEmpresaDe(idEmpresa) ?? idEmpresa}</Link>
-              ) : (
-                <p className="py-1.5 text-sm text-gray-400">—</p>
-              )
-            ) : (
-              <div className="flex items-center gap-1">
-                <div className="min-w-0 flex-1">
-                  <EmpresaSelect value={idEmpresa} onChange={(v) => setIdEmpresa(v || null)} allowAll placeholder="Buscar empresa…" />
-                </div>
-                {idEmpresa && (
-                  <Link href={`/empresas/${idEmpresa}`} target="_blank" title="Abrir a ficha da empresa" aria-label="Abrir a ficha da empresa" className="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-marca-primary">
-                    <ExternalLink className="size-4" />
-                  </Link>
-                )}
-              </div>
-            )}
-            {!ro && !idEmpresa && sugestoesEmpresa.length > 0 && (
-              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-gray-500">
-                <span>{sugestoesEmpresa.length > 1 ? "Sugeridas pelo título:" : sugestoesEmpresa[0].por === "cnpj" ? "Sugerida pelo CNPJ do título:" : "Sugerida pelo título:"}</span>
-                {sugestoesEmpresa.map((s) => (
-                  <button key={s.id_empresa} type="button" onClick={() => setIdEmpresa(s.id_empresa)} title="Usar esta empresa (grava ao salvar)"
-                    className="rounded-full border border-marca-primary/40 bg-marca-light/50 px-2 py-0.5 font-medium text-marca-primary hover:bg-marca-light">
-                    {s.nome}{s.municipio ? ` · ${s.municipio}` : ""}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {(campos.length > 0 || camposOrigem.length > 0) && (
-          // Campos personalizados na mesma grade dos campos fixos (antes ficavam numa caixa fechada).
-          // Os que vieram do cartão de origem (v315 = Painel v325) aparecem só para leitura, com o nome do quadro.
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {campos.map((c) => (
-              <div key={c.id} className={c.tipo === "multi" ? "sm:col-span-2" : undefined}>
-                <label className="mb-1 block text-xs font-medium text-gray-600">{c.nome}</label>
-                <CampoInput campo={c} value={valoresCampos[c.id]} onChange={(v) => setValoresCampos((s) => ({ ...s, [c.id]: v }))} disabled={ro} />
-              </div>
-            ))}
-            {camposOrigem.map((c) => (
-              <div key={`origem:${c.id}`} className={c.tipo === "multi" ? "sm:col-span-2" : undefined}>
-                <label className="mb-1 block text-xs font-medium text-gray-600">
-                  {c.nome} <span className="font-normal text-gray-400">· {c.quadro}</span>
-                </label>
-                <div className="min-h-[38px] rounded-md border border-gray-200 bg-gray-50 px-3 py-2" title="Só leitura — vem do cartão de origem">
-                  <ValorOrigem valor={c.valor} />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">
-            <Dica texto={DICAS_GESTAO_TAREFA.responsaveis}>{responsaveisEmails.length > 1 ? `Responsáveis (${responsaveisEmails.length})` : "Responsável"}</Dica>
-          </label>
-          {/* Campo de busca menor, com os selecionados ao lado. */}
-          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start">
-            {!ro && (
-              <div className="w-full shrink-0 sm:w-60">
-                <UsuarioCombobox
-                  usuarios={usuariosFull.filter((u) => !responsaveisEmails.includes(u.email.toLowerCase()))}
-                  value=""
-                  onChange={(em) => {
-                    if (!em) return;
-                    const e = em.toLowerCase();
-                    setResponsaveisEmails((s) => [...new Set([...s, e])]);
-                    setSeguidoresEmails((s) => s.filter((x) => x.toLowerCase() !== e)); // responsável não é também seguidor
-                  }}
-                  placeholder={responsaveisEmails.length === 0 ? "Buscar responsável…" : "Adicionar responsável…"}
-                />
-              </div>
-            )}
-            {responsaveisEmails.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 sm:pt-1.5">
-                {responsaveisEmails.map((em) => {
-                  const nome = nomeDe(em) ?? em;
-                  return (
-                    <span key={em} className="inline-flex items-center gap-1 rounded-full bg-marca-light/60 py-0.5 pl-1 pr-2 text-xs font-medium text-marca-primary">
-                      <AvatarPessoa nome={nome} email={em} className="size-5 text-[9px]" />
-                      {nome}
-                      {!ro && (
-                        <button type="button" aria-label={`Remover responsável ${nome}`} onClick={() => setResponsaveisEmails((s) => s.filter((x) => x !== em))} className="text-gray-400 hover:text-red-600">
-                          <X className="size-3" />
-                        </button>
-                      )}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.seguidores}>Seguidores</Dica></label>
-          {seguidoresEmails.length > 0 && (
-            <div className="mb-1.5 flex flex-wrap gap-1.5">
-              {seguidoresEmails.map((em) => {
-                const nome = nomeDe(em) ?? em;
-                return (
-                  <span key={em} className="inline-flex items-center gap-1 rounded-full bg-gray-100 py-0.5 pl-1 pr-2 text-xs font-medium text-gray-700">
-                    <AvatarPessoa nome={nome} email={em} className="size-5 text-[9px]" />
-                    {nome}
-                    {!ro && (
-                      <button type="button" aria-label={`Remover seguidor ${nome}`} onClick={() => setSeguidoresEmails((s) => s.filter((x) => x !== em))} className="text-gray-400 hover:text-red-600">
-                        <X className="size-3" />
-                      </button>
-                    )}
-                  </span>
-                );
-              })}
+            <div className="mb-1 flex items-center justify-between">
+              <label htmlFor={ro ? undefined : idDescricao} className="block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.descricao}>Descrição</Dica></label>
+              {!ro && (
+                <button type="button" onClick={iaDescricao} disabled={iaLoad !== null} className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-marca-primary hover:bg-marca-light/50 disabled:opacity-50">
+                  {iaLoad === "desc" ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} Redigir com IA
+                </button>
+              )}
             </div>
-          )}
-          {!ro && (
-            <UsuarioCombobox
-              usuarios={usuariosFull.filter((u) => !responsaveisEmails.includes(u.email.toLowerCase()) && !seguidoresEmails.includes(u.email))}
-              value=""
-              onChange={(em) => { if (em) setSeguidoresEmails((s) => [...new Set([...s, em])]); }}
-              placeholder="Adicionar seguidor…"
-            />
-          )}
-        </div>
-
-        {!ehSub && (
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.recorrencia}>Recorrência</Dica></label>
-          <div className="flex flex-wrap items-center gap-2">
-            <select value={recTipo} disabled={ro} onChange={(e) => setRecTipo(e.target.value as "" | "diaria" | "semanal" | "mensal")} className={`${inputCls} max-w-[10rem]`}>
-              <option value="">Não repete</option>
-              <option value="diaria">Diária</option>
-              <option value="semanal">Semanal</option>
-              <option value="mensal">Mensal</option>
-            </select>
-            {recTipo && (
-              <span className="flex items-center gap-1 text-sm text-gray-600">a cada
-                <input type="number" min="1" value={recInt} disabled={ro} onChange={(e) => setRecInt(parseInt(e.target.value || "1", 10))} className="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none" />
-                {recTipo === "diaria" ? "dia(s)" : recTipo === "semanal" ? "semana(s)" : "mês(es)"}
-              </span>
+            {ro ? (
+              // Quem só lê vê o texto (a caixa desabilitada ficava clara no tema escuro, com a letra apagada).
+              <div id={idDescricao} className="whitespace-pre-wrap break-words text-sm text-gray-800">
+                {descricao.trim() || <span className="text-gray-400">Sem descrição.</span>}
+              </div>
+            ) : (
+              <textarea id={idDescricao} value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={12} className={`${inputCls} resize-y`} />
             )}
           </div>
-          {recTipo && <p className="mt-1 text-[11px] text-gray-400">Uma nova tarefa é criada automaticamente a cada período (a partir do prazo).</p>}
-        </div>
-        )}
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.etiquetas}>Etiquetas</Dica></label>
-          <MultiChipInput value={etiquetas} onChange={setEtiquetas} sugestoes={etiquetasSugeridas} placeholder="Adicionar etiqueta…" ro={ro} />
-        </div>
-
-        </div>
         )}
 
         {abaAtiva === "subtarefas" && (
@@ -873,6 +883,16 @@ export default function TarefaModal({
         </div>
         )}
 
+        {abaAtiva === "checklist" && (
+          <ChecklistTarefa
+            idTarefa={tarefa?.id_tarefa ?? null}
+            podeEditar={podeEditar}
+            rascunho={rascunhoChecklist}
+            setRascunho={setRascunhoChecklist}
+            nomeDe={nomeDe}
+          />
+        )}
+
         {tarefa && abaAtiva === "comentarios" && (
           <ComentariosTarefa
             idTarefa={tarefa.id_tarefa}
@@ -940,6 +960,226 @@ export default function TarefaModal({
         )}
         </div>
       </div>
+
+      {/* Coluna da direita: os campos da tarefa, um por linha (como no Runrun). Vazio = "Adicionar". */}
+      <aside
+        ref={painelRef}
+        aria-label="Campos da tarefa"
+        className={`shrink-0 border-t border-gray-200 bg-gray-50 px-5 py-4 lg:w-[27rem] lg:overflow-y-auto lg:border-l lg:border-t-0 ${painelAberto ? "" : "lg:hidden"}`}
+      >
+        <div className="space-y-0.5">
+          {nomeQuadro && (
+            <LinhaCampo icone={Columns3} rotulo="Quadro">
+              <p className="truncate py-1.5 text-sm font-medium text-gray-800" title={nomeQuadro}>{nomeQuadro}</p>
+            </LinhaCampo>
+          )}
+          <LinhaCampo icone={ArrowRightLeft} rotulo="Status" campo="status">
+            <div className="flex items-center gap-2">
+              <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: corStatus }} aria-hidden />
+              <select value={status} disabled={ro} onChange={(e) => mudarStatus(e.target.value)} aria-label="Status" className={`${caixaPainel} w-full`}>
+                {statuses.map((s) => <option key={s.slug} value={s.slug}>{s.nome}</option>)}
+              </select>
+            </div>
+          </LinhaCampo>
+          <LinhaCampo icone={UserRound} rotulo={responsaveisEmails.length > 1 ? `Responsáveis (${responsaveisEmails.length})` : "Responsável"} campo="responsavel">
+            {pessoas(
+              "responsavel",
+              "Responsável",
+              responsaveisEmails,
+              (em) => setResponsaveisEmails((s) => s.filter((x) => x !== em)),
+              <UsuarioCombobox
+                usuarios={usuariosFull.filter((u) => !responsaveisEmails.includes(u.email.toLowerCase()))}
+                value=""
+                onChange={(em) => {
+                  if (!em) return;
+                  const e = em.toLowerCase();
+                  setResponsaveisEmails((s) => [...new Set([...s, e])]);
+                  setSeguidoresEmails((s) => s.filter((x) => x.toLowerCase() !== e)); // responsável não é também seguidor
+                }}
+                placeholder={responsaveisEmails.length === 0 ? "Buscar responsável…" : "Adicionar responsável…"}
+                className={`${caixaPainel} w-full`}
+              />,
+              true,
+            )}
+          </LinhaCampo>
+          <LinhaCampo icone={Flag} rotulo="Prioridade" campo="prioridade">
+            <div className="flex items-center gap-2">
+              <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: corPrioridade }} aria-hidden />
+              <select value={prioridade} disabled={ro} onChange={(e) => setPrioridade(e.target.value as PrioridadeTarefa)} aria-label="Prioridade" className={`${caixaPainel} w-full`}>
+                {PRIORIDADES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+              </select>
+            </div>
+          </LinhaCampo>
+          {!ehSub && (
+            <>
+              {/* v338 (Painel v354, item 11): empresa do cadastro. Sem empresa, a sugestão (CNPJ ou nome no título) só preenche
+                  quando a pessoa clica — e grava no Salvar, como os outros campos. A Agenda mostra a empresa de cada atividade. */}
+              <LinhaCampo icone={Building2} rotulo="Empresa" campo="empresa">
+                {ro ? (
+                  idEmpresa ? (
+                    <Link href={`/empresas/${idEmpresa}`} className="block truncate py-1.5 text-sm font-medium text-marca-primary hover:underline">
+                      {nomeEmpresaDe(idEmpresa) ?? idEmpresa}
+                    </Link>
+                  ) : <SemValor />
+                ) : campoOuAdicionar("empresa", !!idEmpresa, "Empresa", () => (
+                  <div className="flex items-center gap-1">
+                    <div className="min-w-0 flex-1">
+                      <EmpresaSelect value={idEmpresa} onChange={(v) => setIdEmpresa(v || null)} allowAll placeholder="Buscar empresa…" />
+                    </div>
+                    {idEmpresa && (
+                      <Link href={`/empresas/${idEmpresa}`} target="_blank" title="Abrir a ficha da empresa" aria-label="Abrir a ficha da empresa" className="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-marca-primary">
+                        <ExternalLink className="size-4" />
+                      </Link>
+                    )}
+                  </div>
+                ))}
+                {!ro && !idEmpresa && sugestoesEmpresa.length > 0 && (
+                  <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-gray-500">
+                    <span>{sugestoesEmpresa.length > 1 ? "Sugeridas pelo título:" : sugestoesEmpresa[0].por === "cnpj" ? "Sugerida pelo CNPJ do título:" : "Sugerida pelo título:"}</span>
+                    {sugestoesEmpresa.map((s) => (
+                      <button
+                        key={s.id_empresa}
+                        type="button"
+                        onClick={() => { setIdEmpresa(s.id_empresa); abrirCampo("empresa"); }}
+                        title="Usar esta empresa (grava ao salvar)"
+                        className="max-w-full truncate rounded-full border border-marca-primary/40 bg-white px-2 py-0.5 font-medium text-marca-primary hover:bg-marca-light"
+                      >
+                        {s.nome}{s.municipio ? ` · ${s.municipio}` : ""}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </LinhaCampo>
+            </>
+          )}
+          <LinhaCampo icone={Tag} rotulo="Etiquetas" campo="etiquetas">
+            {campoOuAdicionar("etiquetas", etiquetas.length > 0, "Etiquetas", () => (
+              <MultiChipInput value={etiquetas} onChange={setEtiquetas} sugestoes={etiquetasSugeridas} placeholder="Adicionar etiqueta…" ro={ro} />
+            ))}
+          </LinhaCampo>
+        </div>
+
+        <hr className="my-3 border-gray-200" />
+
+        <div className="space-y-0.5">
+          <LinhaCampo icone={CalendarDays} rotulo="Início" campo="inicio">
+            {campoOuAdicionar("inicio", !!(dataInicio || horaInicio), "Início", () => (
+              <CampoData
+                data={dataInicio}
+                hora={horaInicio}
+                onChange={(d, h) => { setDataInicio(d); setHoraInicio(h); }}
+                max={prazo || undefined}
+                ro={ro}
+                rotulo="Início"
+                abrirAoMontar={!(dataInicio || horaInicio)}
+                caixaCls={caixaPainel}
+              />
+            ))}
+          </LinhaCampo>
+          <LinhaCampo icone={CalendarCheck} rotulo="Término" campo="termino">
+            {campoOuAdicionar("termino", !!(prazo || horaFim), "Término", () => (
+              <CampoData
+                data={prazo}
+                hora={horaFim}
+                onChange={(d, h) => { setPrazo(d); setHoraFim(h); }}
+                min={dataInicio || undefined}
+                ro={ro}
+                rotulo="Término"
+                atrasada={atrasada}
+                abrirAoMontar={!(prazo || horaFim)}
+                caixaCls={caixaPainel}
+              />
+            ))}
+          </LinhaCampo>
+          {!ehSub && (
+            <LinhaCampo icone={Repeat} rotulo="Recorrência" campo="recorrencia">
+              {campoOuAdicionar("recorrencia", !!recTipo, "Recorrência", () => (
+                <div className="space-y-1.5">
+                  <select value={recTipo} disabled={ro} onChange={(e) => setRecTipo(e.target.value as "" | "diaria" | "semanal" | "mensal")} aria-label="Recorrência" className={`${caixaPainel} w-full`}>
+                    <option value="">Não repete</option>
+                    <option value="diaria">Diária</option>
+                    <option value="semanal">Semanal</option>
+                    <option value="mensal">Mensal</option>
+                  </select>
+                  {recTipo && (
+                    <span className="flex items-center gap-1.5 text-sm text-gray-600">a cada
+                      <input type="number" min="1" value={recInt} disabled={ro} onChange={(e) => setRecInt(parseInt(e.target.value || "1", 10))} aria-label="Intervalo da recorrência" className={`${caixaPainel} w-16`} />
+                      {recTipo === "diaria" ? "dia(s)" : recTipo === "semanal" ? "semana(s)" : "mês(es)"}
+                    </span>
+                  )}
+                  {recTipo && <p className="text-[11px] text-gray-400">Uma nova tarefa é criada automaticamente a cada período (a partir do prazo).</p>}
+                </div>
+              ))}
+            </LinhaCampo>
+          )}
+        </div>
+
+        {tarefa && (
+          <>
+            <hr className="my-3 border-gray-200" />
+            <LinhaCampo icone={Clock} rotulo="Tempo gasto">
+              <div className="pt-1">
+                <RegistroTempo idTarefa={tarefa.id_tarefa} podeEditar={podeEditar} semRotulo />
+              </div>
+            </LinhaCampo>
+          </>
+        )}
+
+        <hr className="my-3 border-gray-200" />
+
+        <div className="space-y-0.5">
+          <LinhaCampo icone={Users} rotulo="Seguidores" campo="seguidores">
+            {pessoas(
+              "seguidores",
+              "Seguidor",
+              seguidoresEmails,
+              (em) => setSeguidoresEmails((s) => s.filter((x) => x !== em)),
+              <UsuarioCombobox
+                usuarios={usuariosFull.filter((u) => !responsaveisEmails.includes(u.email.toLowerCase()) && !seguidoresEmails.includes(u.email))}
+                value=""
+                onChange={(em) => { if (em) setSeguidoresEmails((s) => [...new Set([...s, em])]); }}
+                placeholder="Adicionar seguidor…"
+                className={`${caixaPainel} w-full`}
+              />,
+              false,
+            )}
+          </LinhaCampo>
+          <LinhaCampo icone={ListChecks} rotulo="Checklist" campo="checklist">
+            {totalChecklist > 0 ? (
+              <button type="button" onClick={() => setAba("checklist")} title="Abrir o checklist" className="flex w-full items-center gap-2 py-1.5 text-left text-sm text-gray-800 hover:text-marca-primary">
+                <span className="font-medium">{tarefa ? `${feitosChecklist}/${totalChecklist}` : `${totalChecklist} item(ns)`}</span>
+                {tarefa && (
+                  <span className="h-1.5 flex-1 rounded-full bg-gray-100" aria-hidden>
+                    <span className="block h-full rounded-full bg-marca-primary" style={{ width: `${Math.round((feitosChecklist / totalChecklist) * 100)}%` }} />
+                  </span>
+                )}
+              </button>
+            ) : ro ? <SemValor /> : <BotaoAdicionar rotulo="Checklist" onClick={() => setAba("checklist")} />}
+          </LinhaCampo>
+          <LinhaCampo icone={Gauge} rotulo="Pontos" campo="pontos">
+            {campoOuAdicionar("pontos", pontos.trim() !== "", "Pontos", () => (
+              <input type="number" min="0" value={pontos} disabled={ro} onChange={(e) => setPontos(e.target.value)} placeholder="—" aria-label="Pontos (esforço)" className={`${caixaPainel} w-24`} />
+            ))}
+          </LinhaCampo>
+          {/* Campos personalizados do quadro. Múltipla escolha e caixa de seleção já são compactos e
+              aparecem direto; os demais vazios ficam como "Adicionar". */}
+          {camposGrade.map((c) => (
+            <LinhaCampo key={c.id} icone={List} rotulo={c.nome} campo={`campo-${c.id}`} largo={c.tipo === "multi"}>
+              {campoOuAdicionar(`campo-${c.id}`, c.tipo === "multi" || c.tipo === "checkbox" || !campoVazio(valoresCampos[c.id]), c.nome, () => (
+                <CampoInput campo={c} value={valoresCampos[c.id]} onChange={(v) => setValoresCampos((s) => ({ ...s, [c.id]: v }))} disabled={ro} />
+              ))}
+            </LinhaCampo>
+          ))}
+          {/* Campos que vieram do cartão de origem (v325): só leitura, com o nome do quadro. */}
+          {camposOrigemGrade.map((c) => (
+            <LinhaCampo key={`origem:${c.id}`} icone={Link2} rotulo={`${c.nome} · ${c.quadro}`} largo={c.tipo === "multi"}>
+              <div className="py-1.5" title="Só leitura — vem do cartão de origem">
+                <ValorOrigem valor={c.valor} />
+              </div>
+            </LinhaCampo>
+          ))}
+        </div>
+      </aside>
 
       {subAberta && (
         <TarefaModal

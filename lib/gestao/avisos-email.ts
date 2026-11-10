@@ -46,13 +46,9 @@ function fmtData(iso: string | null): string | null {
 }
 
 /** Link direto para a tarefa (a página /gestao abre quadro + tarefa por query). */
-export function linkTarefa(appUrl: string, a: Pick<AvisoReservado, "id_quadro" | "id_tarefa">): string {
-  const qs = new URLSearchParams();
-  if (a.id_quadro) qs.set("quadro", a.id_quadro);
-  if (a.id_tarefa) qs.set("tarefa", a.id_tarefa);
-  const q = qs.toString();
-  return `${appUrl.replace(/\/+$/, "")}/gestao${q ? `?${q}` : ""}`;
-}
+import { linkTarefa } from "@/lib/gestao/link-tarefa";
+// O link mora em lib/gestao/link-tarefa.ts (puro, também usado no navegador); reexportado aqui para os e-mails e o teste.
+export { linkTarefa } from "@/lib/gestao/link-tarefa";
 
 /** Assunto + HTML do e-mail. Função pura (testada). */
 export function montarEmailAviso(a: AvisoReservado, appUrl: string): { assunto: string; html: string } {
