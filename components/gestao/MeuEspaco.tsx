@@ -5,8 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { KanbanSquare, LayoutList, CalendarDays, CalendarClock, CheckSquare, List, Eye, EyeOff } from "lucide-react";
 import MinhasTarefas from "@/components/gestao/MinhasTarefas";
 import MeuQuadro from "@/components/gestao/MeuQuadro";
-import GoogleAgendaCard from "@/components/gestao/GoogleAgendaCard";
-import PreferenciasAvisoCard from "@/components/gestao/PreferenciasAvisoCard";
+import { GoogleAgendaExpirada } from "@/components/gestao/GoogleAgendaMenu";
 import VistaCalendario from "@/components/gestao/VistaCalendario";
 import { PRIORIDADES, useSalvarTarefa, useMinhasTarefasAgenda, type GestaoTarefa, type GestaoStatus, type GestaoQuadro, type PrioridadeTarefa } from "@/lib/hooks/useGestao";
 import { useMeusNiveisQuadros, nivelPodeEditar, useMeuQuadro } from "@/lib/hooks/useGestaoAcesso";
@@ -125,12 +124,9 @@ export default function MeuEspaco({
 
   return (
     <div className="mt-4">
-      {/* Etapa 1 Google Agenda: conectar/desconectar a conta Google do próprio usuário. */}
-      <div className="mb-4 space-y-3">
-        <GoogleAgendaCard />
-        {/* v335: ligar/desligar os avisos no sino e por e-mail */}
-        <PreferenciasAvisoCard />
-      </div>
+      {/* 10/11/2026: conectar a Google Agenda e ligar/desligar os avisos foram para o menu da foto (MenuDaFoto).
+          Aqui fica só o alerta de autorização do Google expirada. */}
+      <GoogleAgendaExpirada />
       {/* v235: o quadro PESSOAL primeiro (criar/arrastar); abaixo, as tarefas em que estou vinculado. */}
       <MeuQuadro onAbrirCompleto={onAbrirQuadro} />
       <h2 className="mt-6 text-base font-semibold text-gray-800">Tarefas em que estou vinculado <span className="text-sm font-normal text-gray-400">— {tarefas.length} em outros quadros</span></h2>

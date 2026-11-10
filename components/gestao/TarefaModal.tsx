@@ -24,6 +24,7 @@ import {
   type GestaoTarefa, type StatusTarefa, type PrioridadeTarefa, type Subtarefa, type GestaoSubtarefa, type GestaoStatus, type GestaoCampo, type GestaoVinculado,
 } from "@/lib/hooks/useGestao";
 import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
+import AprovacaoNaTarefa from "@/components/gestao/AprovacaoNaTarefa";
 import { nomesResponsaveis } from "@/lib/gestao/responsaveis";
 import CampoInput from "@/components/gestao/CampoInput";
 import { BotaoTempo, RegistroTempo } from "@/components/gestao/TempoTracker";
@@ -170,6 +171,10 @@ export default function TarefaModal({
   // Abas no topo do modal (como no Runrun): detalhes (o formulário), subtarefas, comentários,
   // anexos, histórico e dependências. O tempo fica no início de Detalhes e no rodapé.
   const [aba, setAba] = useState<Aba>("detalhes");
+  // "Criar outra" (como no Jira, Painel 0.3.912): depois de criar, a janela fica aberta e limpa para a próxima.
+  // Fica marcado enquanto a tela estiver aberta (a janela não é desmontada ao fechar).
+  const [criarOutra, setCriarOutra] = useState(false);
+  const tituloRef = useRef<HTMLInputElement>(null);
   const { data: timeline } = useTarefaHistorico(tarefa?.id_tarefa);
   const nComentarios = (timeline ?? []).filter((i) => i.kind === "comentario").length;
 
@@ -206,6 +211,7 @@ export default function TarefaModal({
   // então nenhuma carga posterior (ex.: usuariosFull) reinicializa e apaga a seleção (C13).
   // Para tarefa existente, a assinatura muda quando os vínculos chegam → pré-popula (C10).
   const vincInitRef = useRef<string | null>(null);
+  const vincBaseRef = useRef<{ responsaveisEmails: string[]; seguidoresEmails: string[] }>({ responsaveisEmails: [], seguidoresEmails: [] });
   useEffect(() => {
     if (!open) { vincInitRef.current = null; return; }
     const nova = !tarefa?.id_tarefa;
@@ -222,6 +228,11 @@ export default function TarefaModal({
       return;
     }
     const resps = vinculados.filter((v) => v.tipo === "responsavel").map((v) => v.usuario_email);
+    // O que a janela carregou do banco: ao salvar, só sai quem estava aqui e foi tirado à mão (ver useSalvarVinculados).
+    vincBaseRef.current = {
+      responsaveisEmails: resps,
+      seguidoresEmails: vinculados.filter((v) => v.tipo === "seguidor").map((v) => v.usuario_email),
+    };
     // Fallback ao texto legado (tarefa sem vínculo ainda): nomes → e-mails conhecidos.
     setResponsaveisEmails(
       resps.length > 0
@@ -411,6 +422,10 @@ export default function TarefaModal({
       // Tarefa nova sem responsável escolhido: mantém o que o banco pôs ao criar (dono do Meu
       // Quadro, v294) em vez de apagar.
       manterResponsaveisAtuais: !tarefa,
+      // Na CRIACAO só adiciona (Painel 0.3.917): não apaga quem a automação de tarefa_criada acabou de vincular.
+      somenteAdicionar: !tarefa?.id_tarefa,
+      // Na EDICAO (Painel 0.3.919): não tira quem a automação vinculou com a janela aberta.
+      base: tarefa?.id_tarefa ? vincBaseRef.current : undefined,
     });
 
     // Avisos (atribuição, seguidor, status) e e-mail: gerados no banco por gatilho (v295).
@@ -428,6 +443,18 @@ export default function TarefaModal({
     if (eventos.length) registrarAtiv.mutate({ id_tarefa: idSalvo, ator: userNome, eventos });
 
     // Automações rodam no servidor (v120: trigger em gestao_tarefas + gestao_automacao_prazos).
+    if (!tarefa && criarOutra) {
+      // Limpa só o que é de cada tarefa (título, descrição, subtarefas); responsável, datas, etiquetas e empresa
+      // ficam, para criar várias parecidas em sequência.
+      toast.success("Tarefa criada. Pode escrever a próxima.");
+      setTitulo("");
+      setDescricao("");
+      setSubtarefas([]);
+      setNovaSub("");
+      setAba("detalhes");
+      requestAnimationFrame(() => tituloRef.current?.focus());
+      return;
+    }
     toast.success(ehSub ? "Subtarefa atualizada" : tarefa ? "Tarefa atualizada" : "Tarefa criada");
     onClose();
   }
@@ -489,7 +516,12 @@ export default function TarefaModal({
                 </button>
                 {!ehSub && <BotaoAutomacoes idQuadro={tarefa.id_quadro} ids={[tarefa.id_tarefa]} />}
               </div>
-            ) : <span />}
+            ) : (
+              <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-600" title="Depois de criar, a janela fica aberta e limpa para a próxima (responsável, datas e etiquetas continuam)">
+                <input type="checkbox" checked={criarOutra} onChange={(e) => setCriarOutra(e.target.checked)} className="size-4 rounded accent-marca-primary" />
+                Criar outra
+              </label>
+            )}
             <div className="flex items-center gap-2">
               {tarefa && <BotaoTempo idTarefa={tarefa.id_tarefa} />}
               <button type="button" onClick={handleSalvar} disabled={salvar.isPending} className="inline-flex items-center gap-2 rounded-lg bg-marca-primary px-5 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50">
@@ -536,9 +568,11 @@ export default function TarefaModal({
         )}
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.titulo}>Título</Dica> *</label>
-          <input value={titulo} disabled={ro} onChange={(e) => setTitulo(e.target.value)} placeholder="O que precisa ser feito?" className={inputCls} />
+          <input ref={tituloRef} value={titulo} disabled={ro} onChange={(e) => setTitulo(e.target.value)} placeholder="O que precisa ser feito?" className={inputCls} />
         </div>
         <div>
+            {/* Aprovação pendente (10/11/2026): decide aqui, sem depender da Caixa de entrada da aprovadora. */}
+            {tarefa?.id_tarefa && <AprovacaoNaTarefa idTarefa={tarefa.id_tarefa} podeEditarQuadro={podeEditar} onDecidido={onClose} />}
           <div className="mb-1 flex items-center justify-between">
             <label className="block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.descricao}>Descrição</Dica></label>
             {!ro && (

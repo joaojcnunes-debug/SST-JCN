@@ -41,6 +41,28 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-criar-na-coluna-aprovar-na-tarefa",
+    data: "2026-11-10",
+    tipo: "melhoria",
+    titulo: "Gestão: criar tarefa direto na coluna, aprovar dentro da tarefa e avisos no menu da foto",
+    texto:
+      "No pé de cada coluna, \"+ Adicionar tarefa\" cria com o título (Enter) e já deixa a caixa pronta para a próxima. " +
+      "Na Nova tarefa, marque \"Criar outra\" para criar várias em sequência. A aprovação pendente aparece dentro da " +
+      "tarefa, com Aprovar e Recusar. As colunas mostram as tarefas mais recentes primeiro. As chaves de notificação e a " +
+      "Google Agenda agora ficam no menu da sua foto.",
+    onde: "Gestão",
+    versoes: ["0.3.265"],
+  },
+  {
+    id: "inspecoes-tecnico-ver-relatorio",
+    data: "2026-11-10",
+    tipo: "melhoria",
+    titulo: "Inspeções: o técnico vê o \"Ver relatório\" na lista",
+    texto: "Na lista de inspeções, o técnico agora tem o botão Ver relatório para consultar as inspeções dos colegas, sem Editar nem Excluir.",
+    onde: "Painel SST › Inspeções",
+    versoes: ["0.3.265"],
+  },
+  {
     id: "gestao-empresa-na-tarefa-agenda",
     data: "2026-11-10",
     tipo: "novidade",

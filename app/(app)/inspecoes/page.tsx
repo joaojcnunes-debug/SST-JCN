@@ -515,7 +515,7 @@ function InspecoesInner() {
                     associados={associadosMap?.get(i.id_inspecao) ?? []}
                     // 30/10: a lista é de consulta para técnicos e associados — as ações e a troca de
                     // prioridade/complexidade são de supervisor/admin; o resto age em Minhas inspeções.
-                    // v332: quem tem a marca em Usuários vê só o Ver relatório.
+                    // v332: quem tem a marca em Usuários vê só o Ver relatório; o Técnico também (10/11).
                     comAcoes={acoes.coluna}
                     comEditar={acoes.editar}
                     onDelete={isAdmin && canDelete ? setConfirmDel : undefined}
