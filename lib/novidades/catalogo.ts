@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "modulos-cards-diretos-contam",
+    data: "2026-11-10",
+    tipo: "correcao",
+    titulo: "Módulos: quem só tem o Comercial ou a Gestão já vê o seu card",
+    texto:
+      "A tela de módulos mostrava \"Sem módulos liberados\" para quem tinha só o Comercial, a Gestão Gerencial ou a " +
+      "Gestão, porque só os cards de categoria contavam. Agora esses cards também contam e aparecem.",
+    onde: "Módulos",
+    versoes: ["0.3.251"],
+  },
+  {
     id: "comercial-empresas-em-cartoes",
     data: "2026-11-09",
     tipo: "melhoria",

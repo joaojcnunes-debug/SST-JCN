@@ -360,7 +360,17 @@ function InicioContent() {
     })
     .map((x) => x.cfg);
 
-  const temCards = cardsDisponiveis.length > 0;
+  // Tem o que mostrar se houver um card de categoria OU um dos cards diretos (Comercial, Gestão Gerencial,
+  // Gestão, PDFs, Presença). Até a 0.3.250 só os de categoria contavam, e quem tinha só o Comercial
+  // (ou só a Gestão) via "Sem módulos liberados" — o card dele nem chegava a aparecer.
+  // O card Empresa não conta: aparece para todo interno e não é um módulo liberado.
+  const temCards =
+    cardsDisponiveis.length > 0 ||
+    modulosPermitidos.has("comercial") ||
+    modulosPermitidos.has("gestao_gerencial") ||
+    temGestaoChabra ||
+    isAdmin ||
+    vePresenca;
 
   // Clientes não usam o hub — redirecionados para o portal
   useEffect(() => {
