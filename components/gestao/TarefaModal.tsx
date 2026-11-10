@@ -1,20 +1,20 @@
 "use client";
 
-import Dica from "@/components/ui/Dica";
-import { DICAS_GESTAO_TAREFA } from "@/lib/dicas/gestao";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
-import { Trash2, Loader2, Plus, Square, CheckSquare, X, ArrowRight, ChevronDown, ChevronUp, Sparkles, Maximize2, CornerDownRight } from "lucide-react";
+import { Trash2, Loader2, Plus, Square, CheckSquare, X, ArrowRight, Sparkles, Maximize2, CornerDownRight, MessageSquare } from "lucide-react";
 import Modal from "@/components/ui/Modal";
+import Dica from "@/components/ui/Dica";
+import { DICAS_GESTAO_TAREFA } from "@/lib/dicas/gestao";
 import BotaoAutomacoes from "@/components/gestao/BotaoAutomacoes";
 import MultiChipInput from "@/components/ui/MultiChipInput";
 import { useUserStore } from "@/lib/store";
 import {
   useSalvarTarefa, useExcluirTarefa,
   useVinculados, useSalvarVinculados,
-  useSubtarefas, useSalvarSubtarefas, useAbrirSubtarefa, useTituloTarefa,
+  useSubtarefas, useSalvarSubtarefas, useAbrirSubtarefa, useTituloTarefa, useComentariosDasSubtarefas,
   useAddComentario, useExcluirComentario,
   useDependencias, useAddDependencia, useExcluirDependencia,
   useUsuarios, gerarIaGestao, useRegistrarAtividade, useCamposDeOrigem,
@@ -24,10 +24,11 @@ import {
 import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
 import { nomesResponsaveis } from "@/lib/gestao/responsaveis";
 import CampoInput from "@/components/gestao/CampoInput";
-import TempoTracker from "@/components/gestao/TempoTracker";
+import { BotaoTempo, RegistroTempo } from "@/components/gestao/TempoTracker";
 import AnexosTarefa from "@/components/gestao/AnexosTarefa";
 import HistoricoTarefa from "@/components/gestao/HistoricoTarefa";
-import TarefaSidebar from "@/components/gestao/TarefaSidebar";
+import ComentariosTarefa from "@/components/gestao/ComentariosTarefa";
+import { useTarefaHistorico } from "@/lib/hooks/useTarefaHistorico";
 import { confirmar } from "@/components/ui/confirm";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
 import { proximaGeracao } from "@/lib/gestao/recorrencia";
@@ -53,27 +54,7 @@ function ValorOrigem({ valor }: { valor: unknown }) {
   return <span className="whitespace-pre-wrap text-sm text-gray-800">{valor == null || valor === "" ? "—" : String(valor)}</span>;
 }
 
-function Secao({ titulo, badge, defaultOpen = false, children }: { titulo: string; badge?: number; defaultOpen?: boolean; children: React.ReactNode }) {
-  const [open, setOpen] = useState(defaultOpen);
-  const ref = useRef<HTMLDivElement>(null);
-  const primeiro = useRef(true);
-  useEffect(() => {
-    if (primeiro.current) { primeiro.current = false; return; }
-    if (open) ref.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [open]);
-  return (
-    <div ref={ref} className="rounded-lg border border-gray-200">
-      <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-        <span className="flex items-center gap-2">
-          {titulo}
-          {badge != null && badge > 0 && <span className="rounded-full bg-gray-100 px-1.5 text-[11px] font-semibold text-gray-500">{badge}</span>}
-        </span>
-        {open ? <ChevronUp className="size-4 text-gray-400" /> : <ChevronDown className="size-4 text-gray-400" />}
-      </button>
-      {open && <div className="border-t border-gray-100 p-3">{children}</div>}
-    </div>
-  );
-}
+type Aba = "detalhes" | "subtarefas" | "comentarios" | "anexos" | "historico" | "dependencias";
 
 // Defaults ESTÁVEIS (referência constante): sem eles, `const { data = [] }` cria um array
 // novo a cada render, tornando a dep do efeito de pré-população instável e disparando-o em
@@ -113,6 +94,12 @@ export default function TarefaModal({
   const salvarVinc = useSalvarVinculados();
   const salvarSub = useSalvarSubtarefas();
   const { data: subtarefasTabela = EMPTY_SUBTAREFAS } = useSubtarefas(tarefa?.id_tarefa);
+  // Balão na lista de subtarefas: comentários da janela (tarefa filha) de cada uma.
+  const filhaDaSub = useMemo(
+    () => new Map(subtarefasTabela.filter((s) => s.id_tarefa_filha).map((s) => [s.id, s.id_tarefa_filha as string])),
+    [subtarefasTabela],
+  );
+  const { data: comentariosSub } = useComentariosDasSubtarefas([...filhaDaSub.values()]);
   const { data: vinculados = EMPTY_VINCULADOS } = useVinculados(tarefa?.id_tarefa);
   const userNome = useUserStore((s) => s.user?.nome ?? null);
   const userEmail = useUserStore((s) => s.user?.email ?? null);
@@ -133,17 +120,17 @@ export default function TarefaModal({
     if (tarefa) qc.invalidateQueries({ queryKey: ["gestao-tarefa-timeline", tarefa.id_tarefa] });
   };
   const { data: deps } = useDependencias(tarefa?.id_tarefa);
-  // v315 (Painel v325): campos que vieram de outro quadro — só leitura.
+  // v315 (Painel v325): campos que vieram de outro quadro (ex.: Produtos) — só leitura.
   const { data: camposOrigem = [] } = useCamposDeOrigem(tarefa?.id_tarefa);
   const addDep = useAddDependencia();
   const excluirDep = useExcluirDependencia();
   const tarefaMap = useMemo(() => new Map(tarefasQuadro.map((t) => [t.id_tarefa, t])), [tarefasQuadro]);
-  // v300: esta janela é a de uma subtarefa (tarefa filha)? Sem recorrência, subtarefas e dependências.
+  // v292: esta janela é a de uma subtarefa (tarefa filha)? Sem recorrência, subtarefas e dependências.
   const idPai = tarefa?.id_tarefa_pai ?? null;
   const ehSub = !!idPai;
   const { data: tituloPaiLido } = useTituloTarefa(idPai && !tarefaMap.has(idPai) ? idPai : null);
   const tituloPai = idPai ? tarefaMap.get(idPai)?.titulo ?? tituloPaiLido ?? null : null;
-  // v300: duplo clique numa subtarefa abre a janela completa dela (por cima desta).
+  // v292: duplo clique numa subtarefa abre a janela completa dela (por cima desta).
   const abrirSubtarefa = useAbrirSubtarefa();
   const [subAberta, setSubAberta] = useState<GestaoTarefa | null>(null);
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.slug, s])), [statuses]);
@@ -159,8 +146,8 @@ export default function TarefaModal({
   const [horaInicio, setHoraInicio] = useState("");
   const [horaFim, setHoraFim] = useState("");
   const [status, setStatus] = useState<StatusTarefa>(statusInicial);
-  // Status já gravado no banco: na tarefa existente, escolher outro status grava NA HORA e o cartão muda
-  // de coluna (0.3.252, do Painel); o "Salvar" compara com este para não registrar a mesma mudança duas vezes.
+  // Status já gravado no banco: na tarefa existente, escolher outro status grava NA HORA (como no Runrun) e o
+  // cartão muda de coluna; o "Salvar" compara com este para não registrar a mesma mudança duas vezes.
   const [statusSalvo, setStatusSalvo] = useState<StatusTarefa>(statusInicial);
   const [recTipo, setRecTipo] = useState<"" | "diaria" | "semanal" | "mensal">("");
   const [recInt, setRecInt] = useState(1);
@@ -172,9 +159,15 @@ export default function TarefaModal({
   // Campos como vieram na abertura: ao salvar, só vai o que a pessoa mudou (diff contra isto),
   // para não regravar por cima do que uma automação escreveu enquanto a janela estava aberta.
   const camposCarregados = useRef<Record<string, unknown>>({});
+  // Abas no topo do modal (como no Runrun): detalhes (o formulário), subtarefas, comentários,
+  // anexos, histórico e dependências. O tempo fica no início de Detalhes e no rodapé.
+  const [aba, setAba] = useState<Aba>("detalhes");
+  const { data: timeline } = useTarefaHistorico(tarefa?.id_tarefa);
+  const nComentarios = (timeline ?? []).filter((i) => i.kind === "comentario").length;
 
   useEffect(() => {
     if (!open) return;
+    setAba("detalhes");
     setTitulo(tarefa?.titulo ?? "");
     setDescricao(tarefa?.descricao ?? "");
     setPrioridade(tarefa?.prioridade ?? "Media");
@@ -212,12 +205,12 @@ export default function TarefaModal({
     const chave = nova ? `__nova__#${novaNoMeuQuadro ? "meu" : ""}` : `${tarefa!.id_tarefa}#${assinatura}`;
     if (vincInitRef.current === chave) return;
     vincInitRef.current = chave;
-    const resps = vinculados.filter((v) => v.tipo === "responsavel").map((v) => v.usuario_email);
     if (novaNoMeuQuadro && userEmail) {
       setResponsaveisEmails([userEmail.toLowerCase()]);
       setSeguidoresEmails([]);
       return;
     }
+    const resps = vinculados.filter((v) => v.tipo === "responsavel").map((v) => v.usuario_email);
     // Fallback ao texto legado (tarefa sem vínculo ainda): nomes → e-mails conhecidos.
     setResponsaveisEmails(
       resps.length > 0
@@ -232,7 +225,7 @@ export default function TarefaModal({
   // abertura ja semeia do jsonb espelhado (imediato, sem flash); quando a leitura da tabela
   // chega, re-sincroniza UMA vez por assinatura (mesmo guard dos vinculos) — antes de o
   // usuario editar. Tarefa nova nao tem linha na tabela: o seed [] da abertura basta.
-  // v300: a janela da subtarefa muda a linha no banco (título/status/responsável) — a assinatura
+  // v292: a janela da subtarefa muda a linha no banco (título/status/responsável) — a assinatura
   // inclui o responsável, e depois da 1ª carga as linhas ainda não salvas (sem id) são mantidas.
   const subInitRef = useRef<string | null>(null);
   useEffect(() => {
@@ -283,8 +276,9 @@ export default function TarefaModal({
   }
   function fecharSub() {
     setSubAberta(null);
-    // O que mudou na janela da subtarefa volta para a linha pelo banco (v300) — recarrega a lista.
+    // O que mudou na janela da subtarefa volta para a linha pelo banco (v292) — recarrega a lista.
     if (tarefa) qc.invalidateQueries({ queryKey: ["gestao-subtarefas", tarefa.id_tarefa] });
+    qc.invalidateQueries({ queryKey: ["gestao-comentarios-subtarefas"] });
   }
 
   function addSub() {
@@ -302,11 +296,11 @@ export default function TarefaModal({
     return pendenciasParaConcluir(deps.dependeDe.map((d) => d.tarefa), tarefaMap, (s) => statusMap.get(s)?.tipo);
   }
 
-  /** Escolher outro status numa tarefa existente grava na hora e o cartão muda de coluna.
+  /** Escolher outro status numa tarefa existente grava na hora e o cartão muda de coluna (como no Runrun).
    *  Tarefa nova (ainda sem id) ou de outro quadro que não o desta janela: vale só no "Salvar". */
   async function mudarStatus(novo: StatusTarefa) {
     setStatus(novo);
-    if (!tarefa?.id_tarefa || ro || novo === statusSalvo || tarefa.id_quadro !== idQuadro) return;
+    if (!tarefa || ro || novo === statusSalvo || tarefa.id_quadro !== idQuadro) return;
     const pendentes = bloqueiaConcluir(novo);
     if (pendentes.length > 0) {
       toast.error(mensagemPendencias(pendentes));
@@ -442,6 +436,22 @@ export default function TarefaModal({
     "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-gray-50";
   const feitas = subtarefas.filter((s) => s.feito).length;
 
+  // Tarefa nova só tem Subtarefas (o resto precisa do id salvo); a janela de uma subtarefa
+  // não tem Subtarefas nem Dependências (v292).
+  const abas: { id: Aba; rotulo: string; contagem?: number }[] = [
+    { id: "detalhes", rotulo: "Detalhes" },
+    ...(!ehSub ? [{ id: "subtarefas" as const, rotulo: "Subtarefas", contagem: subtarefas.length }] : []),
+    ...(tarefa
+      ? [
+          { id: "comentarios" as const, rotulo: "Comentários", contagem: nComentarios },
+          { id: "anexos" as const, rotulo: "Anexos" },
+          { id: "historico" as const, rotulo: "Histórico" },
+          ...(!ehSub ? [{ id: "dependencias" as const, rotulo: "Dependências", contagem: deps?.dependeDe.length }] : []),
+        ]
+      : []),
+  ];
+  const abaAtiva: Aba = abas.some((a) => a.id === aba) ? aba : "detalhes";
+
   return (
     <Modal
       open={open}
@@ -459,16 +469,44 @@ export default function TarefaModal({
                 {!ehSub && <BotaoAutomacoes idQuadro={tarefa.id_quadro} ids={[tarefa.id_tarefa]} />}
               </div>
             ) : <span />}
-            <button type="button" onClick={handleSalvar} disabled={salvar.isPending} className="inline-flex items-center gap-2 rounded-lg bg-marca-primary px-5 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50">
-              {salvar.isPending && <Loader2 className="size-4 animate-spin" />}
-              {tarefa ? "Salvar" : "Criar tarefa"}
-            </button>
+            <div className="flex items-center gap-2">
+              {tarefa && <BotaoTempo idTarefa={tarefa.id_tarefa} />}
+              <button type="button" onClick={handleSalvar} disabled={salvar.isPending} className="inline-flex items-center gap-2 rounded-lg bg-marca-primary px-5 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50">
+                {salvar.isPending && <Loader2 className="size-4 animate-spin" />}
+                {tarefa ? "Salvar" : "Criar tarefa"}
+              </button>
+            </div>
           </div>
         ) : undefined
       }
     >
-      <div className="flex flex-col gap-4 lg:flex-row">
-        <div className="min-w-0 flex-1 space-y-3">
+      <div>
+        {abas.length > 1 && (
+          // Fila de abas presa no topo do corpo do modal (o -top-5/-mx-6 anulam o padding do Modal).
+          <div role="tablist" aria-label="Seções da tarefa" className="sticky -top-5 z-10 -mx-6 -mt-5 mb-4 flex gap-1 overflow-x-auto border-b border-gray-200 bg-white px-6 pt-2">
+            {abas.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                role="tab"
+                aria-selected={abaAtiva === a.id}
+                onClick={() => setAba(a.id)}
+                className={`-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition ${
+                  abaAtiva === a.id
+                    ? "border-marca-primary text-marca-primary"
+                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                }`}
+              >
+                {a.rotulo}
+                {a.contagem ? <span className="rounded-full bg-gray-100 px-1.5 text-[11px] font-semibold text-gray-500">{a.contagem}</span> : null}
+              </button>
+            ))}
+          </div>
+        )}
+        <div role="tabpanel">
+        {abaAtiva === "detalhes" && (
+        <div className="space-y-3">
+        {tarefa && <RegistroTempo idTarefa={tarefa.id_tarefa} podeEditar={podeEditar} />}
         {ehSub && (
           <p className="flex items-center gap-1.5 text-xs text-gray-500">
             <CornerDownRight className="size-3.5 shrink-0" />
@@ -527,6 +565,29 @@ export default function TarefaModal({
             <input type="number" min="0" value={pontos} disabled={ro} onChange={(e) => setPontos(e.target.value)} placeholder="—" className={inputCls} />
           </div>
         </div>
+
+        {(campos.length > 0 || camposOrigem.length > 0) && (
+          // Campos personalizados na mesma grade dos campos fixos (antes ficavam numa caixa fechada).
+          // Os que vieram do cartão de origem (v315 = Painel v325) aparecem só para leitura, com o nome do quadro.
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {campos.map((c) => (
+              <div key={c.id} className={c.tipo === "multi" ? "sm:col-span-2" : undefined}>
+                <label className="mb-1 block text-xs font-medium text-gray-600">{c.nome}</label>
+                <CampoInput campo={c} value={valoresCampos[c.id]} onChange={(v) => setValoresCampos((s) => ({ ...s, [c.id]: v }))} disabled={ro} />
+              </div>
+            ))}
+            {camposOrigem.map((c) => (
+              <div key={`origem:${c.id}`} className={c.tipo === "multi" ? "sm:col-span-2" : undefined}>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  {c.nome} <span className="font-normal text-gray-400">· {c.quadro}</span>
+                </label>
+                <div className="min-h-[38px] rounded-md border border-gray-200 bg-gray-50 px-3 py-2" title="Só leitura — vem do cartão de origem">
+                  <ValorOrigem valor={c.valor} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">
@@ -626,12 +687,15 @@ export default function TarefaModal({
           <MultiChipInput value={etiquetas} onChange={setEtiquetas} sugestoes={etiquetasSugeridas} placeholder="Adicionar etiqueta…" ro={ro} />
         </div>
 
-        {!ehSub && (
+        </div>
+        )}
+
+        {abaAtiva === "subtarefas" && (
         <div>
-          <div className="mb-1 flex items-center justify-between">
-            <label className="block text-xs font-medium text-gray-600">
-              <Dica texto={DICAS_GESTAO_TAREFA.subtarefas}>Subtarefas</Dica> {subtarefas.length > 0 && <span className="text-gray-400">({feitas}/{subtarefas.length})</span>}
-            </label>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs text-gray-500">
+              {subtarefas.length > 0 ? `${feitas} de ${subtarefas.length} concluída(s)` : "Nenhuma subtarefa ainda."}
+            </span>
             {!ro && (
               <button type="button" onClick={iaSubtarefas} disabled={iaLoad !== null} className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-marca-primary hover:bg-marca-light/50 disabled:opacity-50">
                 {iaLoad === "sub" ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} Sugerir com IA
@@ -668,6 +732,21 @@ export default function TarefaModal({
                     className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none disabled:bg-gray-50"
                   />
                 </div>
+                {(() => {
+                  const n = (s.id && comentariosSub?.[filhaDaSub.get(s.id) ?? ""]) || 0;
+                  return n > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => abrirSub(s)}
+                      aria-label={`${n} comentário(s) na subtarefa ${s.texto}`}
+                      title={`${n} comentário(s): abrir a subtarefa`}
+                      className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 text-xs font-medium text-gray-500 hover:text-marca-primary"
+                    >
+                      <MessageSquare className="size-3.5" />
+                      {n}
+                    </button>
+                  ) : null;
+                })()}
                 <button
                   type="button"
                   onClick={() => abrirSub(s)}
@@ -703,55 +782,29 @@ export default function TarefaModal({
         </div>
         )}
 
-        {campos.length > 0 && (
-          // Tarefa nova já abre os campos (ex.: Produtos, que as automações leem).
-          <Secao titulo="Campos personalizados" defaultOpen={!tarefa}>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {campos.map((c) => (
-                <div key={c.id} className={c.tipo === "multi" ? "sm:col-span-2" : undefined}>
-                  <label className="mb-1 block text-[11px] text-gray-500">{c.nome}</label>
-                  <CampoInput campo={c} value={valoresCampos[c.id]} onChange={(v) => setValoresCampos((s) => ({ ...s, [c.id]: v }))} disabled={ro} />
-                </div>
-              ))}
-            </div>
-          </Secao>
+        {tarefa && abaAtiva === "comentarios" && (
+          <ComentariosTarefa
+            idTarefa={tarefa.id_tarefa}
+            ro={ro}
+            podeComentar={podeComentarEf}
+            novoComentario={novoComentario}
+            setNovoComentario={setNovoComentario}
+            onEnviar={enviarComentario}
+            enviando={addComentario.isPending}
+            onExcluirComentario={(id) =>
+              excluirComentario.mutate(
+                { id_comentario: id, id_tarefa: tarefa.id_tarefa },
+                { onSuccess: invalidarTimeline },
+              )
+            }
+          />
         )}
 
-        {camposOrigem.length > 0 && (
-          // v315 (Painel v325): o roteamento copia os campos do cartão de origem; aqui eles só aparecem (quem muda é o quadro de origem).
-          <Secao titulo={`Do ${[...new Set(camposOrigem.map((c) => c.quadro))].join(" / ")}`} defaultOpen>
-            <div className="space-y-2">
-              {camposOrigem.map((c) => (
-                <div key={c.id}>
-                  <p className="mb-1 text-[11px] text-gray-500">{c.nome}</p>
-                  <ValorOrigem valor={c.valor} />
-                </div>
-              ))}
-              <p className="text-[11px] text-gray-400">Só leitura — vem do cartão de origem.</p>
-            </div>
-          </Secao>
-        )}
+        {tarefa && abaAtiva === "anexos" && <AnexosTarefa idTarefa={tarefa.id_tarefa} podeEditar={podeEditar} />}
 
-        {tarefa && (
-          <Secao titulo="Anexos">
-            <AnexosTarefa idTarefa={tarefa.id_tarefa} podeEditar={podeEditar} />
-          </Secao>
-        )}
+        {tarefa && abaAtiva === "historico" && <HistoricoTarefa idTarefa={tarefa.id_tarefa} statuses={statuses} />}
 
-        {tarefa && (
-          <Secao titulo="Tempo">
-            <TempoTracker idTarefa={tarefa.id_tarefa} podeEditar={podeEditar} />
-          </Secao>
-        )}
-
-        {tarefa && (
-          <Secao titulo="Histórico">
-            <HistoricoTarefa idTarefa={tarefa.id_tarefa} />
-          </Secao>
-        )}
-
-        {tarefa && !ehSub && (
-          <Secao titulo="Dependências">
+        {tarefa && abaAtiva === "dependencias" && (
             <div className="space-y-2">
             <div>
               <p className="mb-1 text-[11px] text-gray-500">Depende de (precisa concluir antes)</p>
@@ -793,29 +846,8 @@ export default function TarefaModal({
               </div>
             )}
             </div>
-          </Secao>
         )}
-
         </div>
-
-        {tarefa && (
-          <TarefaSidebar
-            idTarefa={tarefa.id_tarefa}
-            ro={ro}
-            podeComentar={podeComentarEf}
-            statuses={statuses}
-            novoComentario={novoComentario}
-            setNovoComentario={setNovoComentario}
-            onEnviar={enviarComentario}
-            enviando={addComentario.isPending}
-            onExcluirComentario={(id) =>
-              excluirComentario.mutate(
-                { id_comentario: id, id_tarefa: tarefa.id_tarefa },
-                { onSuccess: invalidarTimeline },
-              )
-            }
-          />
-        )}
       </div>
 
       {subAberta && (
