@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "inicio-visao-geral-filtros",
+    data: "2026-11-10",
+    tipo: "melhoria",
+    titulo: "Visão geral: Acontecendo agora mais rápido e lista de empresas com rolagem",
+    texto:
+      "O Acontecendo agora mostra os últimos 14 dias e, para o técnico com empresas vinculadas, só as empresas dele; " +
+      "o contador de riscos altos segue o mesmo recorte. A lista de empresas ganhou rolagem própria, sem esticar a página.",
+    onde: "Visão geral",
+    versoes: ["0.3.261"],
+  },
+  {
     id: "aep-ocultar-setor",
     data: "2026-11-10",
     tipo: "novidade",
