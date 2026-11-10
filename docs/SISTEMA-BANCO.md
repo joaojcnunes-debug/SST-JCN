@@ -613,6 +613,12 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
   - Rollback: `scripts/sql/v336_gestao_aviso_preferencias_rollback.sql`.
 - **v337 — `pdfs_assinados.tipo_assinatura` (10/11/2026).** Aplicada em 10/11/2026, antes do merge da 0.3.259. O código lia e gravava a coluna, que não existia no banco do JCN: abrir o relatório dava erro 400 e assinar com a imagem falhava (a tabela estava vazia). `NULL` = certificado digital; `'imagem'` = assinatura com a imagem do técnico (check).
   - Rollback: `scripts/sql/v337_pdfs_assinados_tipo_assinatura_rollback.sql`.
+- **v338 — Gestão: empresa na tarefa (10/11/2026).** Aplicada em 10/11/2026, antes do merge da 0.3.264 (ensaiada antes numa transação desfeita). Trazida da v354 do Painel, só o item 11 (os modelos de tarefa não vieram).
+  - `gestao_tarefas.id_empresa` (FK `empresas`, ON DELETE SET NULL; índice parcial).
+  - Gatilho `gestao_tarefa_empresa` (BEFORE INSERT/UPDATE OF id_empresa): tarefa nascida com `origem.id_empresa` já vem ligada; quem liga à mão precisa de `caller_pode_ver_empresa`.
+  - `gestao_norm_nome(text, boolean)`, a view materializada `gestao_empresa_nomes` (sem acesso pela API) e `gestao_empresa_nomes_atualizar()` (só service_role; refeita no máximo a cada 15 min, chamada pelo `/api/gestao/google/sync`).
+  - `gestao_empresa_sugerida(tarefa)`: até 3 empresas pelo CNPJ ou pelo nome no título (nada é gravado). `gestao_tarefas_da_empresa(empresa)` (SECURITY INVOKER): aba Tarefas da ficha da empresa.
+  - O JCN não tem `schema_migrations`. Rollback: `scripts/sql/v338_gestao_empresa_na_tarefa_rollback.sql`.
 - **v326 — Parecer da Conciliação na própria AEP (06/11/2026).** `psico_conciliacao_pareceres.questionario` passa a aceitar `AEP`, para a empresa que só tem a AEP (0.3.239). Nenhum dado mudou. A foto do fechamento (`itens`, `resumo`) é jsonb e ganha `resumo.fonte_unica`, sem mudança de estrutura. Corrige também a v324: `psico_conciliacao_reaberturas.id_empresa` perde a chave em cascata, que com o gatilho de só inserção impedia apagar a empresa com reabertura; fica como `psico_conciliacao_fechamentos`, sem chave.
   - Rollback: `scripts/sql/v326_conciliacao_parecer_aep_rollback.sql` (recusa se já houver parecer com `AEP`).
 - **v325 — Reabrir pela função (06/11/2026).** Aplicada em 06/11/2026, antes do merge da 0.3.238.

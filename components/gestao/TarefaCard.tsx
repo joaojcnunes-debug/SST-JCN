@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, CheckSquare, Repeat, Clock, Flag, Check, Paperclip, Target, ShieldQuestion } from "lucide-react";
+import { CalendarClock, CheckSquare, Repeat, Clock, Flag, Check, Paperclip, Target, ShieldQuestion, Building2 } from "lucide-react";
 import {
   formatarDuracao,
   useVinculadosQuadro, useUsuarios, useAprovacaoTarefa,
@@ -36,6 +36,7 @@ export default function TarefaCard({
   selecionavel = false,
   selecionado = false,
   onToggleSel,
+  empresa,
 }: {
   t: GestaoTarefa;
   statusMap: Map<string, GestaoStatus>;
@@ -45,6 +46,8 @@ export default function TarefaCard({
   campos: GestaoCampo[];
   arrastavel: boolean;
   arrastando: boolean;
+  /** v338 (Painel v354): nome da empresa ligada (cadastro de Empresas). */
+  empresa?: string | null;
   onAbrir: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
@@ -101,6 +104,11 @@ export default function TarefaCard({
         <div className="min-w-0 flex-1">
           <p className={`text-sm font-medium ${concluido ? "text-gray-400 line-through" : "text-gray-800"}`}>{t.titulo}</p>
           {t.titulo_mae && <p className="mt-0.5 truncate text-[11px] text-gray-400" title={t.titulo_mae}>↳ Subtarefa de {t.titulo_mae}</p>}
+          {empresa && (
+            <p className="mt-0.5 flex items-center gap-1 text-[11px] text-gray-500" title={`Empresa: ${empresa}`}>
+              <Building2 className="size-3 shrink-0" aria-hidden /> <span className="truncate">{empresa}</span>
+            </p>
+          )}
         </div>
       </div>
 

@@ -21,15 +21,17 @@ import { EmpresaDetalheSkeleton } from "@/components/empresas/EmpresaSkeletons";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
 import { fmtData, cn } from "@/lib/utils";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
+import TarefasDaEmpresa from "@/components/empresas/TarefasDaEmpresa";
 
 
-type Aba = "geral" | "dados" | "documentos" | "inspecoes";
+type Aba = "geral" | "dados" | "documentos" | "inspecoes" | "tarefas";
 
 const ABAS: { id: Aba; label: string }[] = [
   { id: "geral", label: "Visão geral" },
   { id: "dados", label: "Dados cadastrais" },
   { id: "documentos", label: "Documentos & Laudos" },
   { id: "inspecoes", label: "Inspeções" },
+  { id: "tarefas", label: "Tarefas" },
 ];
 
 interface Props {
@@ -190,6 +192,9 @@ export default function EmpresaDetalhePage({ params }: Props) {
 
       {/* ── Documentos & Laudos: TODOS os documentos da empresa, em sequência (08/10) ── */}
       {aba === "documentos" && <DocumentosEmpresaLista data={docs} carregando={loadingDocs} />}
+
+      {/* ── Tarefas da Gestão ligadas à empresa (v338) ── */}
+      {aba === "tarefas" && <TarefasDaEmpresa idEmpresa={empresa.id_empresa} />}
 
       {/* ── Inspeções ── */}
       {aba === "inspecoes" && (

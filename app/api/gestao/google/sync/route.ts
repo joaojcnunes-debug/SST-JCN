@@ -83,6 +83,13 @@ export async function GET(req: NextRequest) {
     // silencioso; o próximo tick tenta de novo
   }
 
+  // v338: nomes das empresas já tratados para a sugestão de empresa na tarefa. O banco só refaz a cada 15 min.
+  try {
+    await sb.rpc("gestao_empresa_nomes_atualizar" as never);
+  } catch {
+    // silencioso; o próximo tick tenta de novo
+  }
+
   // v299: relógio das automações (esperas, agenda, tarefa parada, data de início). O banco limita a
   // 1 execução a cada 5 min; no JCN o pg_cron também chama a cada 10 min. Best-effort.
   try {

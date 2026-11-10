@@ -19,6 +19,7 @@ function texto(a: GestaoAtividade): string {
     case "status": return `mudou o status: ${de} → ${para}`;
     case "responsavel": return `responsável: ${de} → ${para}`;
     case "prazo": return `prazo: ${de} → ${para}`;
+    case "empresa": return `empresa: ${de} → ${para}`;
     case "prioridade": return `prioridade: ${de} → ${para}`;
     case "titulo": return `renomeou: "${de}" → "${para}"`;
     case "tempo_iniciado": return "iniciou o cronômetro";
