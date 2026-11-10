@@ -27,8 +27,12 @@ import SelectVerde from "@/components/gestao/SelectVerde";
 import { useQueryClient } from "@tanstack/react-query";
 import { montarSubtarefas, itensMostrar, type MostrarItens } from "@/lib/gestao/subtarefas-vista";
 import { OPCOES_ORDEM, campoTemValor, ordenarTarefas, proximaOrdem, type CampoOrdem, type OrdemColuna } from "@/lib/gestao/ordenar-coluna";
+
+/** 10/11/2026 (pedido do usuário): sem escolha da pessoa, cada coluna vem do mais recente para o mais antigo. */
+const ORDEM_PADRAO_COLUNA: OrdemColuna = { campo: "criada", dir: "desc" };
 import NotificacoesSino from "@/components/gestao/NotificacoesSino";
 import TarefaModal from "@/components/gestao/TarefaModal";
+import NovaTarefaRapida from "@/components/gestao/NovaTarefaRapida";
 import StatusManagerModal from "@/components/gestao/StatusManagerModal";
 import CamposManagerModal from "@/components/gestao/CamposManagerModal";
 import AutomacoesManagerModal from "@/components/gestao/AutomacoesManagerModal";
@@ -248,8 +252,8 @@ export default function GestaoChabraPage() {
     if (papelGestaoFetched && meuPapelGestao === null && user) router.replace("/inicio");
   }, [user, user?.perfil, papelGestaoFetched, meuPapelGestao, router]);
 
-  // Volta do consentimento do Google (/api/gestao/google/callback → /gestao?google=<flag>): avisa,
-  // abre o Meu Espaço (onde fica o cartão Google Agenda) e limpa a flag da URL.
+  // Volta do consentimento do Google (/api/gestao/google/callback → /gestao?google=<flag>; Conectar fica no menu da foto): avisa,
+  // abre o Meu Espaço e limpa a flag da URL.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const flag = params.get("google");
@@ -518,8 +522,12 @@ export default function GestaoChabraPage() {
 
   function mudarOrdem(slug: string, campo: CampoOrdem) {
     const n = { ...ordemCols };
-    const prox = proximaOrdem(n[slug], campo);
-    if (prox) n[slug] = prox; else delete n[slug];
+    // "Ordem do quadro" fica gravada como escolha explícita (sem escolha = ORDEM_PADRAO_COLUNA, mais recente primeiro).
+    if (campo === "manual") n[slug] = { campo: "manual", dir: "asc" };
+    else {
+      const prox = proximaOrdem(n[slug] ?? ORDEM_PADRAO_COLUNA, campo);
+      if (prox) n[slug] = prox; else delete n[slug];
+    }
     setOrdemCols(n);
     setMenuCol(null);
     if (chaveOrdem) {
@@ -974,7 +982,9 @@ export default function GestaoChabraPage() {
             {gruposQuadro.map((col) => {
               const todas = porGrupo[col.slug] ?? [];
               // v335: "Ordenar por" da coluna (sem escolha = ordem do quadro, a de arrastar).
-              const ordemCol = ordemCols[col.slug];
+              // Painel 0.3.919: sem escolha da pessoa, a coluna mostra do mais recente para o mais antigo ('Criada em' desc).
+              // A ordem do quadro (arrastar) continua no menu da coluna como "manual".
+              const ordemCol = ordemCols[col.slug] ?? ORDEM_PADRAO_COLUNA;
               const lista = ordenarTarefas(todas.filter(passaFiltro), ordemCol);
               const seguindo = quadroAgrupar === "status" && etapasAvisadas.includes(col.slug);
               const rotuloOrdem = ordemCol ? OPCOES_ORDEM.find((o) => o.campo === ordemCol.campo)?.label : null;
@@ -1030,7 +1040,7 @@ export default function GestaoChabraPage() {
                               )}
                               <p className={`px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400 ${quadroAgrupar === "status" ? "mt-1 border-t border-gray-100 pt-2" : "pt-1"}`}>Ordenar por</p>
                               <button type="button" onClick={() => mudarOrdem(col.slug, "manual")} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50">
-                                {ordemCol ? <span className="size-3.5" /> : <Check className="size-3.5 text-marca-primary" />} Ordem do quadro
+                                {ordemCol.campo !== "manual" ? <span className="size-3.5" /> : <Check className="size-3.5 text-marca-primary" />} Ordem do quadro
                               </button>
                               {opcoesOrdem.map((o) => {
                                 const ativa = ordemCol?.campo === o.campo;
@@ -1090,6 +1100,16 @@ export default function GestaoChabraPage() {
                       <div className="rounded-lg border border-dashed border-gray-200 px-2 py-6 text-center text-xs text-gray-300">{todas.length > 0 ? "Nada no filtro" : "Sem tarefas"}</div>
                     )}
                   </div>
+                  {/* Criação rápida no pé da coluna (como no Trello). Só quando a coluna diz o que a tarefa
+                      nasce sendo: por status ou por prioridade (por responsável/etiqueta, use o "+" do topo). */}
+                  {podeEditar && (quadroAgrupar === "status" || quadroAgrupar === "prioridade") && (
+                    <NovaTarefaRapida
+                      idQuadro={quadro.id_quadro}
+                      status={quadroAgrupar === "status" ? col.slug : statusInicialSlug}
+                      prioridade={quadroAgrupar === "prioridade" ? (col.slug as PrioridadeTarefa) : undefined}
+                      ordem={quadroAgrupar === "status" ? todas.reduce((m, t) => Math.max(m, t.ordem ?? 0), 0) + 1 : undefined}
+                    />
+                  )}
                 </div>
               );
             })}

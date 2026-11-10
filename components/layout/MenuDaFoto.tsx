@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Bell, LogOut } from "lucide-react";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
+import { GoogleAgendaMenu } from "@/components/gestao/GoogleAgendaMenu";
+import { PreferenciasAvisoMenu } from "@/components/gestao/PreferenciasAvisoMenu";
 import { useSair } from "@/lib/hooks/useSair";
 import { useUserStore } from "@/lib/store";
 
@@ -18,7 +20,9 @@ function iniciaisDe(nome: string): string {
  * Menu da foto (0.3.258, do Painel 0.3.896/0.3.897): clicar na foto/sigla de quem está logado abre o nome e o
  * e-mail, Notificações e Sair. (No Painel o menu também tem as OS da T.I, que são só da Chabra.)
  *   `avisos`         bolinha vermelha na foto (notificações não lidas)
- *   `onNotificacoes` item "Notificações" — sem ele o item não aparece (ex.: Visão geral, que tem o sino ao lado)
+ *   `onNotificacoes` item "Notificações" — sem ele o item não aparece (ex.: Visão geral, que tem o sino ao lado).
+ *                    Junto vêm as chaves No sistema / Por e-mail e a Google Agenda (0.3.265, do Painel 0.3.916; antes no
+ *                    topo do Meu Espaço). Só montam com o menu aberto, então as consultas delas não rodam em toda página.
  *   `tema`           "verde" na barra colorida dos módulos; "claro" sobre fundo claro
  * O menu abre num portal (position: fixed no body): a barra superior (sticky z-20) e os cartões .reveal-up da Visão
  * geral isolam camadas, e o sino do Meu Espaço (z-40) ou o cartão de baixo cobriam o menu.
@@ -102,10 +106,15 @@ export default function MenuDaFoto({ avisos = 0, onNotificacoes, tema = "verde" 
             {user.email && <p className="truncate text-xs text-gray-500">{user.email}</p>}
           </div>
           {onNotificacoes && (
-            <button type="button" role="menuitem" onClick={() => { setAberto(false); onNotificacoes(); }} className={item}>
-              <Bell className="size-4 shrink-0 text-gray-400" /> Notificações
-              {avisos > 0 && <span className="ml-auto rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white">{avisos > 99 ? "99+" : avisos}</span>}
-            </button>
+            <>
+              <button type="button" role="menuitem" onClick={() => { setAberto(false); onNotificacoes(); }} className={item}>
+                <Bell className="size-4 shrink-0 text-gray-400" /> Notificações
+                {avisos > 0 && <span className="ml-auto rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white">{avisos > 99 ? "99+" : avisos}</span>}
+              </button>
+              {/* 10/11/2026: as chaves de aviso e a Google Agenda saíram do topo do Meu Espaço para cá. */}
+              <PreferenciasAvisoMenu />
+              <GoogleAgendaMenu />
+            </>
           )}
           <div className="my-1 border-t border-gray-100" />
           <button type="button" role="menuitem" onClick={() => { setAberto(false); void sair(); }} className={`${base} text-red-600 hover:bg-red-50`}>

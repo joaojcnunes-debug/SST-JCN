@@ -51,9 +51,9 @@ export default function InspecaoRow({
   insp: Inspecao;
   /** Endereço da lista (com os filtros): o documento aberto daqui oferece voltar para ele. */
   volta?: string;
-  /** 30/10: coluna Ações (Editar, Relatório, Excluir) — supervisor/admin e quem tem a marca da v332; o cabeçalho segue a mesma regra. */
+  /** 30/10: coluna Ações (Editar, Relatório, Excluir) — supervisor/admin, Técnico (10/11) e quem tem a marca da v332; o cabeçalho segue a mesma regra. */
   comAcoes?: boolean;
-  /** v332: quem tem só a marca vê a coluna com o Ver relatório, sem o Editar. */
+  /** v332: quem tem só a marca (e o Técnico, 10/11) vê a coluna com o Ver relatório, sem o Editar. */
   comEditar?: boolean;
   /** v308: quem edita inspeção troca a prioridade direto na coluna. */
   podeEditarPrioridade?: boolean;

@@ -66,6 +66,8 @@ export default function CaixaEntrada({
   const niveis = useMeusNiveisQuadros(idsQuadrosSemAprovador, !souGestor);
   const pendencias = useMemo(() => {
     const e = (meuEmail ?? "").toLowerCase();
+    // Painel 0.3.919: o gestor (owner/admin) vê todas — o banco já o deixa decidir (gestao_decidir_aprovacao).
+    if (souGestor) return aprovacoes;
     return aprovacoes.filter((a) => {
       if (a.aprovador_email) return a.aprovador_email.toLowerCase() === e;
       return souGestor || (!!a.id_quadro && nivelPodeEditar(niveis.get(a.id_quadro)));

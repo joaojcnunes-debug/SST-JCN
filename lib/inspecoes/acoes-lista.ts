@@ -3,7 +3,10 @@
  *
  * Supervisor/admin veem Editar, Relatório e Excluir (30/10/2026). Quem tem a marca
  * `ve_relatorio_lista` (v332, por pessoa, em Sistema › Usuários) vê só o Ver relatório.
- * O resto continua sem a coluna e age por Minhas inspeções. Cliente nunca vê pela marca.
+ * 10/11/2026: o Técnico também vê só o Ver relatório, sem a marca, para consultar as inspeções
+ * dos colegas. A marca não serve para isso: ela tira Assumir/Associar-me de todos os documentos dele.
+ * O relatório em si não muda (ele já abria pelo menu Relatórios e pela empresa).
+ * O resto continua sem a coluna e age por Minhas inspeções. Cliente nunca vê.
  *
  * @param supervisor `ehSupervisor(user)` de quem chama.
  */
@@ -12,7 +15,8 @@ export function acoesDaLista(
   supervisor: boolean,
 ): { coluna: boolean; editar: boolean } {
   if (supervisor) return { coluna: true, editar: true };
-  return { coluna: !!user && user.perfil !== "Cliente" && user.ve_relatorio_lista === true, editar: false };
+  const coluna = !!user && user.perfil !== "Cliente" && (user.perfil === "Tecnico" || user.ve_relatorio_lista === true);
+  return { coluna, editar: false };
 }
 
 /**

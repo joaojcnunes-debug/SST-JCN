@@ -798,7 +798,15 @@ export function useSalvarVinculados() {
     // (tarefa recém-criada no Meu Quadro nasce com o dono como responsável — v294 JCN).
     // manterSeguidoresAtuais: quem só troca o responsável (lista e ação em massa) não conhece os
     // seguidores da tarefa — preserva os do banco (menos quem virou responsável) em vez de apagá-los.
-    mutationFn: async (p: { id_tarefa: string; responsaveisEmails: string[]; seguidoresEmails: string[]; manterResponsaveisAtuais?: boolean; manterSeguidoresAtuais?: boolean }) => {
+    // somenteAdicionar (criação, Painel 0.3.917): não remove ninguém — a automação de tarefa_criada pode ter
+    // vinculado pessoas no banco entre o insert e este passo, e o formulário não as conhece.
+    // base (edição, Painel 0.3.919): os vínculos que a janela carregou ao abrir. Só sai quem estava na base e a pessoa
+    // tirou na janela — quem a automação vinculou com a janela aberta não é removido.
+    mutationFn: async (p: {
+      id_tarefa: string; responsaveisEmails: string[]; seguidoresEmails: string[];
+      manterResponsaveisAtuais?: boolean; manterSeguidoresAtuais?: boolean; somenteAdicionar?: boolean;
+      base?: { responsaveisEmails: string[]; seguidoresEmails: string[] };
+    }) => {
       const sb = createSupabaseBrowserClient();
       const rpc = (sb as unknown as {
         rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
@@ -828,9 +836,17 @@ export function useSalvarVinculados() {
         for (const [k, v] of atual) if (v.tipo === "seguidor" && !resps.includes(v.email.toLowerCase())) desejado.set(k, v);
       }
 
-      // Delta: remover (atuais − desejados), depois adicionar (desejados − atuais).
+      // Base da janela (edição): só pode sair quem a janela conhecia.
+      const baseSet = p.base
+        ? new Set([
+            ...p.base.responsaveisEmails.map((e) => `${e.trim().toLowerCase()}|responsavel`),
+            ...p.base.seguidoresEmails.map((e) => `${e.trim().toLowerCase()}|seguidor`),
+          ])
+        : null;
+
+      // Delta: remover (atuais − desejados, e só o que estava na base), depois adicionar (desejados − atuais).
       for (const [k, v] of atual) {
-        if (!desejado.has(k)) {
+        if (!p.somenteAdicionar && !desejado.has(k) && (!baseSet || baseSet.has(k))) {
           const { error } = await rpc("gestao_desvincular", { p_id_tarefa: p.id_tarefa, p_email: v.email, p_tipo: v.tipo });
           if (error) throw error;
         }

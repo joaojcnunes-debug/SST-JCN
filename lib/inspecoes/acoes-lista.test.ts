@@ -20,9 +20,16 @@ test("com a marca: só o relatório, sem Editar", () => {
   assert.deepEqual(acoesDaLista({ perfil: "Tecnico", ve_relatorio_lista: true }, false), { coluna: true, editar: false });
 });
 
-test("sem a marca: sem coluna", () => {
+test("Técnico sem a marca: só o relatório (10/11), e não vira só consulta", () => {
   for (const marca of [false, null, undefined]) {
-    assert.deepEqual(acoesDaLista({ perfil: "Tecnico", ve_relatorio_lista: marca }, false), { coluna: false, editar: false });
+    assert.deepEqual(acoesDaLista({ perfil: "Tecnico", ve_relatorio_lista: marca }, false), { coluna: true, editar: false });
+    assert.equal(soConsultaDocumento({ ve_relatorio_lista: marca }, false), false);
+  }
+});
+
+test("Visualizador sem a marca: sem coluna", () => {
+  for (const marca of [false, null, undefined]) {
+    assert.deepEqual(acoesDaLista({ perfil: "Visualizador", ve_relatorio_lista: marca }, false), { coluna: false, editar: false });
   }
 });
 

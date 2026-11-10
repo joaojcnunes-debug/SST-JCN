@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Plus, ExternalLink, Loader2 } from "lucide-react";
 import TarefaCard from "@/components/gestao/TarefaCard";
 import TarefaModal from "@/components/gestao/TarefaModal";
+import NovaTarefaRapida from "@/components/gestao/NovaTarefaRapida";
 import {
   useTarefas, useStatusQuadro, useCamposQuadro, useMoverTarefa, useTempoQuadro, useAnexosCountQuadro,
   type GestaoTarefa, type StatusTarefa,
@@ -78,6 +79,7 @@ export default function MeuQuadro({ onAbrirCompleto }: { onAbrirCompleto: (idQua
                 ))}
                 {lista.length === 0 && <div className="rounded-lg border border-dashed border-gray-200 px-2 py-6 text-center text-xs text-gray-300">Sem tarefas</div>}
               </div>
+              <NovaTarefaRapida idQuadro={idQuadro} status={col.slug} ordem={lista.reduce((m, t) => Math.max(m, t.ordem ?? 0), 0) + 1} />
             </div>
           );
         })}
