@@ -143,10 +143,13 @@ const LABEL_PRODUTO_PATTERNS = [
 
 const LABEL_COMPONENTE_PATTERNS = [
   /^Nome\s+(?:químico|da\s+substância|do\s+ingrediente|do\s+componente)\s*[:\-]?\s*/i,
-  /^Identificação\s+química\s*[:\-]?\s*/i,
+  /^Identifica[cç][aã]o\s+química\s*[:\-]?\s*/i,
+  /^Identidade\s+química\s*[:\-]?\s*/i,
+  /^(?:Nome\s+)?comum(?:\s+ou\s+nome\s+(?:genérico|técnico))?\s*:\s*/i,
   /^(?:Chemical|Component|Ingredient)\s+name\s*[:\-]?\s*/i,
   /^Número\s+(?:CAS|CE|de\s+registo)\s*[:\-]?\s*/i,
-  /^(?:CAS|CE|EC|REACH)\s*(?:n[°º.]?|number|no\.?)?\s*[:\-]?\s*/i,
+  // `\b`: sem ele, "Ceras parafínicas" perdia o "Ce" e virava "ras parafínicas".
+  /^(?:CAS|CE|EC|REACH)\b\s*(?:n[°º.]?|number|no\.?)?\s*[:\-]?\s*/i,
   /^Concentração\s*(?:\(%\))?\s*[:\-]?\s*/i,
   /^Concentration\s*(?:\(%\))?\s*[:\-]?\s*/i,
 ];
@@ -265,9 +268,13 @@ function extrairConcentracao(target: string): string | undefined {
     .replace(/\b\d{2,7}-\d{2}-\d\b/g, "")
     .replace(/\b\d{3}-\d{3}-\d\b/g, "");
 
-  // Padrão 1: range COM `%` (ex: "10-15%", "21,5-30%")
+  // Faixa com sinais: ">= 25 - < 30 %" é de 25 a 30, não "menor que 30".
+  const comSinais = limpa.match(/[>≥]=?\s*(\d{1,3}(?:[,.]\d+)?)\s*[-–]\s*[<≤]=?\s*(\d{1,3}(?:[,.]\d+)?)\s*%/);
+  if (comSinais) return `${comSinais[1]}-${comSinais[2]}%`;
+
+  // Padrão 1: range COM `%` (ex: "10-15%", "21,5-30%", "40% - 50%")
   let m = limpa.match(
-    /(\d{1,3}(?:[,.]\d+)?\s*[-–]\s*\d{1,3}(?:[,.]\d+)?\s*%)/
+    /(\d{1,3}(?:[,.]\d+)?\s*%?\s*[-–]\s*\d{1,3}(?:[,.]\d+)?\s*%)/
   );
   if (!m) {
     // Padrão 2: range SEM `%` mas com decimal em AMBOS os números.
@@ -279,11 +286,12 @@ function extrairConcentracao(target: string): string | undefined {
     );
   }
   if (!m) {
-    // Padrão 3: valor único com `%` obrigatório
-    m = limpa.match(/(\d{1,3}(?:[,.]\d+)?\s*%)/);
+    // Padrão 3: valor único com `%` obrigatório. O sinal faz parte do valor:
+    // "< 5%" gravado como "5%" informa outra coisa.
+    m = limpa.match(/((?:[<>≤≥]\s*)?\d{1,3}(?:[,.]\d+)?\s*%)/);
   }
   if (!m) return undefined;
-  let val = m[1].replace(/\s+/g, "");
+  let val = m[1].replace(/\s+/g, "").replace(/%(?=[-–])/, "");
   // Heurística: se não tem `%` mas é range, assume concentração
   // (cabeçalho da coluna ABNT diz `(%)`).
   if (!val.includes("%")) val = val + "%";
@@ -332,6 +340,100 @@ function extrairTodasConcentracoes(texto: string): string[] {
   itens.sort((a, b) => a.idx - b.idx);
   for (const it of itens) resultados.push(it.val);
   return resultados;
+}
+
+/** "Nome: < 5,0%" no início da linha, com o `%` obrigatório. */
+const INGREDIENTE_SEM_CAS =
+  /^([A-Za-zÀ-ÿ][^:]{1,78}?)\s*:\s*((?:[<>≤≥]\s*)?\d{1,3}(?:[,.]\d+)?(?:\s*%?\s*[-–]\s*\d{1,3}(?:[,.]\d+)?)?\s*%)/;
+/**
+ * Só o que se declara ingrediente sigiloso entra sem CAS. Lista fechada de propósito: quando a ficha
+ * não separa as seções, o texto da 9 vaza na 3 e "Solubilidade em água: 73%" tem a mesma forma.
+ * Nas 147 FISPQs reais da base (05/11/2026), todo ingrediente sem CAS era "Segredo industrial N".
+ */
+const NOME_INGREDIENTE_SIGILOSO =
+  /^(segredo\s+(industrial|comercial)|ingrediente\s+(confidencial|sigiloso|n[aã]o\s+divulgado)|(ingrediente|componente)\s+[A-Z0-9]\b)|confidencial/i;
+
+/** Dígito verificador do CAS: soma de cada dígito × a posição, da direita para a esquerda, módulo 10. */
+function casValido(corpo: string, verificador: string): boolean {
+  const soma = [...corpo].reverse().reduce((t, d, i) => t + Number(d) * (i + 1), 0);
+  return soma % 10 === Number(verificador);
+}
+
+/**
+ * "16961 - 83 - 4" → "16961-83-4". É assim que o texto de muitas FDS chega do PDF, e o CAS não era
+ * reconhecido: a composição ficava vazia. O dígito verificador separa o CAS de um "15 - 25 - 7" qualquer.
+ */
+function juntarCasComEspacos(texto: string): string {
+  return texto.replace(/\b(\d{2,7})\s*[-–]\s*(\d{2})\s*[-–]\s*(\d)\b/g, (todo, a: string, b: string, c: string) =>
+    casValido(a + b, c) ? `${a}-${b}-${c}` : todo,
+  );
+}
+
+/**
+ * Tabela fora da seção 3 (a ficha quebra a página no meio): só linha com nome, CAS e concentração
+ * juntos, para não pegar as menções a CAS das seções 8 e 11.
+ */
+function componentesEmLinhaUnica(texto: string): ComponenteQuimico[] {
+  const vistos = new Set<string>();
+  const lista: ComponenteQuimico[] = [];
+  for (const bruta of texto.split(/\n/)) {
+    // O nome pode ter número: "Hidróxido de Sódio 50%", "N-OLEYL-1,3-PROPILENODIAMINA".
+    const m = bruta.trim().match(/^([A-Za-zÀ-ÿ][^:]{1,70}?)\s+(\d{2,7}-\d{2}-\d)\s+(\S.*%)/);
+    if (!m || vistos.has(m[2])) continue;
+    const concentracao = extrairConcentracao(m[3]);
+    if (!concentracao) continue;
+    vistos.add(m[2]);
+    lista.push({ cas: m[2], nome: m[1].replace(/\s+/g, " ").trim(), concentracao });
+  }
+  return lista;
+}
+
+/**
+ * O PDF não tem texto para ler (escaneado, só imagem)? As marcas "=== Página N ===" que a extração
+ * acrescenta não contam: por causa delas a checagem antiga nunca disparava, a composição saía vazia
+ * e a IA devolvia o exemplo do próprio prompt como nome ("Solvente XYZ"). Nas análises da base
+ * (06/11/2026), os PDFs sem texto têm 0 letras e a menor ficha de verdade tem 1.167.
+ */
+export function pdfSemTexto(texto: string): boolean {
+  const semMarcas = texto.replace(/=== Página \d+ ===/g, "");
+  return (semMarcas.match(/[A-Za-zÀ-ÿ]/g) ?? []).length < 100;
+}
+
+/**
+ * O PDF enviado é um laudo gerado pelo próprio painel, não a ficha do fabricante? Os títulos abaixo
+ * vêm de `AnaliseQuimicosTemplate`. Em 05/11/2026 foram 2 das 147 análises da base, e o parser leu
+ * "Empresa não informada." como nome do produto.
+ */
+export function ehLaudoDoPainel(texto: string): boolean {
+  return (
+    /Identifica[cç][aã]o\s+do\s+Agente\s+Qu[ií]mico/i.test(texto) &&
+    /Precisa\s+de\s+medi[cç][aã]o|Conclus[aã]o\s+R[aá]pida|corpo\s+do\s+laudo/i.test(texto)
+  );
+}
+
+/** Marca a célula vazia nas colunas gravadas, para cada posição seguir sendo do mesmo componente. */
+const SEM_VALOR_COMPOSICAO = "—";
+
+/**
+ * Junta uma coluna da composição (nomes, CAS...) no texto gravado em `analises_quimicos`, separado
+ * por "; ". A tela e o PDF remontam a tabela pela POSIÇÃO: descartar a célula vazia punha o CAS de
+ * um ingrediente na linha de outro. Mistura guarda "—" no lugar; um componente só fica sem marca.
+ */
+export function juntarColunaComposicao(valores: ReadonlyArray<string | null | undefined>): string | null {
+  const limpos = valores.map((v) => v?.trim() ?? "");
+  const preenchidos = limpos.filter(Boolean);
+  if (preenchidos.length === 0) return null;
+  if (limpos.length === 1) return limpos[0];
+  return limpos.map((v) => v || SEM_VALOR_COMPOSICAO).join("; ");
+}
+
+/** A coluna gravada para exibir em texto corrido: sem os "—" que só servem para alinhar. */
+export function colunaComposicaoParaExibir(coluna: string | null | undefined): string {
+  return (coluna ?? "")
+    .split(/;\s*/)
+    .map((v) => v.trim())
+    .filter((v) => v && v !== SEM_VALOR_COMPOSICAO)
+    .join("; ");
 }
 
 /**
@@ -385,6 +487,12 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
     // Frases H, pictogramas, advertências
     if (/^h\d{3}\b/i.test(s)) return true;
     if (/(GHS|pictograma|advertência|hazard\s+statement)/i.test(s)) return true;
+    // Rótulos que viravam nome nas FDS reais: "nº", "Sinônimo: ...", "conteúdo (m/m): ..."
+    if (/^n[º°o.]*\s*(de\s+)?(cas)?\s*[:.]?$/i.test(s)) return true;
+    if (/^(n[uú]mero|conte[uú]do|sin[oô]nimos?|registro)\b|chemical\s+abstract/i.test(s)) return true;
+    // Rodapé e frase solta que o layout põe antes do CAS: sem nome, a base ou a IA completam.
+    if (/^(p[aá]gina|data\b|revis[aã]o|vers[aã]o|n[aã]o\s|\d|\(inci)/i.test(s)) return true;
+    if (/\bp[aá]gina\s*:?\s*\d|\bdata\s+d[ae]\s/i.test(s)) return true;
     // Linhas só com CAS ou só com %
     if (/^(número\s+cas|cas\s*[:#]|cas\s*n[°º]?)/i.test(s)) return true;
     if (/^(número\s+ce|ce\s*[:#])/i.test(s)) return true;
@@ -398,7 +506,20 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
     const linha = linhas[i];
     if (!linha) continue;
     const casMatch = linha.match(/\b(\d{2,7}-\d{2}-\d)\b/);
-    if (!casMatch) continue;
+    if (!casMatch) {
+      // Ingrediente declarado sem CAS ("Segredo industrial 1: < 5,0%"). Sem isto a composição
+      // saía só com os que têm CAS: ECOCOOL tem 5 ingredientes e aparecia 1.
+      const semCas = linha.match(INGREDIENTE_SEM_CAS);
+      const nomeSemCas = semCas?.[1].replace(/\s+/g, " ").trim();
+      if (semCas && nomeSemCas && NOME_INGREDIENTE_SIGILOSO.test(nomeSemCas)) {
+        componentes.push({
+          cas: "",
+          nome: nomeSemCas,
+          concentracao: semCas[2].replace(/\s+/g, "").replace(/%(?=[-–])/, ""),
+        });
+      }
+      continue;
+    }
 
     const cas = casMatch[1];
 
@@ -416,7 +537,7 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
         ""
       )
       // "...hidrogênio (CAS 64742-52-5)" deixava "(CAS" grudado no nome
-      .replace(/[(\[]?\s*(número\s+cas|cas\s*n[°º]?|cas\s*[:#]|cas)\s*$/i, "")
+      .replace(/[(\[]?\s*(n[°º]\s*cas|número\s+cas|cas\s*n[°º]?|cas\s*[:#]|cas)\s*[)\]]?\s*:?\s*$/i, "")
       .replace(/[:#]\s*$/, "")
       .trim();
     // Strippa rótulos no INÍCIO do prefixo (ex.: "Nome químico 2-Butanone" → "2-Butanone")
@@ -476,7 +597,7 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
       nome = stripLabel(nome, LABEL_COMPONENTE_PATTERNS);
       // Limpa lixo final (vírgulas, dois-pontos, hyphens órfãos)
       if (nome) {
-        nome = nome.replace(/[,;:\-–\s]+$/, "").trim();
+        nome = nome.replace(/[,;:.\-–\s]+$/, "").trim();
         if (!nome || !/[a-zA-ZÀ-ÿ]/.test(nome) || ehSoRotulo(nome)) {
           nome = undefined;
         } else if (nome.length > 120) {
@@ -488,12 +609,13 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
     componentes.push({ cas, nome, concentracao });
   }
 
-  // Remove duplicados (mesmo CAS aparecendo várias vezes) — mantem 1ª ocorrência
+  // Remove duplicados (mesmo CAS, ou mesmo nome quando não tem CAS) — mantem 1ª ocorrência
   const vistos = new Set<string>();
   const unicos: ComponenteQuimico[] = [];
   for (const c of componentes) {
-    if (!vistos.has(c.cas)) {
-      vistos.add(c.cas);
+    const chave = c.cas || (c.nome ?? "").toLowerCase();
+    if (!vistos.has(chave)) {
+      vistos.add(chave);
       unicos.push(c);
     }
   }
@@ -515,7 +637,8 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
     }
   }
 
-  return unicos.slice(0, 12);
+  // Quem tem CAS vem primeiro: o 1º vira o químico principal, e ele não pode ser um sigiloso.
+  return [...unicos.filter((c) => c.cas), ...unicos.filter((c) => !c.cas)].slice(0, 12);
 }
 
 /**
@@ -577,9 +700,10 @@ function dividirEmSecoes(texto: string): Map<number, string> {
 // Parser principal
 // =====================================================
 
-export function parseFispq(texto: string): FispqExtracted {
+export function parseFispq(textoOriginal: string): FispqExtracted {
+  const texto = juntarCasComEspacos(textoOriginal);
   const result: FispqExtracted = {
-    texto_completo: texto,
+    texto_completo: textoOriginal,
     confianca: "baixa",
   };
 
@@ -620,7 +744,7 @@ export function parseFispq(texto: string): FispqExtracted {
       if (linha.length < 3 || linha.length > 150) continue;
       if (!/[a-zA-ZÀ-ÿ]/.test(linha)) continue;
       // Pula linhas com dados óbvios de não-nome
-      if (/(cnpj|telefone|endereço|address|phone|emergência|email|@)/i.test(linha)) continue;
+      if (/(cnpj|telefone|endereço|address|phone|emergência|email|@|n[aã]o\s+informad[ao])/i.test(linha)) continue;
       // Pula sub-headers de FISPQ (Principais usos, Identificação, etc.)
       if (ehHeaderFispq(linha)) continue;
       // Se a linha começa com rótulo "Nome do produto X" (sem `:` ou `-`),
@@ -687,7 +811,7 @@ export function parseFispq(texto: string): FispqExtracted {
   const secoes = dividirEmSecoes(texto);
   const componentesS3 = extrairComponentesDeSecao3(secoes.get(3));
 
-  if (componentesS3.length > 0) {
+  if (componentesS3.some((c) => c.cas)) {
     // Achamos na Seção 3 — usa o 1º como "principal"
     result.numero_cas = componentesS3[0].cas;
     if (componentesS3[0].nome) result.nome_quimico = componentesS3[0].nome;
@@ -696,14 +820,38 @@ export function parseFispq(texto: string): FispqExtracted {
     // Demais ficam em cas_componentes
     result.cas_componentes = componentesS3.slice(1);
   } else {
+    const emLinha = componentesEmLinhaUnica(texto);
     // Fallback: pega todos CAS soltos no documento (método antigo)
     const casMatches = [...texto.matchAll(/\b(\d{2,7}-\d{2}-\d)\b/g)];
-    if (casMatches.length > 0) {
+    if (emLinha.length > 0) {
+      // CAS solto que a linha única não pegou continua na lista: a tabela pode ter outro formato,
+      // e ingrediente perdido é pior que um CAS a mais para a pessoa revisar.
+      const achados = new Set(emLinha.map((c) => c.cas));
+      const soltos: ComponenteQuimico[] = [...new Set(casMatches.map((m) => m[1]))]
+        .filter((cas) => !achados.has(cas))
+        .slice(0, Math.max(0, 8 - emLinha.length))
+        .map((cas) => ({ cas }));
+      const [principal, ...resto] = [...emLinha, ...soltos, ...componentesS3];
+      result.numero_cas = principal.cas;
+      if (principal.nome) result.nome_quimico = principal.nome;
+      if (principal.concentracao) result.concentracao = principal.concentracao;
+      if (resto.length > 0) result.cas_componentes = resto;
+    } else if (casMatches.length > 0) {
       const unicos = [...new Set(casMatches.map((m) => m[1]))];
       result.numero_cas = unicos[0];
       if (unicos.length > 1) {
         result.cas_componentes = unicos.slice(1, 8).map((cas) => ({ cas }));
       }
+      // Sigilosos da Seção 3 não tiram o CAS solto do lugar: entram depois dele.
+      if (componentesS3.length > 0) {
+        result.cas_componentes = [...(result.cas_componentes ?? []), ...componentesS3];
+      }
+    } else if (componentesS3.length > 0) {
+      // Ficha sem nenhum CAS: o 1º sigiloso é o que há para mostrar como principal.
+      const [principal, ...resto] = componentesS3;
+      if (principal.nome) result.nome_quimico = principal.nome;
+      if (principal.concentracao) result.concentracao = principal.concentracao;
+      if (resto.length > 0) result.cas_componentes = resto;
     }
   }
 
@@ -849,7 +997,7 @@ export function montarContextoFispq(dados: FispqExtracted): string {
   if (dados.cas_componentes && dados.cas_componentes.length > 0) {
     linhas.push(
       `Componentes adicionais (CAS): ${dados.cas_componentes
-        .map((c) => c.cas)
+        .map((c) => c.cas || `${c.nome ?? "não identificado"} (sem CAS${c.concentracao ? `, ${c.concentracao}` : ""})`)
         .join(", ")}`
     );
   }

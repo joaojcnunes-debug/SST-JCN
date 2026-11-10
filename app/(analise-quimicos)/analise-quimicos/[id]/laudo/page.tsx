@@ -17,6 +17,7 @@ import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
 import { useTextosPadrao } from "@/lib/hooks/useTextosPadrao";
 import { montarValoresEmpresa, formatarDataBR, substituirVariaveisTexto } from "@/lib/textos-padrao/variaveis";
 import { useAnaliseQuimico } from "@/lib/hooks/useAnalisesQuimicos";
+import { colunaComposicaoParaExibir } from "@/lib/fispq/parser";
 import ConclusaoRapidaCard from "@/components/quimicos/ConclusaoRapidaCard";
 import RelatorioEstruturado from "@/components/quimicos/RelatorioEstruturado";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
@@ -71,8 +72,8 @@ export default function LaudoAnaliseQuimicoPage({
   const valoresTextosPadrao: Record<string, string> = {
     ...montarValoresEmpresa(empresa ?? null),
     titulo: analise.titulo,
-    nome_quimico: analise.nome_quimico ?? "",
-    numero_cas: analise.numero_cas ?? "",
+    nome_quimico: colunaComposicaoParaExibir(analise.nome_quimico),
+    numero_cas: colunaComposicaoParaExibir(analise.numero_cas),
     responsavel: analise.usuario_nome ?? "",
     carimbo: analise.usuario_nome ?? "",
     importado: formatarDataBR(analise.created_at),

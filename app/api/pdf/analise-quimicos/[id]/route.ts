@@ -9,6 +9,7 @@ import { montarSignatarioTecnico } from "@/lib/pdf/folha-assinatura-tecnico";
 import { assinarCapitulos } from "@/lib/pdf/assinar-midia";
 
 import { aplicarAnexosNoPdf } from "@/lib/anexos/server";
+import { colunaComposicaoParaExibir } from "@/lib/fispq/parser";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -51,8 +52,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     const valores: Record<string, string> = {
       ...montarValoresEmpresa(empresa),
       titulo: (ana.titulo as string) ?? "",
-      nome_quimico: (ana.nome_quimico as string) ?? "",
-      numero_cas: (ana.numero_cas as string) ?? "",
+      nome_quimico: colunaComposicaoParaExibir(ana.nome_quimico as string | null),
+      numero_cas: colunaComposicaoParaExibir(ana.numero_cas as string | null),
       responsavel: (ana.usuario_nome as string) ?? "",
       carimbo: (ana.usuario_nome as string) ?? "",
       importado: formatarDataBR(ana.created_at as string | null),

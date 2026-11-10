@@ -773,6 +773,13 @@ Empresa + NR do catálogo (`lib/conformidade/checklists.ts`: NR-01, 05, 06, 07, 
 
 **0.3.190:** o parser da FISPQ (`lib/fispq/parser.ts`) junta acentos soltos de PDFs em LaTeX e aceita o rótulo "Nome da substância ou mistura (nome comercial)". A análise ganhou o botão **Laudo / PDF** no topo.
 
+**0.3.254 (trazido do Painel 0.3.873, 0.3.875 e 0.3.876):** a leitura da FISPQ ficou mais completa e mais segura.
+- **Ingredientes sem CAS** com nome sigiloso ("Segredo industrial 1: < 5,0%") entram na composição, com o sinal da concentração. Sem CAS, só entra nome sigiloso, para não tomar "Solubilidade em água: 73%" por ingrediente.
+- **CAS escrito com espaços** ("16961 - 83 - 4") é aceito quando o dígito verificador confere, e a faixa "10% - 40%" fica inteira.
+- As colunas gravadas (`nome_quimico`, `numero_cas`…) guardam a **posição** de cada componente ("—" na célula vazia), e a tela, o laudo e o PDF remontam pela posição (`colunaComposicaoParaExibir`). Assim o CAS não vai parar na linha de outro ingrediente. Análises já gravadas não mudam.
+- **Laudo do próprio sistema** enviado como FISPQ é recusado (`ehLaudoDoPainel`), e **PDF escaneado** sem texto é avisado no envio (`pdfSemTexto`; as marcas "=== Página N ===" não contam).
+- A edge function `extrair-campos-fispq` não chama a IA sem texto e o prompt não tem mais exemplos de nome (a IA devolvia "Solvente XYZ").
+
 ### 7.6 AEP — Análise Ergonômica Preliminar (`/aep`)
 
 - `aep_relatorios` (uuid): empresa, status (`RASCUNHO | CONCLUIDO`), **`setores` jsonb**, responsável, título e registro profissional, datas, endereço, conclusão, `id_inspecao`, `enviado_modulo_em`.
