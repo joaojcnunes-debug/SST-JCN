@@ -25,6 +25,7 @@ import {
 import ConclusaoRapidaCard from "@/components/quimicos/ConclusaoRapidaCard";
 import RelatorioEstruturado from "@/components/quimicos/RelatorioEstruturado";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
+import { colunaComposicaoParaExibir } from "@/lib/fispq/parser";
 import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
 import { montarValoresEmpresa, formatarDataBR } from "@/lib/textos-padrao/variaveis";
 import { useCanDelete, useCanEdit } from "@/lib/hooks/useUsuario";
@@ -163,13 +164,13 @@ export default function AnaliseDetalhePage({
                 <p className="text-[9px] font-bold uppercase text-gray-500">
                   Nome Químico
                 </p>
-                <p className="text-gray-900">{analise.nome_quimico}</p>
+                <p className="text-gray-900">{colunaComposicaoParaExibir(analise.nome_quimico)}</p>
               </div>
             )}
             {analise.numero_cas && (
               <div>
                 <p className="text-[9px] font-bold uppercase text-gray-500">CAS</p>
-                <p className="text-gray-900">{analise.numero_cas}</p>
+                <p className="text-gray-900">{colunaComposicaoParaExibir(analise.numero_cas)}</p>
               </div>
             )}
             {analise.formula_quimica && (
@@ -177,7 +178,7 @@ export default function AnaliseDetalhePage({
                 <p className="text-[9px] font-bold uppercase text-gray-500">
                   Fórmula
                 </p>
-                <p className="text-gray-900">{analise.formula_quimica}</p>
+                <p className="text-gray-900">{colunaComposicaoParaExibir(analise.formula_quimica)}</p>
               </div>
             )}
             {analise.forma_fisica && (
@@ -193,7 +194,7 @@ export default function AnaliseDetalhePage({
                 <p className="text-[9px] font-bold uppercase text-gray-500">
                   Concentração
                 </p>
-                <p className="text-gray-900">{analise.concentracao}</p>
+                <p className="text-gray-900">{colunaComposicaoParaExibir(analise.concentracao)}</p>
               </div>
             )}
           </div>
@@ -236,8 +237,8 @@ export default function AnaliseDetalhePage({
         valores={{
           ...montarValoresEmpresa(empresa ?? null),
           titulo: analise.titulo,
-          nome_quimico: analise.nome_quimico ?? "",
-          numero_cas: analise.numero_cas ?? "",
+          nome_quimico: colunaComposicaoParaExibir(analise.nome_quimico),
+          numero_cas: colunaComposicaoParaExibir(analise.numero_cas),
           responsavel: analise.usuario_nome ?? "",
           carimbo: analise.usuario_nome ?? "",
           importado: formatarDataBR(analise.created_at),
@@ -260,8 +261,8 @@ export default function AnaliseDetalhePage({
         valores={{
           ...montarValoresEmpresa(empresa ?? null),
           titulo: analise.titulo,
-          nome_quimico: analise.nome_quimico ?? "",
-          numero_cas: analise.numero_cas ?? "",
+          nome_quimico: colunaComposicaoParaExibir(analise.nome_quimico),
+          numero_cas: colunaComposicaoParaExibir(analise.numero_cas),
           responsavel: analise.usuario_nome ?? "",
           carimbo: analise.usuario_nome ?? "",
           importado: formatarDataBR(analise.created_at),

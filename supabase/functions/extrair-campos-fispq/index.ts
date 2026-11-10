@@ -70,7 +70,7 @@ Regras:
 - Responda APENAS com JSON. Sem prosa, sem markdown, sem explicação.
 - Use exatamente as chaves solicitadas. Se não conseguir extrair um campo com certeza, devolva null pra aquele campo.
 - NUNCA invente. Se não está claramente no texto, devolva null.
-- "nome_produto": o nome comercial/identificador do produto (Seção 1.1). Tipicamente uma string curta como "Solvente XYZ", "Tinta Acrílica Branca", "MC-2BK106". Não é uma descrição de uso — frases como "Principais usos recomendados para a..." NÃO são nome de produto.
+- "nome_produto": o nome comercial/identificador do produto (Seção 1.1). Copie exatamente como está no trecho, tipicamente uma string curta. Não é uma descrição de uso — frases como "Principais usos recomendados para a..." NÃO são nome de produto.
 - "fabricante": razão social da empresa fabricante/fornecedora (Seção 1.3). Não inclua endereço, telefone, CNPJ — só o nome da empresa.
 - "forma_fisica": uma das opções: "Líquido", "Sólido", "Gás", "Vapor", "Aerossol", "Pó", "Pasta", "Granulado", "Cristalino". Vem da Seção 9 (Propriedades físico-químicas, campo Estado físico/Forma física/Aspecto). Normalize pra essas opções.
 - "componentes": pra cada CAS solicitado, encontre o nome do componente e a faixa de concentração na Seção 3 (Composição/Informações dos Ingredientes). Devolva array no formato: [{"cas": "64-17-5", "nome": "Álcool etílico", "concentracao": "21,750-36,250%"}]. Concentração: inclua o % no final mesmo se a tabela do PDF não tiver (o cabeçalho da coluna costuma indicar "(%)"). Se não achar o componente, devolva null nos campos nome/concentracao mas mantenha o cas.`;
@@ -149,6 +149,15 @@ function parsearResposta(content: string): ExtrairCamposResponse {
   };
 }
 
+/**
+ * O PDF não tem texto para ler (escaneado, só imagem)? As marcas "=== Página N ===" da extração não contam.
+ * Cópia de pdfSemTexto (lib/fispq/parser.ts): a edge roda em Deno e não importa de @/lib.
+ */
+function pdfSemTexto(texto: string): boolean {
+  const semMarcas = texto.replace(/=== Página \d+ ===/g, "");
+  return (semMarcas.match(/[A-Za-zÀ-ÿ]/g) ?? []).length < 100;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS });
@@ -169,6 +178,11 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: "Payload inválido: 'snippet' obrigatório." }),
         { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
       );
+    }
+    // Sem texto não há o que extrair: o modelo devolvia o exemplo do prompt como nome de produto
+    // (0.3.254, do Painel 0.3.876). Mesma regra de pdfSemTexto em lib/fispq/parser.ts (a edge não importa de @/lib).
+    if (pdfSemTexto(body.snippet)) {
+      return new Response(JSON.stringify({}), { status: 200, headers: { ...CORS, "Content-Type": "application/json" } });
     }
     const temCampos =
       Array.isArray(body.campos_faltantes) &&

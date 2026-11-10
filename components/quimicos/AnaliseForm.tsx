@@ -24,7 +24,7 @@ import {
   type CampoFispqFaltante,
 } from "@/lib/hooks/useAnalisesQuimicos";
 import { useBaseReferenciaQuimicosMerged } from "@/lib/hooks/useBaseReferenciaQuimicos";
-import { montarContextoFispq, type FispqExtracted } from "@/lib/fispq/parser";
+import { juntarColunaComposicao, montarContextoFispq, type FispqExtracted } from "@/lib/fispq/parser";
 import {
   buscarComponentes,
   piorCasoMistura,
@@ -452,14 +452,8 @@ export default function AnaliseForm() {
             concentracao: c.concentracao ?? null,
           })),
         ];
-        const joinKey = (k: "nome" | "cas" | "formula" | "concentracao") => {
-          const vals = todos
-            .map((c) => c[k])
-            .filter((v): v is string => !!v && v.trim().length > 0);
-          if (vals.length === 0) return null;
-          if (vals.length === 1) return vals[0];
-          return vals.join("; ");
-        };
+        const joinKey = (k: "nome" | "cas" | "formula" | "concentracao") =>
+          juntarColunaComposicao(todos.map((c) => c[k]));
         return {
           nome_produto: fispqDados.nome_produto?.trim() || null,
           nome_quimico: joinKey("nome"),
@@ -471,14 +465,8 @@ export default function AnaliseForm() {
       }
       // Manual mode
       const primeiro = componentesLimpos[0];
-      const juntar = (k: keyof ComponenteQuimico): string | null => {
-        const vals = componentesLimpos
-          .map((c) => c[k])
-          .filter((v): v is string => !!v);
-        if (vals.length === 0) return null;
-        if (vals.length === 1) return vals[0];
-        return vals.join("; ");
-      };
+      const juntar = (k: keyof ComponenteQuimico): string | null =>
+        juntarColunaComposicao(componentesLimpos.map((c) => c[k]));
       return {
         nome_produto: dados.nome_produto.trim() || null,
         nome_quimico: juntar("nome_quimico") ?? primeiro?.nome_quimico ?? null,
@@ -534,7 +522,7 @@ export default function AnaliseForm() {
                 // Adicionais vêm de cas_componentes
                 ...(fispqDados.cas_componentes ?? []).map((c) => ({
                   nome_quimico: c.nome ?? null,
-                  numero_cas: c.cas ?? null,
+                  numero_cas: c.cas || null,
                   formula_quimica: null,
                   concentracao: c.concentracao ?? null,
                 })),

@@ -41,6 +41,43 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "quimicos-composicao-sem-cas",
+    data: "2026-11-10",
+    tipo: "correcao",
+    titulo: "Análise de Químicos: a composição traz também os ingredientes sem CAS",
+    texto:
+      "Ao ler a FISPQ, ingredientes declarados sem número CAS, como \"Segredo industrial 1: < 5,0%\", passam a entrar na " +
+      "composição, com o sinal de menor que na concentração. Cada CAS fica na linha do seu ingrediente. As análises " +
+      "já gravadas não mudam: para atualizar uma delas, refaça a análise com a FISPQ.",
+    onde: "Análise de Químicos › Nova análise",
+    versoes: ["0.3.254"],
+  },
+  {
+    id: "quimicos-leitura-fds-cas-com-espacos",
+    data: "2026-11-10",
+    tipo: "correcao",
+    titulo: "Análise de Químicos: a composição aparece nas FDS que vinham vazias",
+    texto:
+      "A leitura agora reconhece o número CAS escrito com espaços, como \"16961 - 83 - 4\", que deixava a composição " +
+      "vazia em muitas fichas, e mantém a faixa inteira da concentração: \"10% - 40%\" não vira mais só \"10%\". O PDF de " +
+      "um laudo gerado pelo sistema é recusado, com o pedido da ficha original. Confira a composição na tela de revisão " +
+      "antes de gerar a análise.",
+    onde: "Análise de Químicos › Nova análise",
+    versoes: ["0.3.254"],
+  },
+  {
+    id: "quimicos-pdf-escaneado-recusado",
+    data: "2026-11-10",
+    tipo: "correcao",
+    titulo: "Análise de Químicos: PDF escaneado agora é avisado na hora",
+    texto:
+      "Um PDF que é só imagem não tem texto para ler, e a análise seguia com a composição vazia e, às vezes, com um nome " +
+      "de produto que não era o da ficha. Agora o sistema avisa ao enviar o arquivo: use um PDF com texto ou a Entrada " +
+      "Manual. As análises já gravadas não mudam.",
+    onde: "Análise de Químicos › Nova análise",
+    versoes: ["0.3.254"],
+  },
+  {
     id: "usuarios-permissoes-por-modulo",
     data: "2026-11-10",
     tipo: "novidade",

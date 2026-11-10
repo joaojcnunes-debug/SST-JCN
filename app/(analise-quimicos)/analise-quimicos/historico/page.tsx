@@ -14,6 +14,7 @@ import { useAnalisesQuimicos } from "@/lib/hooks/useAnalisesQuimicos";
 import { usePodeQuimicos } from "@/lib/hooks/useUsuario";
 import { buscar } from "@/lib/busca/texto";
 import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
+import { colunaComposicaoParaExibir } from "@/lib/fispq/parser";
 
 export default function HistoricoAnalisesPage() {
   // Perfil (Admin/Técnico) OU capability pode_escrever_quimicos — espelha a RLS v189.
@@ -127,7 +128,7 @@ export default function HistoricoAnalisesPage() {
                         ? a.fonte_arquivo ?? "PDF"
                         : "Manual"}
                     </span>
-                    {a.numero_cas && <span>CAS: {a.numero_cas}</span>}
+                    {a.numero_cas && <span>CAS: {colunaComposicaoParaExibir(a.numero_cas)}</span>}
                     {a.usuario_nome && <span>{a.usuario_nome}</span>}
                     <span>
                       {new Date(a.created_at).toLocaleString("pt-BR")}

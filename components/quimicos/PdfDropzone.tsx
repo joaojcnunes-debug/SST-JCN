@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { Upload, FileText, X, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
-import { juntarAcentosSoltos, parseFispq, type FispqExtracted } from "@/lib/fispq/parser";
+import { ehLaudoDoPainel, juntarAcentosSoltos, parseFispq, pdfSemTexto, type FispqExtracted } from "@/lib/fispq/parser";
 
 export interface PdfArquivo {
   nome: string;
@@ -92,14 +92,23 @@ export default function PdfDropzone({
         texto += `\n=== Página ${p} ===\n${pageText}\n`;
       }
 
-      if (!texto.trim()) {
+      if (pdfSemTexto(texto)) {
         toast.error(
-          "PDF parece ser somente imagem (escaneado). Use o modo Manual ou um PDF com texto."
+          "Este PDF é só imagem (escaneado) e não dá para ler o texto dele. Use um PDF com texto ou a Entrada Manual.",
+          { duration: 8000 },
         );
         return;
       }
 
       const textoLimpo = juntarAcentosSoltos(texto.trim());
+      // Laudo gerado aqui não é FISPQ: o nome saía "Empresa não informada." (05/11/2026).
+      if (ehLaudoDoPainel(textoLimpo)) {
+        toast.error(
+          "Este PDF é um laudo gerado pelo sistema, não a FISPQ. Envie a ficha original do fabricante.",
+          { duration: 8000 },
+        );
+        return;
+      }
       const parsed = parseFispq(textoLimpo);
       onChange({ nome: f.name, texto: textoLimpo, parsed });
       toast.success(
