@@ -183,6 +183,8 @@ function padraoParaConta(f: FuncaoPainel, todasUnidades: string[]) {
   if (f.pode_criar_padrao !== null) patch.pode_criar = f.pode_criar_padrao;
   if (f.pode_editar_padrao !== null) patch.pode_editar = f.pode_editar_padrao;
   if (f.pode_excluir_padrao !== null) patch.pode_excluir = f.pode_excluir_padrao;
+  // A grade por módulo (09/11/2026) volta a NULL: a conta passa a valer o padrão da função em todos os módulos.
+  patch.permissoes_modulos = null;
   if (f.unidades_padrao === "todas" && perfil !== "Admin") patch.unidades = todasUnidades;
   if (perfil === "Admin") patch.unidades = [];
   return patch;

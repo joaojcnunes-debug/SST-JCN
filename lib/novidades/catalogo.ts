@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "usuarios-permissoes-por-modulo",
+    data: "2026-11-10",
+    tipo: "novidade",
+    titulo: "Usuários: Criar, Editar e Excluir separados por módulo, e Visualizar por tela",
+    texto:
+      "Em Acesso aos módulos, cada grupo abre e fecha, e cada módulo tem Visualizar, Criar, Editar e Excluir: a pessoa " +
+      "só faz o que estiver marcado naquele módulo. A seta ao lado do módulo mostra as telas dele, cada uma com o seu " +
+      "Visualizar; a tela desmarcada some do menu e não abre pelo endereço. Empresas e Validades têm linha própria.",
+    onde: "Sistema › Usuários",
+    impacto: "Nenhuma conta muda: todas continuam com o que tinham até alguém salvar a grade nova.",
+    versoes: ["0.3.253"],
+  },
+  {
     id: "modulos-cards-diretos-contam",
     data: "2026-11-10",
     tipo: "correcao",

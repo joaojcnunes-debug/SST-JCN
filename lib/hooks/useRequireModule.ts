@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { ModuloPermitido } from "@/lib/supabase/types";
 import { ROTULO_MODULO } from "@/lib/supabase/types";
+import { primeiraTelaLiberada, telaBloqueada, telaDaRota } from "@/lib/acesso/telas-modulo";
 
 /**
  * Garante que o usuário logado tem permissão de acessar o módulo informado.
@@ -37,8 +38,10 @@ function registrarAbertura(modulo: ModuloPermitido) {
 
 export function useRequireModule(modulo: ModuloPermitido | ModuloPermitido[]) {
   const router = useRouter();
+  const pathname = usePathname();
   const user = useUserStore((s) => s.user);
   const avisouRef = useRef(false);
+  const avisouTelaRef = useRef<string | null>(null);
 
   // 🪤 `modulo` entrava DIRETO na lista de dependências do efeito. Com texto
   // (`"aep"`) isso é estável, mas uma chamada com ARRAY LITERAL
@@ -58,6 +61,17 @@ export function useRequireModule(modulo: ModuloPermitido | ModuloPermitido[]) {
     const permitidos = user.modulos_permitidos ?? [];
     const aberto = modulos.find((m) => permitidos.includes(m));
     if (aberto) {
+      // Visualizar por tela (v347): com o módulo liberado, a tela também tem de estar. Bloqueada, vai para a
+      // primeira tela liberada do módulo (ou para o hub, se não sobrar nenhuma).
+      const tela = telaDaRota(pathname);
+      if (tela && telaBloqueada(user, tela.id)) {
+        if (avisouTelaRef.current !== tela.id) {
+          avisouTelaRef.current = tela.id;
+          toast.error(`Sem permissão para a tela ${tela.rotulo}. Se precisar, peça ao administrador do painel.`);
+        }
+        router.replace(primeiraTelaLiberada(user, modulos) ?? "/modulos");
+        return;
+      }
       registrarAbertura(aberto);
       return;
     }
@@ -70,5 +84,5 @@ export function useRequireModule(modulo: ModuloPermitido | ModuloPermitido[]) {
       toast.error(`Sem permissão para acessar ${rotulo}. Se precisar, peça ao administrador do painel.`);
     }
     router.replace("/modulos");
-  }, [user, modulos, router]);
+  }, [user, modulos, router, pathname]);
 }

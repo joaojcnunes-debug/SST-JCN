@@ -49,7 +49,16 @@ import type {
   PerfilUsuario,
   Usuario,
 } from "@/lib/supabase/types";
-import { CATEGORIAS_MODULO, ROTULO_MODULO, TODOS_MODULOS } from "@/lib/supabase/types";
+import { TODOS_MODULOS } from "@/lib/supabase/types";
+import GradePermissoesModulos from "@/components/usuarios/GradePermissoesModulos";
+import {
+  flagsGerais,
+  gradeComChaves,
+  gradeDaConta,
+  permissoesParaGravar,
+  type GradeModulos,
+} from "@/lib/acesso/permissoes-modulo";
+import { telasParaGravar } from "@/lib/acesso/telas-modulo";
 
 const PERFIS: PerfilUsuario[] = ["Admin", "Tecnico", "Visualizador", "Cliente"];
 
@@ -342,11 +351,11 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     empresas_vinculadas: [] as string[],
     unidades: [] as string[],
     modulos_permitidos: [...TODOS_MODULOS] as ModuloPermitido[],
-    // V45: permissões granulares — Admin contorna estes flags, mas a UI
-    // mantém eles marcados pra clareza.
-    pode_criar: true,
-    pode_editar: true,
-    pode_excluir: false,
+    // Criar/Editar/Excluir por módulo (0.3.253, do Painel 0.3.901). As chaves gerais pode_criar/editar/excluir saem
+    // daqui no Salvar (flagsGerais = "pode em algum módulo"). Admin contorna a grade.
+    grade: gradeComChaves(TODOS_MODULOS, null, { criar: true, editar: true, excluir: false }) as GradeModulos,
+    // Visualizar por tela (0.3.253, v334): as telas que a pessoa NÃO vê dentro dos módulos. Vazia = vê todas.
+    telas_bloqueadas: [] as string[],
     // Assinatura digital
     assinatura_url: null as string | null,
     mostrar_assinatura_imagem: true,
@@ -415,14 +424,16 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         unidades: usuario?.unidades ?? [],
         modulos_permitidos:
           usuario?.modulos_permitidos ?? [...TODOS_MODULOS],
-        // Se o usuário já existe, respeita o que está no banco.
-        // Pra criação, usa defaults por perfil.
-        pode_criar:
-          usuario?.pode_criar ?? defaultPerm(perfilDoUser, "criar"),
-        pode_editar:
-          usuario?.pode_editar ?? defaultPerm(perfilDoUser, "editar"),
-        pode_excluir:
-          usuario?.pode_excluir ?? defaultPerm(perfilDoUser, "excluir"),
+        // Conta existente: a grade dela (conta antiga, sem grade, copia as chaves gerais nos módulos que vê).
+        // Conta nova: o padrão do perfil em todos os módulos marcados.
+        grade: usuario
+          ? gradeDaConta(usuario)
+          : gradeComChaves(TODOS_MODULOS, null, {
+              criar: defaultPerm(perfilDoUser, "criar"),
+              editar: defaultPerm(perfilDoUser, "editar"),
+              excluir: defaultPerm(perfilDoUser, "excluir"),
+            }),
+        telas_bloqueadas: usuario?.telas_bloqueadas ?? [],
         assinatura_url: usuario?.assinatura_url ?? null,
         mostrar_assinatura_imagem: usuario?.mostrar_assinatura_imagem ?? true,
         tipo_certificado: usuario?.tipo_certificado ?? null,
@@ -480,9 +491,11 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
       funcao: f.funcao,
       nivel: f.nivel,
       perfil: f.perfil_padrao,
-      pode_criar: f.pode_criar_padrao ?? prev.pode_criar,
-      pode_editar: f.pode_editar_padrao ?? prev.pode_editar,
-      pode_excluir: f.pode_excluir_padrao ?? prev.pode_excluir,
+      grade: gradeComChaves(f.modulos_padrao, prev.grade, {
+        criar: f.pode_criar_padrao,
+        editar: f.pode_editar_padrao,
+        excluir: f.pode_excluir_padrao,
+      }),
       modulos_permitidos: [...f.modulos_padrao],
       unidades:
         f.unidades_padrao === "todas" && f.perfil_padrao !== "Admin"
@@ -498,9 +511,11 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
       ...(isEdit
         ? {}
         : {
-            pode_criar: defaultPerm(novoPerfil, "criar"),
-            pode_editar: defaultPerm(novoPerfil, "editar"),
-            pode_excluir: defaultPerm(novoPerfil, "excluir"),
+            grade: gradeComChaves(f.modulos_permitidos, null, {
+              criar: defaultPerm(novoPerfil, "criar"),
+              editar: defaultPerm(novoPerfil, "editar"),
+              excluir: defaultPerm(novoPerfil, "excluir"),
+            }),
           }),
     }));
   }
@@ -571,9 +586,9 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                 : [],
             unidades: form.unidades,
             modulos_permitidos: form.modulos_permitidos,
-            pode_criar: form.pode_criar,
-            pode_editar: form.pode_editar,
-            pode_excluir: form.pode_excluir,
+            ...flagsGerais(form.modulos_permitidos, form.grade),
+            permissoes_modulos: permissoesParaGravar(form.modulos_permitidos, form.grade),
+            telas_bloqueadas: telasParaGravar(form.modulos_permitidos, form.telas_bloqueadas),
             assinatura_url: form.assinatura_url,
             mostrar_assinatura_imagem: form.mostrar_assinatura_imagem,
             tipo_certificado: form.tipo_certificado,
@@ -627,9 +642,9 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                 : [],
             unidades: form.unidades,
             modulos_permitidos: form.modulos_permitidos,
-            pode_criar: form.pode_criar,
-            pode_editar: form.pode_editar,
-            pode_excluir: form.pode_excluir,
+            ...flagsGerais(form.modulos_permitidos, form.grade),
+            permissoes_modulos: permissoesParaGravar(form.modulos_permitidos, form.grade),
+            telas_bloqueadas: telasParaGravar(form.modulos_permitidos, form.telas_bloqueadas),
             assinatura_url: form.assinatura_url,
             mostrar_assinatura_imagem: form.mostrar_assinatura_imagem,
             tipo_certificado: form.tipo_certificado,
@@ -775,25 +790,6 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
       unidades: f.unidades.includes(id)
         ? f.unidades.filter((x) => x !== id)
         : [...f.unidades, id],
-    }));
-  }
-
-  function toggleModulo(m: ModuloPermitido) {
-    setForm((f) => ({
-      ...f,
-      modulos_permitidos: f.modulos_permitidos.includes(m)
-        ? f.modulos_permitidos.filter((x) => x !== m)
-        : [...f.modulos_permitidos, m],
-    }));
-  }
-
-  /** Marca (ou desmarca) um lote de módulos de uma vez — todos ou os de uma categoria. */
-  function marcarModulos(lote: ModuloPermitido[], marcar: boolean) {
-    setForm((f) => ({
-      ...f,
-      modulos_permitidos: marcar
-        ? [...f.modulos_permitidos, ...lote.filter((m) => !f.modulos_permitidos.includes(m))]
-        : f.modulos_permitidos.filter((m) => !lote.includes(m)),
     }));
   }
 
@@ -943,59 +939,6 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
           </Field>
         </div>
 
-        {/* Permissões granulares (V45+). Oculto para perfil Cliente. */}
-        {form.perfil !== "Cliente" && <Field label="Permissões">
-          <p className="mt-0.5 text-[11px] text-gray-500">
-            A função define o padrão. Admin pode tudo, com ou sem as marcas.
-            Visualizador não cria documentos mesmo marcado: o banco só aceita
-            criação de Admin e Técnico.
-          </p>
-          <div className="mt-1 grid grid-cols-1 gap-2 rounded-md border border-gray-200 bg-gray-50 p-3 sm:grid-cols-3">
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.pode_criar}
-                onChange={(e) =>
-                  setForm({ ...form, pode_criar: e.target.checked })
-                }
-                disabled={form.perfil === "Admin"}
-                className="size-4 rounded border-gray-300 text-marca-primary focus:ring-marca-primary disabled:opacity-50"
-              />
-              <span className={form.perfil === "Admin" ? "text-gray-500" : ""}>
-                Pode <Dica texto={DICAS_USUARIO.pode_criar}><strong>criar</strong></Dica>
-              </span>
-            </label>
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.pode_editar}
-                onChange={(e) =>
-                  setForm({ ...form, pode_editar: e.target.checked })
-                }
-                disabled={form.perfil === "Admin"}
-                className="size-4 rounded border-gray-300 text-marca-primary focus:ring-marca-primary disabled:opacity-50"
-              />
-              <span className={form.perfil === "Admin" ? "text-gray-500" : ""}>
-                Pode <Dica texto={DICAS_USUARIO.pode_editar}><strong>editar</strong></Dica>
-              </span>
-            </label>
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.pode_excluir}
-                onChange={(e) =>
-                  setForm({ ...form, pode_excluir: e.target.checked })
-                }
-                disabled={form.perfil === "Admin"}
-                className="size-4 rounded border-gray-300 text-marca-primary focus:ring-marca-primary disabled:opacity-50"
-              />
-              <span className={form.perfil === "Admin" ? "text-gray-500" : ""}>
-                Pode <Dica texto={DICAS_USUARIO.pode_excluir}><strong>excluir</strong></Dica>
-              </span>
-            </label>
-          </div>
-        </Field>}
-
         {(form.perfil === "Tecnico" || form.perfil === "Cliente") && (
           <Field
             label={
@@ -1103,62 +1046,16 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
           label={`Acesso aos módulos — ${form.modulos_permitidos.filter((m) => TODOS_MODULOS.includes(m)).length} de ${TODOS_MODULOS.length}`}
           dica={DICAS_USUARIO.modulos}
         >
-          <div className="space-y-3 rounded-md border border-gray-200 bg-white p-3">
-            {(() => {
-              const todosMarcados = TODOS_MODULOS.every((m) => form.modulos_permitidos.includes(m));
-              return (
-                <button
-                  type="button"
-                  onClick={() => marcarModulos(TODOS_MODULOS, !todosMarcados)}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-marca-primary/40 bg-marca-light px-3 py-1.5 text-xs font-medium text-marca-primary hover:bg-marca-primary hover:text-white"
-                >
-                  {todosMarcados ? "Desmarcar todos os módulos" : "Marcar todos os módulos"}
-                </button>
-              );
-            })()}
-            {CATEGORIAS_MODULO.map((cat) => {
-              const marcados = cat.modulos.filter((m) => form.modulos_permitidos.includes(m)).length;
-              const cheia = marcados === cat.modulos.length;
-              return (
-                <div key={cat.label} className="border-t border-gray-100 pt-2">
-                  <div className="mb-1 flex items-center justify-between gap-2 px-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-                      {cat.label}{" "}
-                      <span className="font-normal normal-case tracking-normal text-gray-400">
-                        — {marcados} de {cat.modulos.length}
-                      </span>
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => marcarModulos(cat.modulos, !cheia)}
-                      className="text-[11px] font-medium text-marca-primary hover:underline"
-                    >
-                      {cheia ? "desmarcar categoria" : "marcar categoria"}
-                    </button>
-                  </div>
-                  <div className="grid gap-x-2 sm:grid-cols-2">
-                    {cat.modulos.map((m) => (
-                      <label
-                        key={m}
-                        className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-gray-50"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={form.modulos_permitidos.includes(m)}
-                          onChange={() => toggleModulo(m)}
-                          className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30"
-                        />
-                        <span className="text-sm text-gray-700">
-                          {ROTULO_MODULO[m]}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-            {souGestorGestao && (
-              <div className="border-t border-gray-100 pt-2">
+          <GradePermissoesModulos
+            perfil={form.perfil}
+            modulos={form.modulos_permitidos}
+            grade={form.grade}
+            onChange={(modulos_permitidos, grade) => setForm((f) => ({ ...f, modulos_permitidos, grade }))}
+            telasBloqueadas={form.telas_bloqueadas}
+            onTelasChange={(telas_bloqueadas) => setForm((f) => ({ ...f, telas_bloqueadas }))}
+            gestao={
+              souGestorGestao ? (
+                <div>
                 <p className="mb-1 px-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
                   Gestão JCN Consultoria (kanban)
                 </p>
@@ -1185,9 +1082,10 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                     ? "Admin tem acesso automático à Gestão."
                     : "Libera a entrada no módulo. Unidades, setores e níveis ficam em Gestão › Membros e acessos."}
                 </p>
-              </div>
-            )}
-          </div>
+                </div>
+              ) : undefined
+            }
+          />
           <p className="mt-1 text-[11px] text-gray-500">
             Funções administrativas (gestão de usuários, configurações)
             permanecem acessíveis a qualquer Admin, mesmo sem acesso a esses
