@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-regiao-produtos",
+    data: "2026-11-10",
+    tipo: "melhoria",
+    titulo: "Gestão: Região e Produtos em toda tarefa",
+    texto:
+      "No painel de campos da tarefa, logo abaixo da Prioridade, agora há Região (as unidades) e Produtos (lista com " +
+      "busca: PGR, PCMSO, LTCAT, AET, DRPS e outros). A lista de produtos se ajusta em Campos da lista Comercial.",
+    onde: "Gestão › abrir uma tarefa",
+    versoes: ["0.3.269"],
+  },
+  {
     id: "gestao-requisitos-estimativa-prazo-comentario",
     data: "2026-11-10",
     tipo: "novidade",

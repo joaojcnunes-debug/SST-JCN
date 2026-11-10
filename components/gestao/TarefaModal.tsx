@@ -7,7 +7,7 @@ import { mensagemErro } from "@/lib/errors";
 import {
   Trash2, Loader2, Plus, Square, CheckSquare, X, ArrowRight, Sparkles, Maximize2, CornerDownRight, MessageSquare,
   Columns3, ArrowRightLeft, UserRound, Flag, Tag, CalendarDays, CalendarCheck, Repeat, Clock, Users, Gauge, List, Link2,
-  PanelRightClose, PanelRightOpen, ListChecks, Timer, Hourglass,
+  PanelRightClose, PanelRightOpen, MapPin, Package, ListChecks, Timer, Hourglass,
   Building2, ExternalLink,
   type LucideIcon,
 } from "lucide-react";
@@ -25,7 +25,7 @@ import {
   useSubtarefas, useSalvarSubtarefas, useAbrirSubtarefa, useTituloTarefa, useComentariosDasSubtarefas,
   useAddComentario, useExcluirComentario,
   useDependencias, useAddDependencia, useExcluirDependencia,
-  useUsuarios, gerarIaGestao, useRegistrarAtividade, useCamposDeOrigem, useQuadros, useChecklist, useAddChecklist,
+  useUsuarios, gerarIaGestao, useRegistrarAtividade, useCamposDeOrigem, useProdutosCatalogo, useQuadros, useChecklist, useAddChecklist,
   PRIORIDADES, useEmpresaSugerida, useNomesEmpresas,
   useResolverComentario, useMoverForcandoRequisito, ehErroRequisito, useSlaTarefas, useTempoTarefa, totalSegundos, formatarDuracao,
   type GestaoTempo,
@@ -39,6 +39,8 @@ import CampoData from "@/components/gestao/CampoData";
 import ChecklistTarefa from "@/components/gestao/ChecklistTarefa";
 import { isoLocal } from "@/lib/gestao/datas-rapidas";
 import { linkTarefa } from "@/lib/gestao/link-tarefa";
+import ListaSuspensaMultipla from "@/components/gestao/ListaSuspensaMultipla";
+import { CAMPO_PRODUTOS_ID, REGIOES, comRegiao, opcoesComMarcados, regiaoDasEtiquetas } from "@/lib/gestao/regiao-produtos";
 import { situacaoResposta, situacaoResolucao, fmtPrazo, fmtMeta, type SituacaoSla } from "@/lib/gestao/sla";
 import { entrouNaColunaEm, formatarTempoLongo } from "@/lib/gestao/tempo-etapas";
 import { BotaoTempo, RegistroTempo } from "@/components/gestao/TempoTracker";
@@ -147,6 +149,7 @@ const EMPTY_USUARIOS: { nome: string; email: string }[] = [];
 const EMPTY_SUBTAREFAS: GestaoSubtarefa[] = [];
 const EMPTY_CHECKLIST: { feito: boolean }[] = [];
 const EMPTY_TEMPO: GestaoTempo[] = [];
+const EMPTY_TEXTOS: string[] = [];
 
 export default function TarefaModal({
   open,
@@ -216,6 +219,10 @@ export default function TarefaModal({
   // v292: esta janela é a de uma subtarefa (tarefa filha)? Sem recorrência, subtarefas e dependências.
   const idPai = tarefa?.id_tarefa_pai ?? null;
   const ehSub = !!idPai;
+  // Região e Produtos em toda tarefa (0.3.269 = Painel 0.3.908), como no formulário do Comercial — não na janela de
+  // subtarefa. Na lista Comercial, Produtos é campo da própria lista (opções dela); nas outras, as opções vêm da v342.
+  const campoProdutos = campos.find((c) => c.id === CAMPO_PRODUTOS_ID) ?? null;
+  const { data: catalogoProdutos = EMPTY_TEXTOS } = useProdutosCatalogo(open && !ehSub && !campoProdutos);
   const { data: tituloPaiLido } = useTituloTarefa(idPai && !tarefaMap.has(idPai) ? idPai : null);
   const tituloPai = idPai ? tarefaMap.get(idPai)?.titulo ?? tituloPaiLido ?? null : null;
   // v292: duplo clique numa subtarefa abre a janela completa dela (por cima desta).
@@ -621,8 +628,11 @@ export default function TarefaModal({
   // Caixas do painel de campos: mais baixas e com fundo próprio (o painel é cinza); a largura vem de quem usa.
   const caixaPainel =
     "rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-gray-50";
-  const camposGrade = campos;
-  const camposOrigemGrade = camposOrigem;
+  const produtosMarcados = Array.isArray(valoresCampos[CAMPO_PRODUTOS_ID]) ? (valoresCampos[CAMPO_PRODUTOS_ID] as string[]) : EMPTY_TEXTOS;
+  // Fora da janela de subtarefa, Produtos tem linha própria (logo abaixo da Região): sai da lista de campos e dos "de origem".
+  const camposGrade = ehSub ? campos : campos.filter((c) => c.id !== CAMPO_PRODUTOS_ID);
+  const camposOrigemGrade = ehSub ? camposOrigem : camposOrigem.filter((c) => c.id !== CAMPO_PRODUTOS_ID);
+  const regiao = regiaoDasEtiquetas(etiquetas);
   const totalChecklist = tarefa ? checklist.length : rascunhoChecklist.length;
   const feitosChecklist = tarefa ? checklist.filter((i) => i.feito).length : 0;
   const atrasada = !!prazo && prazo < isoLocal(new Date()) && statusMap.get(status)?.tipo !== "concluido";
@@ -1091,6 +1101,24 @@ export default function TarefaModal({
           </LinhaCampo>
           {!ehSub && (
             <>
+              {/* Região e Produtos (0.3.269 = Painel 0.3.908), iguais ao formulário do Comercial, em todas as listas. A Região
+                  grava a etiqueta da unidade; Produtos grava o campo da lista Comercial. */}
+              <LinhaCampo icone={MapPin} rotulo="Região" campo="regiao">
+                {campoOuAdicionar("regiao", !!regiao, "Região", () => (
+                  <select value={regiao ?? ""} disabled={ro} onChange={(e) => setEtiquetas((s) => comRegiao(s, e.target.value || null))} aria-label="Região" className={`${caixaPainel} w-full`}>
+                    <option value="">Selecione…</option>
+                    {REGIOES.map((r) => <option key={r.tag} value={r.tag}>{r.label}</option>)}
+                  </select>
+                ))}
+              </LinhaCampo>
+              <LinhaCampo icone={Package} rotulo="Produtos" campo="produtos">
+                <ListaSuspensaMultipla
+                  opcoes={opcoesComMarcados(campoProdutos?.opcoes ?? catalogoProdutos, produtosMarcados)}
+                  valor={produtosMarcados}
+                  onChange={(v) => setValoresCampos((s) => ({ ...s, [CAMPO_PRODUTOS_ID]: v }))}
+                  disabled={ro}
+                />
+              </LinhaCampo>
               {/* v338 (Painel v354, item 11): empresa do cadastro. Sem empresa, a sugestão (CNPJ ou nome no título) só preenche
                   quando a pessoa clica — e grava no Salvar, como os outros campos. A Agenda mostra a empresa de cada atividade. */}
               <LinhaCampo icone={Building2} rotulo="Empresa" campo="empresa">

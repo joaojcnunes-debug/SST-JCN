@@ -2420,6 +2420,24 @@ export function useEmpresaSugerida(idTarefa: string | null | undefined, ativo: b
 
 export interface NomeEmpresa { nome: string; municipio: string | null }
 
+/**
+ * v342 (Painel v348): opções do campo Produtos da lista Comercial para a tarefa de qualquer lista (a lista Comercial
+ * pode ser restrita, e a RLS de gestao_campos não deixa ler de fora). Só a lista de nomes.
+ */
+export function useProdutosCatalogo(enabled: boolean) {
+  return useQuery({
+    queryKey: ["gestao-produtos-catalogo"],
+    enabled,
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient() as unknown as { rpc: (fn: string) => Promise<{ data: unknown; error: unknown }> };
+      const { data, error } = await sb.rpc("gestao_produtos_catalogo");
+      if (error) throw error;
+      return (Array.isArray(data) ? data : []) as string[];
+    },
+  });
+}
+
 /** Nomes das empresas ligadas às tarefas da tela (cartões). Só as que a pessoa vê (RLS de empresas). */
 export function useNomesEmpresas(ids: (string | null | undefined)[]) {
   const unicos = [...new Set(ids.filter((x): x is string => !!x))].sort();
