@@ -223,7 +223,7 @@ export default function GestaoChabraPage() {
   const calDeOutros = vista === "calendario" && !meuEspacoView && !inboxView && calDe.tipo !== "lista";
   const calendarioPessoal = ehMeuQuadro && vista === "calendario" && !meuEspacoView && !inboxView && !calDeOutros;
   const { data: alocadasAgenda = [] } = useMinhasTarefasAgenda(calendarioPessoal);
-  const { data: todosStatus = [] } = useTodosStatus(meuEspacoView || inboxView || calendarioPessoal || calDeOutros);
+  const { data: todosStatus = [] } = useTodosStatus(meuEspacoView || inboxView || calendarioPessoal || calDeOutros || agendaView);
   const statusGlobalMap = useMemo(() => new Map(todosStatus.map((s) => [`${s.id_quadro}|${s.slug}`, s])), [todosStatus]);
   const { data: notificacoes = [] } = useNotificacoes();
   const marcarLida = useMarcarLida();
