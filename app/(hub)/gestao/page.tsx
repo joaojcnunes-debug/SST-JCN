@@ -51,6 +51,7 @@ import BarraAcoesMassa from "@/components/gestao/BarraAcoesMassa";
 import { ConfirmHost, confirmar } from "@/components/ui/confirm";
 import VistaLista from "@/components/gestao/VistaLista";
 import VistaCalendario from "@/components/gestao/VistaCalendario";
+import AgendaView from "@/components/gestao/AgendaView";
 import LateralCalendario, { type CalDe } from "@/components/gestao/calendario/LateralCalendario";
 import { passaFiltros, criadorDe, mapaApelidos, produtosDa, type CtxFiltro, type Criador, type TarefaFiltravel } from "@/lib/gestao/filtros";
 import VistaTimeline from "@/components/gestao/VistaTimeline";
@@ -199,6 +200,8 @@ export default function GestaoChabraPage() {
   // "Colaboradores" (v235): gestor/supervisor acompanham o Meu Quadro dos colaboradores. A entrada
   // só aparece quando o servidor devolve alguém (gestor: todos; supervisor: as equipes dele).
   const [colabView, setColabView] = useState(false);
+  // Agenda (10/11/2026): tarefas e subtarefas de uma ou várias pessoas, por dia, em todas as listas.
+  const [agendaView, setAgendaView] = useState(false);
   const { data: colaboradores = [] } = useColaboradores(!!user && user.perfil !== "Cliente");
   const mostrarColab = souGestor || colaboradores.length > 0;
   const [selecaoModo, setSelecaoModo] = useState(false);
@@ -653,7 +656,7 @@ export default function GestaoChabraPage() {
       </Link>
       <div className="flex-1 overflow-y-auto px-2 py-2">
         <p className="mb-1 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">Espaços</p>
-        <GestaoSidebar espacos={espacos} pastas={pastas} quadros={quadros} quadroId={inboxView || meuEspacoView || colabView ? null : (quadro?.id_quadro ?? null)} onSelect={(id) => { setQuadroId(id); setInboxView(false); setMeuEspacoView(false); setColabView(false); aoNavegar(); }} podeEditar={souGestor} meuEspacoAtivo={meuEspacoView} onMeuEspaco={() => { setMeuEspacoView(true); setInboxView(false); setColabView(false); aoNavegar(); }} mostrarColab={mostrarColab} colabAtivo={colabView} onColab={() => { setColabView(true); setInboxView(false); setMeuEspacoView(false); aoNavegar(); }} onAcessos={souGestor ? () => { setMembrosFoco(null); setMembrosOpen(true); aoNavegar(); } : undefined} />
+        <GestaoSidebar espacos={espacos} pastas={pastas} quadros={quadros} quadroId={inboxView || meuEspacoView || colabView || agendaView ? null : (quadro?.id_quadro ?? null)} onSelect={(id) => { setQuadroId(id); setInboxView(false); setMeuEspacoView(false); setColabView(false); setAgendaView(false); aoNavegar(); }} podeEditar={souGestor} agendaAtiva={agendaView} onAgenda={() => { setAgendaView(true); setMeuEspacoView(false); setInboxView(false); setColabView(false); aoNavegar(); }} meuEspacoAtivo={meuEspacoView} onMeuEspaco={() => { setMeuEspacoView(true); setInboxView(false); setColabView(false); setAgendaView(false); aoNavegar(); }} mostrarColab={mostrarColab} colabAtivo={colabView} onColab={() => { setColabView(true); setInboxView(false); setMeuEspacoView(false); setAgendaView(false); aoNavegar(); }} onAcessos={souGestor ? () => { setMembrosFoco(null); setMembrosOpen(true); aoNavegar(); } : undefined} />
       </div>
       <div className="space-y-0.5 border-t border-white/[0.09] p-2">
         {user?.perfil === "Admin" && (
@@ -721,7 +724,7 @@ export default function GestaoChabraPage() {
       <div className="casca-folha md:pl-[var(--sidebar-w)] print:pl-0">
         {/* Barra superior igual à dos outros módulos (nome/perfil de quem está logado, tema, unidade).
             No celular o hambúrguer fixo fica por cima dela, no espaço que ela já reserva (ml-12). */}
-        <ModuleTopbar recolher={false} avisos={inboxCount} onAvisos={() => { setInboxView(true); setMeuEspacoView(false); setColabView(false); }} />
+        <ModuleTopbar recolher={false} avisos={inboxCount} onAvisos={() => { setInboxView(true); setMeuEspacoView(false); setColabView(false); setAgendaView(false); }} />
         <div className="px-5 pb-7 pt-5 sm:px-8 md:pt-7">
           {!online && (
             <div className="fixed inset-x-0 top-0 z-[60] bg-amber-500 px-3 py-1.5 text-center text-sm font-medium text-white shadow-md">
@@ -732,7 +735,33 @@ export default function GestaoChabraPage() {
             <ArrowLeft className="size-4" /> Visão geral
           </Link>
 
-        {inboxView ? (
+        {agendaView && !inboxView ? (
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="flex size-11 items-center justify-center rounded-xl bg-marca-light text-marca-primary"><CalendarDays className="size-6" /></span>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Agenda</h1>
+                <p className="text-sm text-gray-500">Tarefas e subtarefas com data de cada pessoa, em todas as listas que você vê</p>
+              </div>
+            </div>
+            <AgendaView
+              quadros={quadros}
+              statusGlobalMap={statusGlobalMap}
+              pessoas={usuariosEmail}
+              equipes={equipesVisiveis}
+              membrosPorEquipe={membrosPorEquipe}
+              eu={user?.email ?? null}
+              onAbrir={async (t) => {
+                // Relê do banco: o calendário trocou o texto do responsável só para desenhar.
+                const x = await buscarTarefa(t.id_tarefa);
+                if (!x) { toast.error("Não foi possível abrir a tarefa."); return; }
+                setQuadroId(x.id_quadro);
+                setEditando({ ...x, titulo_mae: t.titulo_mae });
+                setModalOpen(true);
+              }}
+            />
+          </div>
+        ) : inboxView ? (
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <span className="flex size-11 items-center justify-center rounded-xl bg-marca-light text-marca-primary"><Bell className="size-6" /></span>
@@ -788,7 +817,7 @@ export default function GestaoChabraPage() {
                 <p className="text-sm text-gray-500">Acompanhe o Meu Quadro de cada colaborador — {colaboradores.length} visíve{colaboradores.length === 1 ? "l" : "is"}</p>
               </div>
             </div>
-            <ColaboradoresView onAbrirQuadro={(id) => { setQuadroId(id); setColabView(false); }} />
+            <ColaboradoresView onAbrirQuadro={(id) => { setQuadroId(id); setColabView(false); setAgendaView(false); }} />
           </div>
         ) : meuEspacoView ? (
           <div>

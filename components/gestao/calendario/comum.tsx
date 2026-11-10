@@ -96,6 +96,7 @@ export function ChipTarefa({ i, p, className, style }: { i: ItemCal; p: PropsVis
         <span className="size-2 shrink-0 rounded-full" style={{ background: i.cor }} />
       )}
       {p.mostrar.hora && i.iv.horaIni && <span className="shrink-0 tabular-nums text-gray-500">{i.iv.horaIni}</span>}
+      {i.t.id_tarefa_pai && <span className="shrink-0 text-gray-400" title="Subtarefa">↳</span>}
       <span className={cn("min-w-0 flex-1 truncate", i.feita && "line-through")}>{i.t.titulo}</span>
       {p.mostrar.resp && <Avatares nomes={i.resp} max={1} />}
     </button>
@@ -123,6 +124,7 @@ export function BarraTarefa({ i, p, cortadaIni, cortadaFim, style }: { i: ItemCa
     >
       {i.feita && <Check className="size-3 shrink-0" style={{ color: i.cor }} />}
       {p.mostrar.hora && i.iv.horaIni && !cortadaIni && <span className="shrink-0 tabular-nums text-gray-500">{i.iv.horaIni}</span>}
+      {i.t.id_tarefa_pai && <span className="shrink-0 text-gray-400" title="Subtarefa">↳</span>}
       <span className={cn("min-w-0 flex-1 truncate", i.feita && "line-through")}>{i.t.titulo}</span>
       {p.mostrar.resp && <Avatares nomes={i.resp} />}
     </button>
@@ -143,6 +145,7 @@ export function DicaTarefa({ i, x, y }: { i: ItemCal; x: number; y: number }) {
   return (
     <div role="tooltip" className="pointer-events-none fixed z-[70] space-y-0.5 rounded-lg border border-gray-200 bg-white p-2.5 text-xs shadow-lg" style={{ left, top, width: largura }}>
       <p className="mb-1 text-sm font-semibold leading-snug text-gray-900">{i.t.titulo}</p>
+      {i.t.id_tarefa_pai && i.t.titulo_mae && linha("Subtarefa de", i.t.titulo_mae)}
       {i.rotulo && linha("Lista", i.rotulo)}
       {linha("Situação", <span style={{ color: COR_SITUACAO[i.situacao] }} className="font-medium">{ROTULO_SITUACAO[i.situacao]}</span>)}
       {i.statusNome && linha("Status", i.statusNome)}
