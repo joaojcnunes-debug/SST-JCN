@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-agenda-pessoas",
+    data: "2026-11-10",
+    tipo: "novidade",
+    titulo: "Gestão: nova página Agenda, com as tarefas e subtarefas de cada pessoa por dia",
+    texto:
+      "No menu da Gestão, abaixo do Meu Espaço, a Agenda mostra num calendário (Mês, Semana, Dia ou Agenda) as tarefas " +
+      "e as subtarefas com data em que você é responsável, em todas as listas. Na coluna da esquerda, marque outras " +
+      "pessoas (ou uma equipe) para ver a agenda delas. As subtarefas aparecem com ↳ e mostram de qual tarefa fazem parte. " +
+      "Clique numa atividade para abrir.",
+    onde: "Gestão › Agenda",
+    impacto: "Só aparece o que você já podia abrir: as tarefas seguem o acesso de cada lista. Subtarefa sem data não aparece.",
+    versoes: ["0.3.263"],
+  },
+  {
     id: "gestao-calendario-runrun-pessoa-equipe",
     data: "2026-11-10",
     tipo: "novidade",

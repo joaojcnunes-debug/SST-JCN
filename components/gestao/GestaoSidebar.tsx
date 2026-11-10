@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Folder, List, Layers, Lock, UserSquare, Users, ShieldCheck, Search, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Folder, List, Layers, Lock, UserSquare, Users, CalendarDays, ShieldCheck, Search, X } from "lucide-react";
 import {
   useSalvarEspaco, useExcluirEspaco, useSalvarPasta, useExcluirPasta,
   useCriarQuadro, useRenomearQuadro, useExcluirQuadro,
@@ -21,6 +21,8 @@ export default function GestaoSidebar({
   podeEditar,
   meuEspacoAtivo,
   onMeuEspaco,
+  agendaAtiva = false,
+  onAgenda,
   colabAtivo = false,
   onColab,
   mostrarColab = false,
@@ -34,6 +36,9 @@ export default function GestaoSidebar({
   podeEditar: boolean;
   meuEspacoAtivo: boolean;
   onMeuEspaco: () => void;
+  /** "Agenda" (10/11/2026): o que cada pessoa tem em cada dia, tarefas e subtarefas. */
+  agendaAtiva?: boolean;
+  onAgenda?: () => void;
   /** "Colaboradores" (v235): só para gestor/supervisor — o servidor decide quem aparece. */
   colabAtivo?: boolean;
   onColab?: () => void;
@@ -87,6 +92,12 @@ export default function GestaoSidebar({
         {meuEspacoAtivo && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-marca-accent" />}
         <UserSquare className="size-4" /> Meu Espaço
       </button>
+      {onAgenda && (
+        <button type="button" onClick={onAgenda} className={`relative mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-marca-accent ${agendaAtiva ? "bg-white/[0.16] text-white" : "text-white/90 hover:bg-white/10 hover:text-white"}`}>
+          {agendaAtiva && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-marca-accent" />}
+          <CalendarDays className="size-4" /> Agenda
+        </button>
+      )}
       <div className="mb-1 border-t border-white/[0.07]" />
       {mostrarColab && onColab && (
         <button type="button" onClick={onColab} className={`relative mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-marca-accent ${colabAtivo ? "bg-white/[0.16] text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}>

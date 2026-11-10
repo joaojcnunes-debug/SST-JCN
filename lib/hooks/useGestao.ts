@@ -1583,6 +1583,59 @@ export function useTarefasDeResponsaveis(emails: string[], ini: string, fim: str
   });
 }
 
+/** Agenda (página da Gestão, 10/11/2026): tarefa ou subtarefa com as pessoas da agenda que são responsáveis nela. */
+export interface TarefaAgenda extends GestaoTarefa {
+  /** E-mails (em minúsculas) das pessoas escolhidas na Agenda que são responsáveis por esta tarefa. */
+  emails_agenda: string[];
+}
+
+/**
+ * Agenda de pessoas (página "Agenda" da Gestão, pedido de 10/11/2026: "os técnicos saberem as atividades do dia"):
+ * as tarefas COM DATA no período [ini, fim] em que alguma das pessoas é RESPONSÁVEL, em todas as listas que EU vejo
+ * (a RLS decide), INCLUSIVE as subtarefas abertas em janela própria (as filhas, v292), que o calendário de uma
+ * pessoa da lista deixa de fora. A filha vem com `titulo_mae` (a tarefa de que ela faz parte).
+ * Subtarefa que nunca foi aberta não tem data: não entra.
+ */
+export function useAgendaDe(emails: string[], ini: string, fim: string, enabled = true) {
+  const lista = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))].sort();
+  return useQuery({
+    queryKey: ["gestao-agenda-de", lista, ini, fim],
+    enabled: enabled && lista.length > 0 && !!ini && !!fim,
+    staleTime: 30 * 1000,
+    placeholderData: (anterior) => anterior,
+    queryFn: async (): Promise<TarefaAgenda[]> => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("gestao_tarefas")
+        .select("*, gestao_tarefa_vinculados!inner(usuario_email,tipo)")
+        .in("gestao_tarefa_vinculados.usuario_email", lista)
+        .eq("gestao_tarefa_vinculados.tipo", "responsavel")
+        .or(`and(prazo.gte.${ini},prazo.lte.${fim}),and(data_inicio.gte.${ini},data_inicio.lte.${fim}),and(data_inicio.lt.${ini},prazo.gt.${fim})`)
+        .order("prazo", { ascending: true })
+        .limit(3000);
+      if (error) throw error;
+      const porId = new Map<string, TarefaAgenda>();
+      for (const r of (data ?? []) as unknown as (GestaoTarefa & { gestao_tarefa_vinculados?: { usuario_email: string }[] })[]) {
+        const { gestao_tarefa_vinculados: vinc, ...t } = r;
+        const emailsT = (vinc ?? []).map((v) => v.usuario_email.toLowerCase());
+        const ja = porId.get(t.id_tarefa);
+        if (ja) ja.emails_agenda = [...new Set([...ja.emails_agenda, ...emailsT])];
+        else porId.set(t.id_tarefa, { ...(t as GestaoTarefa), emails_agenda: [...new Set(emailsT)] });
+      }
+      const out = [...porId.values()];
+      // A filha mostra de qual tarefa ela é (a mãe pode estar fora do período ou sem data).
+      const maes = [...new Set(out.map((t) => t.id_tarefa_pai).filter((x): x is string => !!x))];
+      if (maes.length) {
+        const { data: m, error: e2 } = await sb.from("gestao_tarefas").select("id_tarefa,titulo").in("id_tarefa", maes);
+        if (e2) throw e2;
+        const titulo = new Map(((m ?? []) as { id_tarefa: string; titulo: string }[]).map((x) => [x.id_tarefa, x.titulo]));
+        for (const t of out) if (t.id_tarefa_pai) t.titulo_mae = titulo.get(t.id_tarefa_pai) ?? undefined;
+      }
+      return out;
+    },
+  });
+}
+
 /** v335: colunas (slugs) deste quadro em que EU habilitei notificações (menu "…" da coluna). */
 export function useEtapasAvisadas(idQuadro: string | null | undefined) {
   const email = useUserStore((s) => s.user?.email ?? null);
