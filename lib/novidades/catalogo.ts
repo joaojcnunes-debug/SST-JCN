@@ -41,6 +41,41 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-tarefa-abas-campos-os",
+    data: "2026-11-10",
+    tipo: "melhoria",
+    titulo: "Gestão: tarefa com abas no topo",
+    texto:
+      "A janela da tarefa ganhou abas no topo: Detalhes, Subtarefas, Comentários, Anexos, Histórico e Dependências. Os " +
+      "comentários saíram da coluna da direita e ficam na aba própria, e o Histórico junta as movimentações e as " +
+      "alterações sem repetir. Os campos personalizados aparecem junto de Prioridade e Status.",
+    onde: "Gestão › abrir uma tarefa",
+    versoes: ["0.3.256"],
+  },
+  {
+    id: "gestao-subtarefa-balao-comentarios",
+    data: "2026-11-10",
+    tipo: "melhoria",
+    titulo: "Gestão: a subtarefa mostra quantos comentários tem",
+    texto:
+      "Na aba Subtarefas, a subtarefa que tem comentários mostra um balão com o número deles. Clique no balão " +
+      "para abrir a subtarefa e ler.",
+    onde: "Gestão › abrir uma tarefa › Subtarefas",
+    versoes: ["0.3.256"],
+  },
+  {
+    id: "gestao-tempo-em-detalhes",
+    data: "2026-11-10",
+    tipo: "melhoria",
+    titulo: "Gestão: o tempo da tarefa fica em Detalhes, com Iniciar no rodapé",
+    texto:
+      "O botão Iniciar fica ao lado do Salvar, e o total aparece numa linha no início de Detalhes; clique nela para " +
+      "lançar horas à mão ou ver os apontamentos. Iniciar, parar, lançar e excluir tempo aparecem na hora na aba " +
+      "Histórico, com o nome de quem fez.",
+    onde: "Gestão › abrir uma tarefa",
+    versoes: ["0.3.256"],
+  },
+  {
     id: "inspecoes-botao-relatorio-marcados",
     data: "2026-11-10",
     tipo: "melhoria",
