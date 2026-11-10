@@ -49,6 +49,8 @@ import {
   ChevronUp,
   Check,
   ExternalLink,
+  Eye,
+  EyeOff,
   Loader2,
   Plus,
   Save,
@@ -56,6 +58,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { reinserirVisiveis, setorVisivel } from "@/lib/aep/setores-ocultos";
 import {
   useAepRelatorio,
   useSalvarAep,
@@ -1203,8 +1207,13 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
   const { data: rel, isLoading } = useAepRelatorio(idRelatorio);
   const salvar = useSalvarAep();
   const canEdit = useCanEdit();
+  const qc = useQueryClient();
 
   const [setores, setSetores] = useState<AepSetor[]>([]);
+  // Setor oculto sai da lista e das contas da tela. `setores` continua com todos,
+  // porque é a lista que vai para o banco.
+  const visiveis = setores.filter(setorVisivel);
+  const ocultos = setores.filter((s) => !setorVisivel(s));
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
   const [salvando, setSalvando] = useState(false);
   const [gerandoIA, setGerandoIA] = useState<string | null>(null);
@@ -1245,7 +1254,8 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
     if (!rel || carregado.current === idRelatorio) return;
     carregado.current = idRelatorio;
     setSetores(rel.setores ?? []);
-    if (rel.setores?.length) setAbertos(new Set([rel.setores[0].id]));
+    const primeiro = rel.setores?.find(setorVisivel);
+    if (primeiro) setAbertos(new Set([primeiro.id]));
   }, [rel, idRelatorio]);
 
   // Laudos anteriores (ou matriz alterada em Configurações): ao abrir, a matriz
@@ -1290,11 +1300,43 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
   }
 
   const reordenar = useListaReordenavel({
-    itens: setores,
-    aoReordenar: setSetores,
-    aoSalvar: salvarOrdem,
+    itens: visiveis,
+    aoReordenar: (novos) => setSetores((atuais) => reinserirVisiveis(atuais, novos)),
+    aoSalvar: (novos) => salvarOrdem(reinserirVisiveis(setores, novos)),
     habilitado: canEdit,
   });
+
+  // Ocultar e desocultar salvam na hora, como a ordem: o laudo e o PDF têm que
+  // refletir o clique sem depender do botão Salvar.
+  async function alternarOculto(setor: AepSetor, oculto: boolean) {
+    const nome = setor.nome_setor || "Setor sem nome";
+    setSetores((atuais) => atuais.map((s) => (s.id === setor.id ? { ...s, oculto } : s)));
+    if (!oculto) setAbertos((prev) => new Set([...prev, setor.id]));
+    // Como a ordem (0.3.215): vai para o banco a versão SALVA com a marca trocada; as edições ainda não
+    // salvas esperam o botão Salvar (com a trava do N/I). Setor novo, ainda não salvo, fica marcado na tela
+    // e a marca vai junto no próximo Salvar.
+    const salvos = rel?.setores ?? [];
+    if (!salvos.some((s) => s.id === setor.id)) return;
+    const novos = salvos.map((s) => (s.id === setor.id ? { ...s, oculto } : s));
+    try {
+      await salvar.mutateAsync({ id: idRelatorio, setores: novos, silencioso: true });
+      toast.success(oculto ? `${nome} oculto: saiu do laudo e do PDF.` : `${nome} voltou para o laudo e o PDF.`);
+      // O salvamento silencioso só atualiza este relatório. As outras telas
+      // calculam com os setores e precisam recarregar.
+      for (const queryKey of [["aep-relatorios"], ["aep-entregues"], ["comercial-dados"]]) {
+        void qc.invalidateQueries({ queryKey });
+      }
+      void registrarAuditoria({
+        modulo: "aep",
+        id_referencia: idRelatorio,
+        acao: oculto ? "setor_ocultado" : "setor_desocultado",
+        descricao: `Setor ${oculto ? "ocultado" : "desocultado"}: ${nome}`,
+        metadata: { id_setor: setor.id, setor: setor.nome_setor },
+      });
+    } catch {
+      toast.error(`Não foi possível salvar a alteração em ${nome}. Use o botão Salvar.`);
+    }
+  }
 
   /** Setores do catálogo que ainda não estão nesta AEP. */
   const setoresFaltando = catalogo.filter(
@@ -1443,7 +1485,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
           }),
           necessita_aet: !!setor.necessita_aet,
           // DRPS/Questionário decidido pelo sistema (o modelo não decide sozinho; painel v0.3.707).
-          recomenda_questionario: recomendaQuestionarioSetor(setores, setor),
+          recomenda_questionario: recomendaQuestionarioSetor(visiveis, setor),
           // Limitações (N/I com motivo) e condições da coleta (2026-10-06).
           limitacoes: limitacoesDaAvaliacao(
             setor,
@@ -1482,7 +1524,8 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
       return;
     }
     // N/I exige motivo (2026-10-06): sem ele o laudo não explica a lacuna.
-    const pendentes = setores.flatMap((s) =>
+    // Setor oculto não vai para o laudo, então não trava o salvamento.
+    const pendentes = visiveis.flatMap((s) =>
       niSemMotivo(s).map(
         (k) => `${s.nome_setor || "Setor sem nome"} · ${ITENS_ORGANIZACIONAL.find((i) => i.key === k)?.label ?? k}`,
       ),
@@ -1589,7 +1632,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
         </div>
       )}
 
-      {setores.map((setor, idx) => {
+      {visiveis.map((setor, idx) => {
         // Setor aberto fecha enquanto se arrasta: um cartão expandido passa de
         // mil pixels de altura e fica impossível de arrastar.
         const open = abertos.has(setor.id) && !reordenar.arrastandoId;
@@ -1620,7 +1663,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
               <div className="flex items-center gap-3 min-w-0">
                 <AlcaReordenar
                   numero={idx + 1}
-                  total={setores.length}
+                  total={visiveis.length}
                   nome={setor.nome_setor || "setor sem nome"}
                   desabilitado={!canEdit}
                   onMover={(passo) => reordenar.moverTeclado(setor.id, passo)}
@@ -1643,6 +1686,16 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                   <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-600">
                     {totalAlertas} alerta{totalAlertas > 1 ? "s" : ""}
                   </span>
+                )}
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); void alternarOculto(setor, true); }}
+                    title="Ocultar o setor na tela, no laudo e no PDF. Os dados continuam guardados."
+                    className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                  >
+                    <EyeOff className="size-4" /> Ocultar
+                  </button>
                 )}
                 {canEdit && (
                   <button
@@ -2072,11 +2125,45 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
         );
       })}
 
+      {ocultos.length > 0 && (
+        <section className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4">
+          <h2 className="text-sm font-semibold text-gray-700">Setores ocultos ({ocultos.length})</h2>
+          <p className="mt-0.5 text-xs text-gray-500">
+            Não aparecem no laudo, no PDF nem nos painéis. Os dados continuam guardados.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {ocultos.map((setor) => {
+              const cargo = setor.cargos?.[0]?.cargo || setor.cargo;
+              return (
+                <li
+                  key={setor.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-gray-700">{setor.nome_setor || "Setor sem nome"}</p>
+                    {cargo && <p className="truncate text-xs text-gray-500">{cargo}</p>}
+                  </div>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => void alternarOculto(setor, false)}
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                    >
+                      <Eye className="size-4" /> Desocultar
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       {/* Banner AEP → QPS — mesma regra da Sinalização e do Comercial. */}
       {(() => {
-        if (!recomendaQuestionario(setores)) return null;
-        const totalAlertasOrg = totalAlertasOrganizacionais(setores);
-        const porReceio = DRPS_POR_RECEIO && setores.some((s) => temReceioManifestacao(s));
+        if (!recomendaQuestionario(visiveis)) return null;
+        const totalAlertasOrg = totalAlertasOrganizacionais(visiveis);
+        const porReceio = DRPS_POR_RECEIO && visiveis.some((s) => temReceioManifestacao(s));
         return (
           <div className="flex items-start gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
             <AlertTriangle className="size-5 shrink-0 text-indigo-600 mt-0.5" />

@@ -8,6 +8,7 @@ import { normalizarCondicoesColeta, normalizarMotivoNi } from "@/lib/aep/coleta"
 import { normalizarMapaLista } from "@/lib/aep/evidencia";
 import { normalizarChecklistGestao } from "@/lib/aep/checklist-gestao";
 import { normalizarInventario } from "@/lib/aep/inventario";
+import { semSetoresOcultos } from "@/lib/aep/setores-ocultos";
 import type {
   AepCargoSetor,
   AepChecklistCognitiva,
@@ -135,14 +136,26 @@ function normalizarSetor(s: unknown): AepSetor {
     parecer_tecnico: (setor.parecer_tecnico as string) ?? "",
     recomendacoes: (setor.recomendacoes as string) ?? "",
     necessita_aet: Boolean(setor.necessita_aet),
+    // ⚠️ Mesmo cuidado: sem esta linha, a marca some na leitura e o setor volta.
+    ...(setor.oculto === true ? { oculto: true } : {}),
   };
 }
 
-export function normalizarRelatorio(data: unknown): AepRelatorio {
+/**
+ * Leitura COM os setores ocultos, para quem precisa deles: o editor de Setores e
+ * o `useAepRelatorio`, que devolve a lista que o editor grava de volta. Quem grava
+ * `setores` tem que partir daqui, senão os ocultos seriam apagados.
+ */
+export function normalizarRelatorioCompleto(data: unknown): AepRelatorio {
   const rel = data as Record<string, unknown>;
   return {
     ...rel,
     setores: Array.isArray(rel.setores) ? rel.setores.map(normalizarSetor) : [],
     checklist_gestao: normalizarChecklistGestao(rel.checklist_gestao),
   } as AepRelatorio;
+}
+
+/** Leitura padrão: o setor oculto não existe para listas, painéis e cálculos. */
+export function normalizarRelatorio(data: unknown): AepRelatorio {
+  return semSetoresOcultos(normalizarRelatorioCompleto(data));
 }

@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "aep-ocultar-setor",
+    data: "2026-11-10",
+    tipo: "novidade",
+    titulo: "AEP: botão para ocultar um setor do documento",
+    texto:
+      "Cada setor da AEP agora tem o botão Ocultar. O setor sai da tela de edição, do laudo, do PDF e dos painéis, " +
+      "e deixa de contar nos alertas e na indicação de AET. Os dados ficam guardados: é só clicar em Desocultar, " +
+      "em Setores ocultos, para ele voltar.",
+    onde: "AEP › abrir uma análise › Setores",
+    impacto: "O PDF já assinado não muda: ele só reflete a alteração se o documento for assinado de novo.",
+    versoes: ["0.3.260"],
+  },
+  {
     id: "menu-da-foto-os-e-sair",
     data: "2026-11-10",
     tipo: "melhoria",
