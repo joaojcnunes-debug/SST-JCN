@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { History, ListChecks, ShieldCheck, UserPlus, UserSearch, Users } from "lucide-react";
+import { History, ShieldCheck, UserSearch, Users } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import EquipesTab from "@/components/gestao/EquipesTab";
 import { LegendaNiveis } from "@/components/gestao/SeletorNivel";
-import AbaPessoas from "@/components/gestao/acessos/AbaPessoas";
 import AbaEfetivo from "@/components/gestao/acessos/AbaEfetivo";
 import AbaHistorico from "@/components/gestao/acessos/AbaHistorico";
 import { useMotivo } from "@/components/gestao/acessos/MotivoDialog";
@@ -14,24 +13,24 @@ import { useGravarAcessos } from "@/components/gestao/acessos/useGravarAcessos";
 import { chaveRecurso } from "@/lib/gestao/acessos";
 import { cn } from "@/lib/utils";
 
-type Aba = "pessoas" | "por_pessoa" | "por_lista" | "equipes" | "historico";
+type Aba = "equipes" | "por_pessoa" | "historico";
 
 const ABAS: { id: Aba; label: string; icon: typeof Users }[] = [
-  { id: "pessoas", label: "Dar acesso", icon: UserPlus },
-  { id: "por_pessoa", label: "Por pessoa", icon: UserSearch },
-  { id: "por_lista", label: "Por lista", icon: ListChecks },
   { id: "equipes", label: "Equipes", icon: Users },
+  { id: "por_pessoa", label: "Por pessoa", icon: UserSearch },
   { id: "historico", label: "Histórico", icon: History },
 ];
 
 /**
  * Membros e acessos da Gestão (v227+; reorganizado na v305). Só gestor abre.
- * - Dar acesso: várias pessoas × espaço/pasta/lista × nível; copiar acessos de outra pessoa;
- *   as regras atuais agrupadas por recurso.
- * - Por pessoa / Por lista: o acesso que vale DE FATO e de onde vem (RPC gestao_acessos_efetivos).
- *   O botão "Compartilhar" da lista abre aqui, em "Por lista".
- * - Equipes: acesso herdado por quem entra na equipe.
+ * - Equipes: o acesso é dado à equipe e herdado por quem entra nela.
+ * - Por pessoa: o acesso que vale DE FATO e de onde vem (RPC gestao_acessos_efetivos);
+ *   tirar de uma lista ou da Gestão.
  * - Histórico: gestao_acesso_log.
+ * v0.3.910: saíram "Dar acesso" e "Por lista" (davam acesso direto à pessoa, em paralelo às
+ * equipes, e o acesso direto segurava quem saía da equipe). O "Compartilhar" da lista abre em
+ * Equipes, com a lista já marcada. Os acessos diretos antigos continuam valendo e aparecem em
+ * "Por pessoa" como "Direto na lista…".
  * O motivo é pedido na hora de confirmar cada alteração (o banco exige ≥ 5 e grava no log).
  */
 export default function MembrosModal({
@@ -41,27 +40,17 @@ export default function MembrosModal({
 }: {
   open: boolean;
   onClose: () => void;
-  /** Abre em "Por lista" com esta lista (botão Compartilhar). */
+  /** Botão Compartilhar: abre em Equipes com esta lista já marcada em "Dar acesso". */
   quadroFoco?: string | null;
 }) {
   const d = useDadosAcessos(open);
   const { pedirMotivo, dialogo } = useMotivo();
   const { executar, gravando } = useGravarAcessos();
-  const [aba, setAba] = useState<Aba>("pessoas");
-  const [recursosIniciais, setRecursosIniciais] = useState<string[] | undefined>(undefined);
-  const [chaveDarAcesso, setChaveDarAcesso] = useState(0);
+  const [aba, setAba] = useState<Aba>("equipes");
 
   useEffect(() => {
-    if (!open) return;
-    setAba(quadroFoco ? "por_lista" : "pessoas");
-    setRecursosIniciais(undefined);
+    if (open) setAba("equipes");
   }, [open, quadroFoco]);
-
-  const darAcessoNaLista = (idQuadro: string) => {
-    setRecursosIniciais([chaveRecurso("list", idQuadro)]);
-    setChaveDarAcesso((k) => k + 1); // remonta a aba com a lista já marcada
-    setAba("pessoas");
-  };
 
   return (
     <Modal open={open} onClose={onClose} title="Membros e acessos da Gestão" size="xl">
@@ -82,16 +71,19 @@ export default function MembrosModal({
           ))}
         </div>
 
-        {(aba === "pessoas" || aba === "equipes") && <LegendaNiveis />}
+        {aba === "equipes" && <LegendaNiveis />}
 
-        {aba === "pessoas" && (
-          <AbaPessoas key={chaveDarAcesso} d={d} recursosIniciais={recursosIniciais} pedirMotivo={pedirMotivo} executar={executar} gravando={gravando} />
+        {aba === "equipes" && (
+          <EquipesTab
+            key={quadroFoco ?? ""}
+            d={d}
+            recursosIniciais={quadroFoco ? [chaveRecurso("list", quadroFoco)] : undefined}
+            pedirMotivo={pedirMotivo}
+            executar={executar}
+            gravando={gravando}
+          />
         )}
-        {aba === "por_pessoa" && <AbaEfetivo d={d} modo="pessoa" onDarAcesso={darAcessoNaLista} pedirMotivo={pedirMotivo} executar={executar} gravando={gravando} />}
-        {aba === "por_lista" && (
-          <AbaEfetivo key={quadroFoco ?? ""} d={d} modo="lista" quadroInicial={quadroFoco} onDarAcesso={darAcessoNaLista} pedirMotivo={pedirMotivo} executar={executar} gravando={gravando} />
-        )}
-        {aba === "equipes" && <EquipesTab d={d} pedirMotivo={pedirMotivo} executar={executar} gravando={gravando} />}
+        {aba === "por_pessoa" && <AbaEfetivo d={d} modo="pessoa" pedirMotivo={pedirMotivo} executar={executar} gravando={gravando} />}
         {aba === "historico" && <AbaHistorico d={d} />}
 
         <p className="flex items-center gap-1 text-[11px] text-gray-400">
