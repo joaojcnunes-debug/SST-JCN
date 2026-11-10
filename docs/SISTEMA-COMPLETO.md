@@ -461,7 +461,7 @@ A **Gestão (kanban)** não é um módulo de `modulos_permitidos`: o acesso vem 
 ### 3.2 Hub
 
 - `/inicio` e `/visao-geral` (`VisaoGeralView`): unidades clicáveis (definem a unidade ativa), pendências por módulo, atividade recente, vencimentos e validade de laudos (vencido / vence em 60 dias / em dia), gráficos. Link para `/validades`.
-- `/modulos`: cartões dos módulos permitidos, agrupados em Segurança do Trabalho, NR — Fatores Psicossociais e JCN Sistema Interno, ordenados por pendências. Cartões extras: Comercial (quem tem o módulo), Gestão Gerencial, PDFs (Admin), Presença, Gestão JCN (membros), Sistema (Admin).
+- `/modulos`: cartões dos módulos permitidos, agrupados em Segurança do Trabalho, NR — Fatores Psicossociais e JCN Sistema Interno, ordenados por pendências. Cartões extras: Comercial (quem tem o módulo), Gestão Gerencial, PDFs (Admin), Presença, Gestão JCN (membros), Sistema (Admin). O aviso "Sem módulos liberados" só aparece quando não há nem cartão de categoria nem cartão extra (desde a 0.3.251; antes os extras não contavam, e quem só tinha o Comercial ou a Gestão via o aviso). O cartão Empresa, que todo interno vê, não conta.
 
 ### 3.3 Layout dos módulos
 
