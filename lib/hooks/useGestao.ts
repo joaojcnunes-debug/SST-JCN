@@ -2652,6 +2652,101 @@ export function useTituloTarefa(idTarefa: string | null | undefined) {
  *  delete+insert. O trigger-espelho v199 reescreve gestao_tarefas.subtarefas (jsonb). A
  *  UX-A e preservada: o flush de novaSub acontece no modal e chega aqui como +1 item;
  *  a IA chega como N itens; ordem = indice visual. */
+/** v351: item do checklist da tarefa (sem responsável; quem marcou e quando vêm do banco). */
+export interface GestaoChecklistItem {
+  id: string;
+  id_tarefa: string;
+  texto: string;
+  feito: boolean;
+  ordem: number;
+  feito_por: string | null;
+  feito_em: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export function useChecklist(idTarefa: string | null | undefined) {
+  return useQuery({
+    queryKey: ["gestao-checklist", idTarefa],
+    enabled: !!idTarefa,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("gestao_checklist_itens")
+        .select("id,id_tarefa,texto,feito,ordem,feito_por,feito_em,created_by,created_at")
+        .eq("id_tarefa", idTarefa!)
+        .order("ordem", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as GestaoChecklistItem[];
+    },
+  });
+}
+
+/** Acrescenta itens no fim do checklist (um ou vários — colar uma lista vira um item por linha). */
+export function useAddChecklist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id_tarefa: string; textos: string[]; ordemInicial: number }) => {
+      const linhas = p.textos.map((t) => t.trim()).filter(Boolean)
+        .map((texto, i) => ({ id: gerarId("CHK"), id_tarefa: p.id_tarefa, texto, ordem: p.ordemInicial + i }));
+      if (!linhas.length) return;
+      const sb = createSupabaseBrowserClient();
+      const { error } = await sb.from("gestao_checklist_itens").insert(linhas as never);
+      if (error) throw error;
+    },
+    onSuccess: (_d, p) => qc.invalidateQueries({ queryKey: ["gestao-checklist", p.id_tarefa] }),
+    onError: (e) => toast.error(mensagemErro(e, "Não foi possível adicionar ao checklist.")),
+  });
+}
+
+/** Marca/desmarca ou troca o texto de um item — na hora, sem esperar o "Salvar" da janela. */
+export function useAtualizarChecklist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; id_tarefa: string; patch: { feito?: boolean; texto?: string } }) => {
+      const sb = createSupabaseBrowserClient();
+      const { error } = await sb.from("gestao_checklist_itens").update(p.patch as never).eq("id", p.id);
+      if (error) throw error;
+    },
+    onMutate: async (p) => {
+      const chave = ["gestao-checklist", p.id_tarefa];
+      await qc.cancelQueries({ queryKey: chave });
+      const antes = qc.getQueryData<GestaoChecklistItem[]>(chave);
+      qc.setQueryData<GestaoChecklistItem[]>(chave, (l) => (l ?? []).map((x) => (x.id === p.id ? { ...x, ...p.patch } : x)));
+      return { antes };
+    },
+    onError: (e, p, ctx) => {
+      qc.setQueryData(["gestao-checklist", p.id_tarefa], ctx?.antes);
+      toast.error(mensagemErro(e, "Não foi possível alterar o item."));
+    },
+    onSettled: (_d, _e, p) => qc.invalidateQueries({ queryKey: ["gestao-checklist", p.id_tarefa] }),
+  });
+}
+
+export function useExcluirChecklist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; id_tarefa: string }) => {
+      const sb = createSupabaseBrowserClient();
+      const { error } = await sb.from("gestao_checklist_itens").delete().eq("id", p.id);
+      if (error) throw error;
+    },
+    onMutate: async (p) => {
+      const chave = ["gestao-checklist", p.id_tarefa];
+      await qc.cancelQueries({ queryKey: chave });
+      const antes = qc.getQueryData<GestaoChecklistItem[]>(chave);
+      qc.setQueryData<GestaoChecklistItem[]>(chave, (l) => (l ?? []).filter((x) => x.id !== p.id));
+      return { antes };
+    },
+    onError: (e, p, ctx) => {
+      qc.setQueryData(["gestao-checklist", p.id_tarefa], ctx?.antes);
+      toast.error(mensagemErro(e, "Não foi possível excluir o item."));
+    },
+    onSettled: (_d, _e, p) => qc.invalidateQueries({ queryKey: ["gestao-checklist", p.id_tarefa] }),
+  });
+}
+
 export function useSalvarSubtarefas() {
   const qc = useQueryClient();
   return useMutation({

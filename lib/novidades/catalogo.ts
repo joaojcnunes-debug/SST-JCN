@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-janela-duas-colunas-checklist",
+    data: "2026-11-10",
+    tipo: "novidade",
+    titulo: "Gestão: janela da tarefa em duas colunas, com checklist e datas com atalhos",
+    texto:
+      "A janela da tarefa ficou como no Runrun: à esquerda o título e as abas (Descrição, Subtarefas, Checklist, " +
+      "Comentários…), à direita os campos, um por linha. Campo vazio aparece como Adicionar. A nova aba Checklist tem " +
+      "itens simples de marcar (colar uma lista cria um item por linha). Início e Término têm atalhos (Hoje, Amanhã, " +
+      "+3 dias, Próx. semana) e hora opcional. Ao lado do número da tarefa, Copiar link. E cada subtarefa atribuída a " +
+      "alguém agora gera o seu próprio aviso.",
+    onde: "Gestão › abrir uma tarefa",
+    versoes: ["0.3.267"],
+  },
+  {
     id: "gestao-acessos-so-por-equipe",
     data: "2026-11-10",
     tipo: "melhoria",

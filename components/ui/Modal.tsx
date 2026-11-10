@@ -10,9 +10,11 @@ interface ModalProps {
   onClose: () => void;
   title?: string;
   children: ReactNode;
-  size?: "sm" | "md" | "lg" | "xl" | "quadrado";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "quadrado";
   footer?: ReactNode;
   closeOnBackdrop?: boolean;
+  /** Troca as classes do corpo (padrão: uma rolagem só, com respiro) — ex.: janela da tarefa em duas colunas que rolam separadas. */
+  corpoClassName?: string;
 }
 
 const SIZE: Record<NonNullable<ModalProps["size"]>, string> = {
@@ -20,6 +22,8 @@ const SIZE: Record<NonNullable<ModalProps["size"]>, string> = {
   md: "max-w-lg",
   lg: "max-w-2xl",
   xl: "max-w-4xl",
+  "2xl": "max-w-6xl",
+  "3xl": "max-w-7xl",
   // altura fixa e largura igual à altura (até 64rem): não estica e não muda de tamanho ao trocar de aba
   quadrado: "h-[90vh] max-w-[min(90vh,64rem)]",
 };
@@ -35,6 +39,7 @@ export default function Modal({
   size = "md",
   footer,
   closeOnBackdrop = false,
+  corpoClassName,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const prevFocusRef = useRef<HTMLElement | null>(null);
@@ -148,7 +153,7 @@ export default function Modal({
             </button>
           </div>
         )}
-        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+        <div className={corpoClassName ?? "flex-1 overflow-y-auto px-6 py-5"}>{children}</div>
         {footer && (
           <div className="rounded-b-2xl border-t border-gray-100 bg-gray-50/70 px-6 py-4">
             {footer}
