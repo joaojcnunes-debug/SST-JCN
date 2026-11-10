@@ -1,5 +1,6 @@
 "use client";
 
+import { avisoTamanho } from "@/lib/fotos/lote";
 import Dica from "@/components/ui/Dica";
 import { DICAS_APR_ITEM } from "@/lib/dicas/apreciacao";
 import { useState, useRef, useEffect } from "react";
@@ -153,17 +154,18 @@ export default function ItemApreciacaoCard({
   }
 
   async function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Foto maior que 5 MB.");
+    const escolhidas = Array.from(e.target.files ?? []);
+    const files = escolhidas.filter((f) => f.size <= 5 * 1024 * 1024);
+    if (files.length < escolhidas.length) toast.error(avisoTamanho(escolhidas.length - files.length, 5));
+    if (files.length === 0) {
+      if (fileRef.current) fileRef.current.value = "";
       return;
     }
     try {
       await uploadFoto.mutateAsync({
         id_apreciacao: item.id_apreciacao,
         id_item: item.id_item,
-        file,
+        files,
         fotos_urls_atuais: item.foto_urls,
         fotos_paths_atuais: item.foto_storage_paths,
         fotos_legendas_atuais: item.foto_legendas ?? [],
@@ -483,6 +485,7 @@ export default function ItemApreciacaoCard({
                 ref={fileRef}
                 type="file"
                 accept="image/*"
+                multiple
                 className="hidden"
                 disabled={uploadFoto.isPending}
                 onChange={handleFotoChange}

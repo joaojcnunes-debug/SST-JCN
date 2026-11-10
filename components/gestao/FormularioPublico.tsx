@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, CheckCircle2, Send, Paperclip, Upload, X, ChevronDown, Check } from "lucide-react";
 import { normalizarTexto } from "@/lib/busca/texto";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { faltando, perguntaVisivel, ordemExibicao, type PerguntaBase } from "@/lib/gestao/formularios";
+import { faltando, perguntaVisivel, ordemExibicao, preencherComUsuario, preenchidaPeloLogin, type PerguntaBase, type UsuarioForm } from "@/lib/gestao/formularios";
 
 const MAX_ANEXO = 50 * 1024 * 1024; // = MAX_BYTES_ANEXO_FORM (limite de upload do Storage no JCN)
 const MAX_ARQUIVOS = 10; // = MAX_ANEXOS_FORM da rota /api/gestao/form/anexo
@@ -29,7 +29,13 @@ interface FormDef {
   prioridade_padrao: string;
   titulo_composto?: boolean;
   perguntas: Pergunta[];
+  // Logado no painel (login Google) e o form tem pergunta `preencher`: elas somem e o servidor as responde.
+  usuario?: UsuarioForm | null;
 }
+
+/** Respostas em branco, já com nome/e-mail de quem está logado (mesma regra do servidor). */
+const respostasIniciais = (d: FormDef) =>
+  preencherComUsuario(d.perguntas, d.perguntas.map((p) => (p.tipo === "multipla" ? [] : "")), d.usuario ?? null);
 
 // Rota Next same-origin (porta a Edge Function gestao-form-submit p/ a .107).
 const ENDPOINT = "/api/gestao/form";
@@ -183,6 +189,41 @@ function CampoMultipla({ opcoes, valor, onChange }: { opcoes: string[]; valor: s
   );
 }
 
+/**
+ * Seleção (várias) com `caixas`: todas as opções à vista para marcar, como em Usuários › Unidades e
+ * Acesso aos módulos. Com mais de 4 opções aparece "Marcar todas".
+ */
+function CampoCaixas({ opcoes, valor, onChange }: { opcoes: string[]; valor: string[]; onChange: (v: string[]) => void }) {
+  const alternar = (o: string) => onChange(valor.includes(o) ? valor.filter((x) => x !== o) : [...valor, o]);
+  const todas = opcoes.length > 0 && opcoes.every((o) => valor.includes(o));
+  if (opcoes.length === 0) return <p className="text-xs text-gray-400">Sem opções.</p>;
+  return (
+    <div className="rounded-lg border border-gray-300 bg-white p-2">
+      {opcoes.length > 4 && (
+        <div className="mb-1 flex items-center justify-between px-2 text-[11px] text-gray-500">
+          <span>{valor.length} de {opcoes.length} marcada(s)</span>
+          <button type="button" onClick={() => onChange(todas ? [] : [...opcoes])} className="font-medium text-[#0ea5e9] hover:underline">
+            {todas ? "Desmarcar todas" : "Marcar todas"}
+          </button>
+        </div>
+      )}
+      <div className="grid gap-x-2 sm:grid-cols-2">
+        {opcoes.map((o) => (
+          <label key={o} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-gray-50">
+            <input
+              type="checkbox"
+              checked={valor.includes(o)}
+              onChange={() => alternar(o)}
+              className="size-4 shrink-0 rounded border-gray-300 accent-[#0ea5e9]"
+            />
+            <span className="text-sm text-gray-700">{o}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function FormularioPublico({ token }: { token: string }) {
   const [def, setDef] = useState<FormDef | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -207,7 +248,7 @@ export default function FormularioPublico({ token }: { token: string }) {
         const j = await r.json();
         if (!r.ok) { setErroCarga(j.error ?? "Formulário indisponível."); return; }        setDef(j as FormDef);
         setPrioridade((j as FormDef).prioridade_padrao ?? "Media");
-        setRespostas(((j as FormDef).perguntas ?? []).map((p) => (p.tipo === "multipla" ? [] : "")));
+        setRespostas(respostasIniciais({ ...(j as FormDef), perguntas: (j as FormDef).perguntas ?? [] }));
       } catch {
         setErroCarga("Não foi possível carregar o formulário.");
       } finally {
@@ -289,7 +330,7 @@ export default function FormularioPublico({ token }: { token: string }) {
               <p className="mt-3 text-lg font-semibold text-gray-800">Solicitação enviada!</p>
               <p className="mt-1 text-sm text-gray-500">Recebemos sua solicitação. Obrigado.</p>
               {avisoEnvio && <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-left text-sm text-amber-800">{avisoEnvio}</p>}
-              <button type="button" onClick={() => { setEnviado(false); setAvisoEnvio(null); setArquivos({}); setTitulo(""); setDescricao(""); setPrazo(""); setRespostas((def?.perguntas ?? []).map((p) => (p.tipo === "multipla" ? [] : ""))); }} className="mt-4 text-sm font-medium text-[#0ea5e9] hover:underline">
+              <button type="button" onClick={() => { setEnviado(false); setAvisoEnvio(null); setArquivos({}); setTitulo(""); setDescricao(""); setPrazo(""); if (def) setRespostas(respostasIniciais(def)); }} className="mt-4 text-sm font-medium text-[#0ea5e9] hover:underline">
                 Enviar outra
               </button>
             </div>
@@ -300,6 +341,11 @@ export default function FormularioPublico({ token }: { token: string }) {
                 {def.descricao && <p className="mt-1 whitespace-pre-line text-sm text-gray-500">{def.descricao}</p>}
                 <p className="mt-2 text-xs text-red-600">* Pergunta obrigatória</p>
               </div>
+              {def.usuario && def.perguntas.some((p) => preenchidaPeloLogin(p, def.usuario ?? null)) && (
+                <p className="rounded-lg bg-[#f0f7f0] px-3 py-2 text-sm text-gray-700">
+                  Enviando como <span className="font-semibold text-gray-900">{def.usuario.nome}</span> ({def.usuario.email})
+                </p>
+              )}
 
               {!def.titulo_composto && (
                 <div>
@@ -322,6 +368,8 @@ export default function FormularioPublico({ token }: { token: string }) {
                 const setVal = (v: string | string[]) => setRespostas((r) => r.map((x, j) => (j === i ? v : x)));
                 // Pergunta condicional: só aparece quando a de origem tem a opção escolhida.
                 if (!perguntaVisivel(p, def.perguntas, respostas)) return null;
+                // Nome/e-mail de quem está logado: o servidor responde (ver "Enviando como").
+                if (preenchidaPeloLogin(p, def.usuario ?? null)) return null;
                 return (
                   <div key={p.id ?? i}>
                     <label className="mb-1 block text-xs font-medium text-gray-600">{p.label} {p.obrigatorio && <span className="text-red-600">*</span>}</label>
@@ -341,6 +389,8 @@ export default function FormularioPublico({ token }: { token: string }) {
                         <option value="">Selecione…</option>
                         {(p.opcoes ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
                       </select>
+                    ) : tipo === "multipla" && p.caixas ? (
+                      <CampoCaixas opcoes={p.opcoes ?? []} valor={Array.isArray(val) ? val : []} onChange={setVal} />
                     ) : tipo === "multipla" ? (
                       <CampoMultipla opcoes={p.opcoes ?? []} valor={Array.isArray(val) ? val : []} onChange={setVal} />
                     ) : (

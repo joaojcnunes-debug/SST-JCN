@@ -14,6 +14,7 @@ import {
   Wrench,
 } from "lucide-react";
 import AjudaComAbas from "@/components/novidades/AjudaComAbas";
+import ImprimirTopicos from "@/components/ajuda/ImprimirTopicos";
 
 /**
  * Ajuda do módulo. Escrita para o condutor e para o gerente, não para quem
@@ -21,12 +22,15 @@ import AjudaComAbas from "@/components/novidades/AjudaComAbas";
  */
 function ConteudoAjudaFrotaPage() {
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">Como funciona a Frota</h1>
-        <p className="text-sm text-gray-500">
-          Cadastro do veículo, saída com fotos, e o histórico que fica.
-        </p>
+    <div data-ajuda-topicos className="space-y-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Como funciona a Frota</h1>
+          <p className="text-sm text-gray-500">
+            Cadastro do veículo, saída com fotos, e o histórico que fica.
+          </p>
+        </div>
+        <ImprimirTopicos rotulo="Exportar PDF" className="print:hidden shrink-0 flex items-center gap-2 rounded-lg bg-marca-primary px-4 py-2 text-sm font-medium text-white hover:bg-marca-accent transition-colors" />
       </div>
 
       <Bloco icone={Truck} titulo="O cadastro do veículo acontece uma vez">
@@ -173,7 +177,7 @@ function ConteudoAjudaFrotaPage() {
         </p>
       </Bloco>
 
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+      <div data-ajuda-titulo="Não encontrou o veículo?" className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
         <p className="font-medium text-gray-800">Não encontrou o veículo?</p>
         <p className="mt-1">
           A lista mostra só as bases às quais você tem acesso. Se o veículo está em outra base, fale

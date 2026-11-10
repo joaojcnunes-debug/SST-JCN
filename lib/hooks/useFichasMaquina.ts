@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gravar } from "@/lib/offline/gravar";
 import { gerarId } from "@/lib/utils";
+import { avisoForaDoLimite, dividirPeloLimite } from "@/lib/fotos/lote";
 import { CATALOGO_NR12 } from "@/lib/apreciacao-maquinas/catalogo-nr12";
 import type { FichaMaquina, OperadorFicha } from "@/lib/supabase/types";
 
@@ -279,25 +280,28 @@ export function useReordenarFichas(idApreciacao: string) {
 export function useUploadFotoFicha(idApreciacao: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (params: { ficha: FichaMaquina; file: File }) => {
+    mutationFn: async (params: { ficha: FichaMaquina; files: File[] }) => {
       const supabase = createSupabaseBrowserClient();
       const atuaisUrls = params.ficha.foto_urls ?? [];
       const atuaisPaths = params.ficha.foto_storage_paths ?? [];
-      if (atuaisPaths.length >= MAX_FOTOS_FICHA) {
+      const { aceitas, recusadas } = dividirPeloLimite(params.files, atuaisPaths.length, MAX_FOTOS_FICHA);
+      if (aceitas.length === 0) {
         throw new Error(`Limite de ${MAX_FOTOS_FICHA} fotos por máquina atingido.`);
       }
 
-      const ext = (params.file.name.split(".").pop() ?? "jpg").toLowerCase();
-      const sufixo = gerarId("F").slice(2);
-      const path = `apreciacao-maquinas/${idApreciacao}/ficha-${params.ficha.id_ficha}-${sufixo}.${ext}`;
-
-      // O arquivo não sobe aqui: `getPublicUrl` é montagem de string, então a
-      // URL já é conhecida e o `gravar()` leva o arquivo junto da linha.
-      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+      // O lote vai numa gravação só. Os arquivos não sobem aqui: `getPublicUrl` é montagem de
+      // string, então as URLs já são conhecidas e o `gravar()` leva os arquivos junto da linha.
+      const novas = aceitas.map((file) => {
+        const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
+        const sufixo = gerarId("F").slice(2);
+        const path = `apreciacao-maquinas/${idApreciacao}/ficha-${params.ficha.id_ficha}-${sufixo}.${ext}`;
+        const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+        return { file, path, url: pub.publicUrl };
+      });
 
       const patch = {
-        foto_urls: [...atuaisUrls, pub.publicUrl],
-        foto_storage_paths: [...atuaisPaths, path],
+        foto_urls: [...atuaisUrls, ...novas.map((n) => n.url)],
+        foto_storage_paths: [...atuaisPaths, ...novas.map((n) => n.path)],
         updated_at: new Date().toISOString(),
       };
 
@@ -308,11 +312,12 @@ export function useUploadFotoFicha(idApreciacao: string) {
         filtro: { id_ficha: params.ficha.id_ficha },
         modulo: "apreciacao-maquinas",
         id_documento: idApreciacao,
-        imagens: [{ blob: params.file, caminho: path }],
+        imagens: novas.map((n) => ({ blob: n.file, caminho: n.path })),
       });
-      return { path, patch, resultado, idFicha: params.ficha.id_ficha };
+      return { recusadas, patch, resultado, idFicha: params.ficha.id_ficha };
     },
-    onSuccess: ({ patch, resultado, idFicha }) => {
+    onSuccess: ({ patch, resultado, idFicha, recusadas }) => {
+      if (recusadas > 0) toast(avisoForaDoLimite(recusadas, MAX_FOTOS_FICHA));
       if (resultado.destino === "SERVIDOR") {
         qc.invalidateQueries({ queryKey: KEY(idApreciacao) });
         return;
@@ -322,7 +327,7 @@ export function useUploadFotoFicha(idApreciacao: string) {
           f.id_ficha === idFicha ? ({ ...f, ...patch } as FichaMaquina) : f,
         ),
       );
-      toast.success("Foto guardada no aparelho", { icon: "📵" });
+      toast.success("Guardado no aparelho", { icon: "📵" });
     },
     onError: (e: Error) => toast.error(`Erro ao enviar foto: ${e.message}`),
   });

@@ -11,15 +11,15 @@ import {
   Info,
   Layers,
   ListChecks,
-  Printer,
   Search,
   Settings,
   ShieldCheck,
   Sparkles,
   Wind,
 } from "lucide-react";
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import AjudaComAbas from "@/components/novidades/AjudaComAbas";
+import ImprimirTopicos from "@/components/ajuda/ImprimirTopicos";
 
 interface ItemData {
   label: string;
@@ -326,18 +326,9 @@ function PassoCard({ n, titulo, icone: Icone, cor, descricao, dicas }: PassoCard
 function ConteudoAjudaAnaliseQuimicosPage() {
   const [printMode, setPrintMode] = useState(false);
 
-  const handlePrint = useCallback(() => {
-    setPrintMode(true);
-    setTimeout(() => {
-      window.print();
-      const reset = () => { setPrintMode(false); window.removeEventListener("afterprint", reset); };
-      window.addEventListener("afterprint", reset);
-    }, 200);
-  }, []);
-
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div data-ajuda-topicos className="space-y-8">
         {/* Cabeçalho */}
         <div className="rounded-xl border border-sky-200 bg-sky-50 px-6 py-6">
           <div className="flex items-start justify-between gap-4">
@@ -361,14 +352,7 @@ function ConteudoAjudaAnaliseQuimicosPage() {
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="print:hidden shrink-0 flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 transition-colors"
-            >
-              <Printer className="size-4" />
-              Exportar PDF
-            </button>
+            <ImprimirTopicos rotulo="Exportar PDF" className="print:hidden shrink-0 flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 transition-colors" onModoImpressao={setPrintMode} />
           </div>
         </div>
 

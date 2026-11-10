@@ -10,6 +10,7 @@ import { guardarDocumentoCache, lerDocumentoCache } from "@/lib/offline/operacoe
 import { ehErroDeRede } from "@/lib/offline/rede";
 import { useUserStore } from "@/lib/store";
 import { gerarId } from "@/lib/utils";
+import { avisoForaDoLimite, dividirPeloLimite } from "@/lib/fotos/lote";
 import { getChecklistNR } from "@/lib/conformidade/checklists";
 import type {
   CriticidadeNC,
@@ -538,7 +539,7 @@ export function useUploadFotoItemNC() {
     mutationFn: async (params: {
       id_relatorio: string;
       id_item: string;
-      file: File;
+      files: File[];
     }) => {
       const supabase = createSupabaseBrowserClient();
 
@@ -548,24 +549,26 @@ export function useUploadFotoItemNC() {
         params.id_relatorio,
         params.id_item
       );
-      if (atual.paths.length >= MAX_FOTOS_POR_NC) {
-        throw new Error(
-          `Limite de ${MAX_FOTOS_POR_NC} fotos por item atingido.`
-        );
+      const { aceitas, recusadas } = dividirPeloLimite(params.files, atual.paths.length, MAX_FOTOS_POR_NC);
+      if (aceitas.length === 0) {
+        throw new Error(`Limite de ${MAX_FOTOS_POR_NC} fotos por item atingido.`);
       }
 
-      const ext = (params.file.name.split(".").pop() ?? "jpg").toLowerCase();
-      const sufixo = gerarId("F").slice(2);
-      const path = `nao-conformidade/${params.id_relatorio}/${params.id_item}-${sufixo}.${ext}`;
-
-      // O arquivo não sobe aqui: `getPublicUrl` é montagem de string, então a
-      // URL final já é conhecida e o `gravar()` leva o arquivo junto da linha —
-      // servidor se houver rede, aparelho se não houver.
-      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+      // O lote vai numa gravação só: em sequência, cada envio partiria da lista lida antes do anterior.
+      // Os arquivos não sobem aqui: `getPublicUrl` é montagem de string, então as URLs já são
+      // conhecidas e o `gravar()` leva os arquivos junto da linha — servidor se houver rede,
+      // aparelho se não houver.
+      const novas = aceitas.map((file) => {
+        const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
+        const sufixo = gerarId("F").slice(2);
+        const path = `nao-conformidade/${params.id_relatorio}/${params.id_item}-${sufixo}.${ext}`;
+        const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+        return { file, path, url: pub.publicUrl };
+      });
 
       const patch = {
-        foto_urls: [...atual.urls, pub.publicUrl],
-        foto_storage_paths: [...atual.paths, path],
+        foto_urls: [...atual.urls, ...novas.map((n) => n.url)],
+        foto_storage_paths: [...atual.paths, ...novas.map((n) => n.path)],
         updated_at: new Date().toISOString(),
       };
 
@@ -576,13 +579,14 @@ export function useUploadFotoItemNC() {
         filtro: { id_item: params.id_item },
         modulo: "nao-conformidade",
         id_documento: params.id_relatorio,
-        imagens: [{ blob: params.file, caminho: path }],
+        imagens: novas.map((n) => ({ blob: n.file, caminho: n.path })),
       });
 
-      return { foto_url: pub.publicUrl, path, patch, resultado };
+      return { enviadas: novas.length, recusadas, patch, resultado };
     },
     scope: SCOPE_FOTOS_NC,
-    onSuccess: ({ patch, resultado }, params) => {
+    onSuccess: ({ patch, resultado, recusadas }, params) => {
+      if (recusadas > 0) toast(avisoForaDoLimite(recusadas, MAX_FOTOS_POR_NC));
       if (resultado.destino === "SERVIDOR") {
         qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
         return;
@@ -597,7 +601,7 @@ export function useUploadFotoItemNC() {
             }
           : antigo,
       );
-      toast.success("Foto guardada no aparelho", { icon: "📵" });
+      toast.success("Guardado no aparelho", { icon: "📵" });
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });

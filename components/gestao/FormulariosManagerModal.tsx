@@ -228,7 +228,22 @@ export default function FormulariosManagerModal({
                             <label className="flex items-center gap-1 text-gray-500" title="A pergunta pede documentos; sem upload público, a tarefa nasce marcada 'anexo pendente'">
                               <input type="checkbox" checked={!!p.pendente_anexo} onChange={(e) => upP({ pendente_anexo: e.target.checked || undefined })} /> anexo
                             </label>
+                            {(tipo === "texto" || tipo === "email") && (
+                              <label className="flex items-center gap-1 text-gray-500" title="Quem está logado no sistema não vê esta pergunta: a resposta vem do login. Quem abre sem conta digita normalmente.">
+                                preencher com o login
+                                <select value={p.preencher ?? ""} onChange={(e) => upP({ preencher: (e.target.value || undefined) as PerguntaFormulario["preencher"] })} className="rounded-md border border-gray-200 px-1.5 py-1 text-xs focus:outline-none">
+                                  <option value="">não</option>
+                                  <option value="usuario_nome">nome</option>
+                                  <option value="usuario_email">e-mail</option>
+                                </select>
+                              </label>
+                            )}
                           </div>
+                          {tipo === "multipla" && (
+                            <label className="flex items-center gap-1 text-xs text-gray-500" title="No formulário, todas as opções aparecem à vista para marcar (em vez da lista que abre e filtra)">
+                              <input type="checkbox" checked={!!p.caixas} onChange={(e) => upP({ caixas: e.target.checked || undefined })} /> mostrar como caixas de seleção
+                            </label>
+                          )}
                           {(tipo === "selecao" || tipo === "multipla") && (
                             <MultiChipInput value={p.opcoes ?? []} onChange={(v) => upP({ opcoes: v })} sugestoes={campoDest?.opcoes ?? []} placeholder="Opções da pergunta…" />
                           )}

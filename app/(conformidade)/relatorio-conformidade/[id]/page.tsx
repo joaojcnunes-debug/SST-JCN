@@ -1,9 +1,11 @@
 "use client";
 
+import BotoesFotosCampo from "@/components/ui/BotoesFotosCampo";
+import { avisoTamanho, fotosEnviadas } from "@/lib/fotos/lote";
 import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
-import { use, useMemo, useRef, useState } from "react";
+import { use, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -16,7 +18,6 @@ import {
   Loader2,
   ShieldCheck,
   AlertCircle,
-  Camera,
   X,
   Plus,
   ListChecks,
@@ -481,19 +482,18 @@ export default function DetalheConformidadePage({
                   }
                 )
               }
-              onUploadFoto={(file) => {
-                if (file.size > MAX_FOTO_MB * 1024 * 1024) {
-                  toast.error(`Arquivo maior que ${MAX_FOTO_MB} MB`);
-                  return;
-                }
+              onUploadFotos={(escolhidas) => {
+              const files = escolhidas.filter((f) => f.size <= MAX_FOTO_MB * 1024 * 1024);
+              if (files.length < escolhidas.length) toast.error(avisoTamanho(escolhidas.length - files.length, MAX_FOTO_MB));
+              if (files.length === 0) return;
                 uploadFoto.mutate(
                   {
                     id_relatorio: id,
                     id_item: item.id_item,
-                    file,
+                    files,
                   },
                   {
-                    onSuccess: () => toast.success("Foto enviada"),
+                    onSuccess: ({ enviadas }) => toast.success(fotosEnviadas(enviadas)),
                     onError: (e: Error) =>
                       toast.error(mensagemErro(e, "Falha ao enviar foto")),
                   }
@@ -716,7 +716,7 @@ function ItemRow({
   onExcluir,
   podeOcultar,
   onAlternarOculto,
-  onUploadFoto,
+  onUploadFotos,
   onRemoverFoto,
   onAmpliarFoto,
   uploadEmAndamento,
@@ -737,7 +737,7 @@ function ItemRow({
    *  avaliação, só o que vai para o cliente. Por isso não usa `bloqueado`. */
   podeOcultar: boolean;
   onAlternarOculto: () => void;
-  onUploadFoto: (file: File) => void;
+  onUploadFotos: (arquivos: File[]) => void;
   onRemoverFoto: (storagePath: string) => void;
   onAmpliarFoto: (url: string) => void;
   uploadEmAndamento: boolean;
@@ -749,7 +749,6 @@ function ItemRow({
   const [obs, setObs] = useState(item.observacao ?? "");
   const [obsDirty, setObsDirty] = useState(false);
   const [gerandoIAObs, setGerandoIAObs] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function gerarObsIA() {
     setGerandoIAObs(true);
@@ -989,38 +988,13 @@ function ItemRow({
         {/* Botão de adicionar foto (múltiplas) */}
         {!bloqueado && (
           <>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onUploadFoto(f);
-                e.target.value = "";
-              }}
+            <BotoesFotosCampo
+              quantidade={fotoUrls.length}
+              enviando={uploadEmAndamento}
+              limiteAtingido={limiteAtingido}
+              tituloLimite="Limite de 8 fotos por item"
+              onArquivos={onUploadFotos}
             />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadEmAndamento || limiteAtingido}
-              className="inline-flex items-center gap-1.5 rounded-md border border-sky-300 bg-white px-2.5 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 disabled:opacity-50"
-              title={
-                limiteAtingido
-                  ? "Limite de 8 fotos por item"
-                  : "Adicionar foto"
-              }
-            >
-              {uploadEmAndamento ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Camera className="size-4" />
-              )}
-              {temFotos
-                ? `Adicionar foto (${fotoUrls.length})`
-                : "Adicionar foto"}
-            </button>
           </>
         )}
 
