@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Trash2, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Trash2, ChevronUp, ChevronDown, ListChecks, Paperclip } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { confirmar } from "@/components/ui/confirm";
 import { useSalvarStatus, useExcluirStatus, type GestaoStatus, type TipoStatus } from "@/lib/hooks/useGestao";
@@ -68,6 +68,27 @@ export default function StatusManagerModal({
             >
               {TIPOS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
+            {/* v353: requisitos para ENTRAR na coluna (como no Runrun) */}
+            <button
+              type="button"
+              disabled={!podeEditar}
+              onClick={() => salvar.mutate({ id: s.id, id_quadro: idQuadro, requer_checklist: !s.requer_checklist })}
+              aria-pressed={!!s.requer_checklist}
+              title={s.requer_checklist ? "Exige o checklist todo marcado para entrar (clique para tirar)" : "Exigir o checklist todo marcado para entrar nesta coluna"}
+              className={`shrink-0 rounded-md border p-1 ${s.requer_checklist ? "border-marca-primary bg-marca-light text-marca-primary" : "border-gray-200 text-gray-400 hover:bg-gray-100"}`}
+            >
+              <ListChecks className="size-4" />
+            </button>
+            <button
+              type="button"
+              disabled={!podeEditar}
+              onClick={() => salvar.mutate({ id: s.id, id_quadro: idQuadro, requer_anexo: !s.requer_anexo })}
+              aria-pressed={!!s.requer_anexo}
+              title={s.requer_anexo ? "Exige pelo menos um anexo para entrar (clique para tirar)" : "Exigir pelo menos um anexo para entrar nesta coluna"}
+              className={`shrink-0 rounded-md border p-1 ${s.requer_anexo ? "border-marca-primary bg-marca-light text-marca-primary" : "border-gray-200 text-gray-400 hover:bg-gray-100"}`}
+            >
+              <Paperclip className="size-4" />
+            </button>
             {podeEditar && (
               <div className="flex shrink-0 items-center">
                 <button type="button" onClick={() => mover(i, -1)} disabled={i === 0} className="rounded p-1 text-gray-400 hover:bg-gray-100 disabled:opacity-30"><ChevronUp className="size-4" /></button>
@@ -82,7 +103,8 @@ export default function StatusManagerModal({
             <Plus className="size-4" /> Adicionar status
           </button>
         )}
-        <p className="pt-1 text-xs text-gray-400">O tipo define a semântica: <b>Concluído</b> risca a tarefa e ignora atraso; <b>Não iniciado</b> é o status inicial de novas tarefas. Um status só pode ser excluído quando não há tarefas nele.</p>
+        <p className="pt-1 text-xs text-gray-400">Requisitos: com <ListChecks className="inline size-3.5" /> a tarefa só entra na coluna com o checklist todo marcado; com <Paperclip className="inline size-3.5" />, só com um anexo. Automações não são barradas, e o Admin pode forçar (fica no histórico).</p>
+        <p className="text-xs text-gray-400">O tipo define a semântica: <b>Concluído</b> risca a tarefa e ignora atraso; <b>Não iniciado</b> é o status inicial de novas tarefas. Um status só pode ser excluído quando não há tarefas nele.</p>
       </div>
     </Modal>
   );

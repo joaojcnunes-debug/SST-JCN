@@ -15,7 +15,7 @@ import {
   usePreferenciaVisao, useSalvarPreferenciaVisao,
   useStatusQuadro, statusPadrao, useCamposQuadro, useEtiquetasQuadro,
   useEspacos, usePastas, useTodasDependencias, useAutomacaoTick, useSyncGoogleAgenda, useTempoQuadro, useAnexosCountQuadro,
-  useEtapasAvisadas, useAlternarAvisoEtapa,
+  useEtapasAvisadas, useAlternarAvisoEtapa, useSlaTarefas,
   corAvatar, formatarDuracao,
   PRIORIDADES, FILTRO_VAZIO, contarFiltros,
   type GestaoTarefa, type StatusTarefa, type VistaGestao, type AgruparPor, type GestaoStatus, type GestaoNotificacao, type PrioridadeTarefa, type FiltrosGestao,
@@ -33,6 +33,8 @@ const ORDEM_PADRAO_COLUNA: OrdemColuna = { campo: "criada", dir: "desc" };
 import NotificacoesSino from "@/components/gestao/NotificacoesSino";
 import TarefaModal from "@/components/gestao/TarefaModal";
 import NovaTarefaRapida from "@/components/gestao/NovaTarefaRapida";
+import SlaConfigModal from "@/components/gestao/SlaConfigModal";
+import { ShieldCheck as IconeRequisito, Timer as IconePrazo } from "lucide-react";
 import StatusManagerModal from "@/components/gestao/StatusManagerModal";
 import CamposManagerModal from "@/components/gestao/CamposManagerModal";
 import AutomacoesManagerModal from "@/components/gestao/AutomacoesManagerModal";
@@ -503,6 +505,9 @@ export default function GestaoChabraPage() {
 
   // v335: colunas que eu sigo (aviso quando uma tarefa entra nelas) e a ordem escolhida em cada coluna.
   const { data: etapasAvisadas = [] } = useEtapasAvisadas(quadro?.id_quadro);
+  // v353: prazo de atendimento das tarefas do quadro (vazio se o quadro não tem prazo ligado).
+  const { data: slaMap } = useSlaTarefas(quadro?.id_quadro);
+  const [slaOpen, setSlaOpen] = useState(false);
   const alternarAviso = useAlternarAvisoEtapa();
   const chaveOrdem = quadro ? `gestao-ordem-colunas:${quadro.id_quadro}:${quadroAgrupar}` : null;
   useEffect(() => {
@@ -817,6 +822,12 @@ export default function GestaoChabraPage() {
               onAbrirNotif={(n) => { if (!n.lida) marcarLida.mutate({ id: n.id }); if (n.id_quadro) setQuadroId(n.id_quadro); setInboxView(false); const t = n.id_tarefa ? minhasTodas.find((x) => x.id_tarefa === n.id_tarefa) : undefined; if (t) { setEditando(t); setModalOpen(true); } }}
               onMarcarLida={(id) => marcarLida.mutate({ id })}
               onAbrirTarefa={(t) => { setQuadroId(t.id_quadro); setInboxView(false); setEditando(t); setModalOpen(true); }}
+              onAbrirComentario={(c) => {
+                buscarTarefa(c.id_tarefa).then((x) => {
+                  if (!x) return;
+                  setQuadroId(x.id_quadro); setInboxView(false); setEditando(x); setModalOpen(true);
+                });
+              }}
             />
           </div>
         ) : colabView ? (
@@ -890,6 +901,11 @@ export default function GestaoChabraPage() {
           {temFiltro && (
             <button type="button" onClick={() => { setBusca(""); setFiltros(FILTRO_VAZIO); setSoMinhas(false); }} className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800">
               <X className="size-4" /> Limpar
+            </button>
+          )}
+          {souGestor && quadro && (
+            <button type="button" onClick={() => setSlaOpen(true)} title="Prazo de atendimento deste quadro (1ª resposta e resolução, em horário comercial)" className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
+              <IconePrazo className="size-4" /> Prazo
             </button>
           )}
           {souGestor && quadro && (
@@ -1008,6 +1024,11 @@ export default function GestaoChabraPage() {
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="size-2.5 rounded-full" style={{ background: col.cor }} />
                       <p className="text-sm font-semibold text-gray-700">{col.nome}</p>
+                      {quadroAgrupar === "status" && (statusMap.get(col.slug)?.requer_checklist || statusMap.get(col.slug)?.requer_anexo) && (
+                        <span title={`Para entrar: ${[statusMap.get(col.slug)?.requer_checklist && "checklist todo marcado", statusMap.get(col.slug)?.requer_anexo && "pelo menos um anexo"].filter(Boolean).join(" e ")}`}>
+                          <IconeRequisito className="size-3.5 text-gray-400" />
+                        </span>
+                      )}
                       <span className="rounded-full bg-gray-200 px-1.5 text-[11px] font-semibold text-gray-600">{temFiltro ? `${lista.length}/${todas.length}` : todas.length}</span>
                       {atrasadasCol > 0 && <span className="rounded-full bg-red-50 px-1.5 text-[11px] font-semibold text-red-600" title="Atrasadas">{atrasadasCol} atras.</span>}
                       {tempoCol > 0 && <span className="inline-flex items-center gap-0.5 text-[11px] text-gray-400" title="Tempo total"><Clock className="size-3" />{formatarDuracao(tempoCol)}</span>}
@@ -1073,6 +1094,7 @@ export default function GestaoChabraPage() {
                           tempoSeg={tempoPorTarefa.get(t.id_tarefa) ?? 0}
                           anexos={anexosCount.get(t.id_tarefa) ?? 0}
                           campos={campos}
+                          sla={slaMap?.get(t.id_tarefa)}
                           arrastavel={podeEditar && quadroAgrupar !== "etiqueta" && !t.sub_linha}
                           arrastando={dragId === t.id_tarefa}
                           selecionavel={selecaoModo && !t.sub_linha}
@@ -1197,6 +1219,10 @@ export default function GestaoChabraPage() {
           etiquetasSugeridas={etiquetasSugeridas}
           inicial={inicialNova}
         />
+      )}
+
+      {quadro && slaOpen && (
+        <SlaConfigModal open onClose={() => setSlaOpen(false)} idQuadro={quadro.id_quadro} nomeQuadro={quadro.nome} podeEditar={podeEditar} />
       )}
 
       {quadro && (
