@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServiceClient } from "@/lib/supabase/client";
-import { comporTitulo, faltando, normalizarEtiquetaForm, perguntaVisivel } from "@/lib/gestao/formularios";
+import { cookies } from "next/headers";
+import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/client";
+import { comporTitulo, faltando, normalizarEtiquetaForm, perguntaVisivel, preencherComUsuario, type PreencherUsuario, type UsuarioForm } from "@/lib/gestao/formularios";
 import { chaveTicketAnexo, gerarTicketAnexo } from "@/lib/gestao/anexo-ticket";
 
 export const dynamic = "force-dynamic";
@@ -24,8 +25,30 @@ export const dynamic = "force-dynamic";
 interface Pergunta {
   id?: string; label: string; obrigatorio: boolean; tipo?: string; opcoes?: string[]; destino?: string;
   ajuda?: string; condicao?: { pergunta: string; opcao: string } | null; pendente_anexo?: boolean;
+  preencher?: PreencherUsuario | null; caixas?: boolean;
 }
 type Resposta = string | string[];
+
+/**
+ * Quem está logado no painel (login Google) ao abrir/enviar o form — o form continua público:
+ * sem sessão volta null e a pessoa digita nome/e-mail. Só conta usuário INTERNO ATIVO, e o nome
+ * vem do cadastro (usuarios), nunca do navegador. Mesmo match de e-mail do responsável abaixo
+ * (ilike + igualdade exata em JS: `_`/`%` do e-mail não viram curinga).
+ */
+async function usuarioDaSessao(sb: ReturnType<typeof createSupabaseServiceClient>): Promise<UsuarioForm | null> {
+  try {
+    const { data: { user } } = await createSupabaseServerClient(await cookies()).auth.getUser();
+    const email = user?.email?.trim().toLowerCase();
+    if (!email) return null;
+    const { data: cands } = await sb.from("usuarios").select("email,nome,ativo_sistema,perfil").ilike("email", email);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const u = ((cands ?? []) as any[]).find((c) => (c.email as string).toLowerCase() === email);
+    if (!u || u.ativo_sistema === false || u.perfil === "Cliente") return null;
+    return { nome: ((u.nome as string | null) ?? "").trim() || email, email };
+  } catch {
+    return null;
+  }
+}
 
 function gerarIdTarefa(): string {
   const hex = Array.from(crypto.getRandomValues(new Uint8Array(4)))
@@ -43,7 +66,12 @@ export async function GET(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const f = data as any;
   if (!f || !f.ativo) return NextResponse.json({ error: "Formulário indisponível." }, { status: 404 });
+  const perguntasF = (f.perguntas ?? []) as Pergunta[];
+  // Só olha a sessão se o form tem pergunta que se preenche com o login (os demais seguem iguais).
+  const usuario = perguntasF.some((p) => p.preencher) ? await usuarioDaSessao(sb) : null;
   return NextResponse.json({
+    // Quem está logado (só se o form usa): o form esconde as perguntas `preencher` e mostra "Enviando como".
+    usuario,
     titulo: f.titulo,
     descricao: f.descricao,
     mostra_descricao: f.mostra_descricao,
@@ -54,11 +82,12 @@ export async function GET(req: NextRequest) {
     titulo_composto: Array.isArray(f.titulo_composicao) && f.titulo_composicao.length > 0,
     // Esconde o `destino` (mapeamento interno); o form público precisa de label/obrigatório/tipo/
     // opções + id/ajuda/condição/anexo-pendente (F1.5) para renderizar e esconder perguntas.
-    perguntas: ((f.perguntas ?? []) as Pergunta[]).map((p) => ({
+    perguntas: perguntasF.map((p) => ({
       id: p.id ?? null, label: p.label, obrigatorio: p.obrigatorio, tipo: p.tipo ?? "texto", opcoes: p.opcoes ?? [],
-      ajuda: p.ajuda ?? null, condicao: p.condicao ?? null, pendente_anexo: !!p.pendente_anexo,
+      ajuda: p.ajuda ?? null, condicao: p.condicao ?? null, pendente_anexo: !!p.pendente_anexo, preencher: p.preencher ?? null,
+      caixas: !!p.caixas,
     })),
-  });
+  }, { headers: { "Cache-Control": "private, no-store" } });   // a resposta agora depende de quem está logado
 }
 
 export async function POST(req: NextRequest) {
@@ -74,7 +103,9 @@ export async function POST(req: NextRequest) {
   if (!f || !f.ativo) return NextResponse.json({ error: "Formulário indisponível." }, { status: 404 });
 
   const perguntas = (f.perguntas ?? []) as Pergunta[];
-  const respostas = Array.isArray(body.respostas) ? body.respostas : [];
+  // Logado no painel: nome/e-mail das perguntas `preencher` vêm da SESSÃO (o que o navegador mandar é ignorado).
+  const usuario = perguntas.some((p) => p.preencher) ? await usuarioDaSessao(sb) : null;
+  const respostas = preencherComUsuario(perguntas, Array.isArray(body.respostas) ? body.respostas : [], usuario);
 
   // F1.5: título composto das respostas (tokens em titulo_composicao) quando o form não pede título.
   const tokensTitulo = Array.isArray(f.titulo_composicao) ? (f.titulo_composicao as string[]) : null;

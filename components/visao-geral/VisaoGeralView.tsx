@@ -39,6 +39,7 @@ import type { Pulso } from "@/lib/visao-geral/pulso";
 import GraficosVisaoGeral, { type FatiaTipo, type PontoMes, type FatiaStatus } from "./GraficosVisaoGeral";
 import { cn } from "@/lib/utils";
 import { useUnidadeAtiva, useTema } from "@/lib/store";
+import MenuDaFoto from "@/components/layout/MenuDaFoto";
 
 // Marinho da marca (o verde #0f3d28 desta tela tinha escapado da Etapa 0).
 const MARINHO_SIDEBAR = "#0b1e33";
@@ -301,6 +302,8 @@ export default function VisaoGeralView({
                   {saudacao}{primeiroNome ? `, ${primeiroNome}` : ""} <span aria-hidden>👋</span>
                 </h1>
                 {sinoNotificacoes}
+                {/* Foto = menu (0.3.258): nome, e-mail e Sair. */}
+                <MenuDaFoto tema="claro" />
               </div>
               <p className="mt-1 text-sm text-gray-500">
                 Visão geral{dataExtenso ? ` · ${dataExtenso}` : ""}

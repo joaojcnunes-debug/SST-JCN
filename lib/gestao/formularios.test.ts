@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { perguntaVisivel, faltando, comporTitulo, normalizarEtiquetaForm, dependentesDe, temCiclo, ordemExibicao, type PerguntaBase } from "./formularios";
+import { perguntaVisivel, faltando, comporTitulo, normalizarEtiquetaForm, dependentesDe, temCiclo, ordemExibicao, preencherComUsuario, preenchidaPeloLogin, type PerguntaBase } from "./formularios";
 
 const P: PerguntaBase[] = [
   { id: "a", label: "Houve afastamento?", obrigatorio: true, tipo: "selecao", opcoes: ["Sim", "Não"] },
@@ -98,5 +98,32 @@ describe("ordemExibicao (condicional logo após a origem)", () => {
     ];
     assert.deepEqual(ordemExibicao(Q), [1, 2, 0, 3, 5, 4]);
     assert.deepEqual(ordemExibicao(P), [0, 1, 2, 3, 4, 5]);
+  });
+});
+
+describe("preencherComUsuario (OS de T.I: nome e e-mail de quem está logado)", () => {
+  const OS: PerguntaBase[] = [
+    { id: "email", label: "Seu email", obrigatorio: true, tipo: "email", preencher: "usuario_email" },
+    { id: "nome", label: "Seu nome", obrigatorio: true, tipo: "texto", preencher: "usuario_nome" },
+    { id: "prod", label: "Produtos", obrigatorio: true, tipo: "multipla", opcoes: ["Painel SST"] },
+    { id: "sol", label: "Qual sua solicitação?", obrigatorio: true, tipo: "texto" },
+  ];
+  const ana = { nome: "Ana Lima", email: "ana@chabra.com.br" };
+  test("logado: nome e e-mail vêm da sessão, mesmo que o navegador mande outra coisa", () => {
+    assert.deepEqual(preencherComUsuario(OS, ["outro@x.com", "Outro", ["Painel SST"], "Impressora"], ana),
+      ["ana@chabra.com.br", "Ana Lima", ["Painel SST"], "Impressora"]);
+  });
+  test("logado: as duas obrigatórias deixam de faltar e somem do form", () => {
+    const r = preencherComUsuario(OS, [], ana);
+    assert.deepEqual(faltando(OS, r).map((p) => p.id), ["prod", "sol"]);
+    assert.deepEqual(OS.map((p) => preenchidaPeloLogin(p, ana)), [true, true, false, false]);
+  });
+  test("sem login (quem não tem conta): o que a pessoa digitou fica, e as perguntas aparecem", () => {
+    assert.deepEqual(preencherComUsuario(OS, ["eu@fora.com", "Fulano"], null), ["eu@fora.com", "Fulano", [], ""]);
+    assert.deepEqual(faltando(OS, preencherComUsuario(OS, [], null)).map((p) => p.id), ["email", "nome", "prod", "sol"]);
+    assert.equal(preenchidaPeloLogin(OS[0], null), false);
+  });
+  test("título composto usa o nome da sessão", () => {
+    assert.equal(comporTitulo(["p:sol", "p:nome"], "OS", OS, preencherComUsuario(OS, ["", "", [], "Impressora"], ana)), "Impressora - Ana Lima");
   });
 });

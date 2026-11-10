@@ -4,6 +4,7 @@ import Link from "next/link";
 import { HardDrive, ArrowLeftRight, Info } from "lucide-react";
 import { TIPOS_EQUIPAMENTO } from "@/lib/equipamentos/tipos";
 import AjudaComAbas from "@/components/novidades/AjudaComAbas";
+import ImprimirTopicos from "@/components/ajuda/ImprimirTopicos";
 
 /**
  * Ajuda do módulo Equipamentos.
@@ -15,17 +16,20 @@ import AjudaComAbas from "@/components/novidades/AjudaComAbas";
  */
 function ConteudoAjudaEquipamentosPage() {
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">Como usar os Equipamentos</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Este módulo é o patrimônio interno da JCN Consultoria — o que é nosso. Máquinas
-          de empresas clientes ficam na aba Máquinas da inspeção e na{" "}
-          <Link href="/apreciacao-maquinas/relacao-maquinas" className="font-semibold text-blue-700 hover:underline">
-            Relação de Máquinas
-          </Link>{" "}
-          do módulo Apreciação.
-        </p>
+    <div data-ajuda-topicos className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Como usar os Equipamentos</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            Este módulo é o patrimônio interno da JCN Consultoria — o que é nosso. Máquinas
+            de empresas clientes ficam na aba Máquinas da inspeção e na{" "}
+            <Link href="/apreciacao-maquinas/relacao-maquinas" className="font-semibold text-blue-700 hover:underline">
+              Relação de Máquinas
+            </Link>{" "}
+            do módulo Apreciação.
+          </p>
+        </div>
+        <ImprimirTopicos rotulo="Exportar PDF" className="print:hidden shrink-0 flex items-center gap-2 rounded-lg bg-marca-primary px-4 py-2 text-sm font-medium text-white hover:bg-marca-accent transition-colors" />
       </div>
 
       {/* ── O que mudou ─────────────────────────────────────── */}

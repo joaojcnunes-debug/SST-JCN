@@ -960,10 +960,11 @@ export default function DetalheApreciacaoPage() {
                   <input
                     type="file"
                     accept="image/*"
+                    multiple
                     className="hidden"
                     onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) uploadFotoFicha.mutate({ ficha: fichaAtiva, file });
+                      const files = Array.from(e.target.files ?? []);
+                      if (files.length > 0) uploadFotoFicha.mutate({ ficha: fichaAtiva, files });
                       e.target.value = "";
                     }}
                   />

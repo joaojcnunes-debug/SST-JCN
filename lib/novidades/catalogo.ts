@@ -41,6 +41,53 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "menu-da-foto-os-e-sair",
+    data: "2026-11-10",
+    tipo: "melhoria",
+    titulo: "A sua foto no topo virou um menu: Notificações e Sair",
+    texto:
+      "Clique na sua foto (ou nas suas iniciais) no topo da tela: abre um menu com o seu nome e e-mail, as Notificações " +
+      "e o Sair. Na Visão geral, a foto fica ao lado do sino.",
+    onde: "Topo de todas as telas",
+    versoes: ["0.3.258"],
+  },
+  {
+    id: "ajuda-tela-inteira-imprimir-topicos",
+    data: "2026-11-10",
+    tipo: "melhoria",
+    titulo: "Ajuda: a tela ocupa todo o espaço e dá para imprimir só o tópico que você quer",
+    texto:
+      "Os guias de ajuda dos módulos agora ocupam todo o espaço ao lado do menu. O botão Exportar PDF abre a lista de " +
+      "tópicos: marque só o que quer e clique em Imprimir.",
+    onde: "Ajuda de cada módulo",
+    versoes: ["0.3.258"],
+  },
+  {
+    id: "varias-imagens-de-uma-vez",
+    data: "2026-11-10",
+    tipo: "melhoria",
+    titulo: "Fotos: agora dá para enviar várias imagens de uma vez",
+    texto:
+      "Nos campos que guardam mais de uma foto, selecione várias imagens de uma vez. Nas Fotos da inspeção, cada imagem " +
+      "vira uma foto, com a mesma categoria, setor e legenda. Nos campos com limite, entra o que couber e o sistema avisa " +
+      "quantas ficaram de fora. Em Conformidade e RNC, Tirar foto abre a câmera no celular ou tablet, e Escolher fotos " +
+      "seleciona várias.",
+    onde: "Inspeções, AET, Apreciação de Máquinas, Conformidade e RNC",
+    versoes: ["0.3.258"],
+  },
+  {
+    id: "os-ti-nome-email-do-login",
+    data: "2026-11-10",
+    tipo: "melhoria",
+    titulo: "Formulários: nome e e-mail podem vir do login, e seleção em caixas",
+    texto:
+      "Ao montar um formulário da Gestão, a pergunta de nome ou e-mail pode ser marcada como \"preencher com o login\": " +
+      "quem está logado no sistema não precisa digitar e vê \"Enviando como…\"; quem abre sem conta preenche normalmente. " +
+      "A pergunta de várias opções pode aparecer como caixas de seleção, todas à vista, com \"Marcar todas\".",
+    onde: "Gestão › Formulários",
+    versoes: ["0.3.258"],
+  },
+  {
     id: "quadro-coluna-notificacoes-ordenar",
     data: "2026-11-10",
     tipo: "novidade",

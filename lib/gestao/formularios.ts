@@ -6,6 +6,9 @@
 
 export type RespostaForm = string | string[];
 
+/** Pergunta que se responde sozinha com quem está logado no painel (ex.: "Seu nome"/"Seu email" da OS de T.I). */
+export type PreencherUsuario = "usuario_nome" | "usuario_email";
+
 export interface PerguntaBase {
   id?: string;
   label: string;
@@ -15,6 +18,30 @@ export interface PerguntaBase {
   ajuda?: string;
   condicao?: { pergunta: string; opcao: string } | null;
   pendente_anexo?: boolean;
+  preencher?: PreencherUsuario | null;
+  /** Seleção (várias) mostrada como caixas de seleção, todas à vista (ex.: unidades e módulos do cadastro de funcionário). */
+  caixas?: boolean;
+}
+
+/** Quem está logado no painel ao abrir/enviar o formulário (lido da sessão no servidor). */
+export interface UsuarioForm { nome: string; email: string }
+
+/**
+ * Respostas com as perguntas `preencher` trocadas pelos dados de quem está logado. Sem
+ * usuário (form aberto por quem não tem conta), nada muda: a pessoa digita. No servidor
+ * isto roda sobre o que chegou do navegador, então logado não consegue se passar por outro.
+ */
+export function preencherComUsuario(perguntas: PerguntaBase[], respostas: (RespostaForm | undefined)[], usuario: UsuarioForm | null): RespostaForm[] {
+  return perguntas.map((p, i) => {
+    if (usuario && p.preencher === "usuario_nome") return usuario.nome;
+    if (usuario && p.preencher === "usuario_email") return usuario.email;
+    return respostas[i] ?? (p.tipo === "multipla" ? [] : "");
+  });
+}
+
+/** Pergunta que o form público NÃO mostra: já vem preenchida com quem está logado. */
+export function preenchidaPeloLogin(p: PerguntaBase, usuario: UsuarioForm | null): boolean {
+  return !!usuario && (p.preencher === "usuario_nome" || p.preencher === "usuario_email");
 }
 
 const vazia = (r: RespostaForm | undefined) =>

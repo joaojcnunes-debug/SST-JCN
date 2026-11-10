@@ -1939,6 +1939,10 @@ export interface PerguntaFormulario {
   ajuda?: string;
   condicao?: CondicaoPergunta | null;
   pendente_anexo?: boolean;
+  /** Logado no painel não vê a pergunta: a resposta é o nome/e-mail do login (quem está de fora digita). */
+  preencher?: "usuario_nome" | "usuario_email" | null;
+  /** Seleção (várias) com todas as opções à vista em caixas de seleção (padrão: lista que abre e filtra). */
+  caixas?: boolean;
 }
 // Token de composição do título: "form_title" | "p:<id da pergunta>". Vazio/null = o
 // respondente digita o título.

@@ -2,6 +2,8 @@
 
 import { useRef } from "react";
 import { ImagePlus, X } from "lucide-react";
+import toast from "react-hot-toast";
+import { avisoForaDoLimite, dividirPeloLimite } from "@/lib/fotos/lote";
 import { useSignedUrls } from "@/lib/hooks/useSignedUrl";
 
 export type FotoSlot =
@@ -21,14 +23,20 @@ export default function FotoSlots({ slots, onChange, max = 4, disabled, bucket =
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   function onFileChange(idx: number, e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const preview = URL.createObjectURL(f);
-    const next = [...slots];
-    next[idx] = { type: "new", file: f, preview };
-    onChange(next);
+    const arquivos = Array.from(e.target.files ?? []);
     // reset so same file can be re-selected
     e.target.value = "";
+    if (arquivos.length === 0) return;
+    const next = Array.from({ length: max }, (_, i) => slots[i] ?? null);
+    // Preenche a partir do espaço clicado e, se precisar, os vazios antes dele.
+    const vazios = next.map((s, i) => (s ? -1 : i)).filter((i) => i >= 0);
+    const ordem = [...vazios.filter((i) => i >= idx), ...vazios.filter((i) => i < idx)];
+    const { aceitas, recusadas } = dividirPeloLimite(arquivos, 0, ordem.length);
+    aceitas.forEach((file, n) => {
+      next[ordem[n]] = { type: "new", file, preview: URL.createObjectURL(file) };
+    });
+    onChange(next);
+    if (recusadas > 0) toast(avisoForaDoLimite(recusadas, max));
   }
 
   function remove(idx: number) {
@@ -107,6 +115,7 @@ export default function FotoSlots({ slots, onChange, max = 4, disabled, bucket =
               ref={(el) => { refs.current[i] = el; }}
               type="file"
               accept="image/*"
+              multiple={max > 1}
               onChange={(e) => onFileChange(i, e)}
               className="hidden"
             />

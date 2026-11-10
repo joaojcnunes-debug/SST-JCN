@@ -1,5 +1,6 @@
 "use client";
 
+import { avisoForaDoLimite, dividirPeloLimite } from "@/lib/fotos/lote";
 import { mesclarSetores } from "@/lib/aet/mesclar-setores";
 import Dica from "@/components/ui/Dica";
 import { DICAS_AET_QPS, DICAS_AET_SETOR, DICAS_AET_FATORES } from "@/lib/dicas/aet";
@@ -476,20 +477,25 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
    * caminho e a URL são decididos aqui (montagem de string, sem rede), a URL
    * entra no jsonb do setor, e o arquivo segue junto no próximo salvamento.
    */
-  async function addFoto(setorId: string, file: File) {
+  async function addFotos(setorId: string, files: File[]) {
     if (uploadingFoto) return;
     setUploadingFoto(setorId);
     try {
-      const supabase = createSupabaseBrowserClient();
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const caminho = `aet-setores/${crypto.randomUUID()}.${ext}`;
-      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(caminho);
-      if (!pub?.publicUrl) throw new Error("URL pública não retornada");
       const setor = setores.find((s) => s.id === setorId);
       if (!setor) return;
-      setFotosPendentes((antes) => [...antes, { blob: file, caminho }]);
-      updateSetor(setorId, { fotos: [...(setor.fotos ?? []), pub.publicUrl] });
-      toast.success("Foto anexada — sobe ao salvar");
+      const { aceitas, recusadas } = dividirPeloLimite(files, (setor.fotos ?? []).length, 6);
+      const supabase = createSupabaseBrowserClient();
+      const novas = aceitas.map((file) => {
+        const ext = file.name.split(".").pop() ?? "jpg";
+        const caminho = `aet-setores/${crypto.randomUUID()}.${ext}`;
+        const { data: pub } = supabase.storage.from("fotos").getPublicUrl(caminho);
+        if (!pub?.publicUrl) throw new Error("URL pública não retornada");
+        return { blob: file, caminho, url: pub.publicUrl };
+      });
+      setFotosPendentes((antes) => [...antes, ...novas.map(({ blob, caminho }) => ({ blob, caminho }))]);
+      updateSetor(setorId, { fotos: [...(setor.fotos ?? []), ...novas.map((n) => n.url)] });
+      toast.success(novas.length === 1 ? "Foto anexada — sobe ao salvar" : `${novas.length} fotos anexadas — sobem ao salvar`);
+      if (recusadas > 0) toast(avisoForaDoLimite(recusadas, 6));
     } catch (err) {
       toast.error(mensagemErro(err, "Falha ao anexar a foto"));
     } finally {
@@ -1134,8 +1140,8 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                       >
                         {uploadingFoto === setor.id ? <Loader2 className="size-3 animate-spin" /> : <Camera className="size-3" />}
                         Adicionar Foto
-                        <input type="file" accept="image/*" className="hidden" disabled={uploadingFoto === setor.id}
-                          onChange={(e) => { const f = e.target.files?.[0]; if (f) void addFoto(setor.id, f); e.target.value = ""; }} />
+                        <input type="file" accept="image/*" multiple className="hidden" disabled={uploadingFoto === setor.id}
+                          onChange={(e) => { const files = Array.from(e.target.files ?? []); e.target.value = ""; if (files.length > 0) void addFotos(setor.id, files); }} />
                       </label>
                     )}
                   </div>

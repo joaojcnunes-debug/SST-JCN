@@ -54,7 +54,7 @@ function Conteudo({ titulo, children }: { titulo?: string; children: ReactNode }
   const naoVistasCount = naoVistas.length;
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div>
       <div className="mb-5 flex items-center gap-1 border-b border-gray-200 print:hidden">
         <BotaoAba
           ativa={aba === "ajuda"}
@@ -132,7 +132,7 @@ export default function AjudaComAbas({
   // O Suspense mora AQUI, e nao nas 11 paginas: useSearchParams obriga a ter
   // um, e sem isto cada ajuda teria de lembrar de embrulhar a si mesma.
   return (
-    <Suspense fallback={<div className="mx-auto max-w-3xl">{children}</div>}>
+    <Suspense fallback={children}>
       <Conteudo titulo={titulo}>{children}</Conteudo>
     </Suspense>
   );

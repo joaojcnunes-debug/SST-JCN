@@ -7,7 +7,7 @@ import { useSidebarMini, useUserStore } from "@/lib/store";
 import { useOperacoesOffline } from "@/lib/hooks/useOperacoesOffline";
 import UnidadeAtivaChip from "@/components/layout/UnidadeAtivaChip";
 import ThemeToggle from "@/components/layout/ThemeToggle";
-import AvatarPessoa from "@/components/gestao/AvatarPessoa";
+import MenuDaFoto from "@/components/layout/MenuDaFoto";
 import NotificacoesSino, { linkNotificacao } from "@/components/gestao/NotificacoesSino";
 import { useMeuPapelGestao } from "@/lib/hooks/useGestaoAcesso";
 
@@ -62,13 +62,6 @@ function buildCrumbs(pathname: string): { label: string; href: string }[] {
   return crumbs;
 }
 
-function getInitials(nome: string): string {
-  const parts = nome.trim().split(" ").filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
 const PERFIL_COLORS: Record<string, string> = {
   Admin:        "bg-sky-500/20 text-sky-100 ring-sky-400/30",
   Tecnico:      "bg-emerald-500/20 text-emerald-100 ring-emerald-400/30",
@@ -112,41 +105,10 @@ function PendenciasChip() {
 // Sem props: o que a barra mostra e a TRILHA, montada do pathname por
 // buildCrumbs(). O antigo prop `title` era passado por 21 lugares e nunca
 // chegou a ser desenhado.
-function AvatarFoto({ nome, email, initials }: { nome: string; email: string | null | undefined; initials: string }) {
-  const iniciais = (
-    <span className="flex size-8 items-center justify-center rounded-full bg-white/15 text-xs font-bold text-white ring-1 ring-white/25">{initials}</span>
-  );
-  return (
-    <AvatarPessoa nome={nome} email={email} className="size-8 text-xs ring-1 ring-white/25" fallback={iniciais} />
-  );
-}
-
-/** Sigla/foto de quem está logado, com a bolinha vermelha de notificações não lidas. */
-function BotaoSigla({ avisos, onClick, nome, email, initials }: { avisos: number; onClick?: () => void; nome: string; email: string | null | undefined; initials: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={!onClick}
-      title={avisos > 0 ? `${avisos} notificação(ões) não lida(s)` : onClick ? "Notificações" : undefined}
-      aria-label={avisos > 0 ? `${avisos} notificações não lidas` : "Notificações"}
-      className="relative z-40 flex size-8 shrink-0 items-center justify-center rounded-full disabled:cursor-default"
-    >
-      {/* Foto da conta Google (de quem conectou o Google na Gestão, v302); senão as iniciais, como antes. */}
-      <AvatarFoto nome={nome} email={email} initials={initials} />
-      {avisos > 0 && (
-        <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-[#0369a1]">
-          {avisos > 99 ? "99+" : avisos}
-        </span>
-      )}
-    </button>
-  );
-}
-
 /**
  * `recolher=false`: telas com menu próprio (Gestão), onde o botão de recolher a SidebarShell não faz nada.
- * `avisos`/`onAvisos` (Gestão): bolinha vermelha com o número de notificações não lidas na sigla do nome;
- * clicar na sigla abre as notificações.
+ * `avisos`/`onAvisos` (Gestão): bolinha vermelha com o número de notificações não lidas na foto; clicar na foto
+ * abre o menu (MenuDaFoto), e o item Notificações chama `onAvisos`.
  */
 export default function ModuleTopbar({ recolher = true, avisos = 0, onAvisos }: { recolher?: boolean; avisos?: number; onAvisos?: () => void } = {}) {
   const user = useUserStore((s) => s.user);
@@ -157,7 +119,6 @@ export default function ModuleTopbar({ recolher = true, avisos = 0, onAvisos }: 
   const toggleSidebar = useSidebarMini((s) => s.toggle);
   const pathname = usePathname();
   const crumbs = buildCrumbs(pathname);
-  const initials = user?.nome ? getInitials(user.nome) : "?";
   const perfilColor = PERFIL_COLORS[user?.perfil ?? ""] ?? PERFIL_COLORS.Visualizador;
 
   return (
@@ -228,15 +189,14 @@ export default function ModuleTopbar({ recolher = true, avisos = 0, onAvisos }: 
                 {user.perfil}
               </span>
             </div>
+            {/* Foto = menu (09/11/2026): Notificações, as duas OS da T.I e Sair. */}
             {notifGlobal ? (
               <NotificacoesSino
                 onAbrir={(n) => router.push(linkNotificacao(n))}
-                gatilho={({ naoLidas, alternar }) => (
-                  <BotaoSigla avisos={naoLidas} onClick={alternar} nome={user.nome} email={user.email} initials={initials} />
-                )}
+                gatilho={({ naoLidas, alternar }) => <MenuDaFoto avisos={naoLidas} onNotificacoes={alternar} />}
               />
             ) : (
-              <BotaoSigla avisos={avisos} onClick={onAvisos} nome={user.nome} email={user.email} initials={initials} />
+              <MenuDaFoto avisos={avisos} onNotificacoes={onAvisos} />
             )}
           </div>
         )}

@@ -16,11 +16,11 @@ import {
   Lightbulb,
   ListChecks,
   Plus,
-  Printer,
   Users,
 } from "lucide-react";
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import AjudaComAbas from "@/components/novidades/AjudaComAbas";
+import ImprimirTopicos from "@/components/ajuda/ImprimirTopicos";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -221,17 +221,8 @@ function ItemExpandivel({ label, conceito, como, atencao, marque_sim, forceOpen 
 function ConteudoQpsAjudaPage() {
   const [printMode, setPrintMode] = useState(false);
 
-  const handlePrint = useCallback(() => {
-    setPrintMode(true);
-    setTimeout(() => {
-      window.print();
-      const reset = () => { setPrintMode(false); window.removeEventListener("afterprint", reset); };
-      window.addEventListener("afterprint", reset);
-    }, 200);
-  }, []);
-
   return (
-    <div className="space-y-10 max-w-4xl">
+    <div data-ajuda-topicos className="space-y-10">
 
       {/* Cabeçalho */}
       <div className="flex items-start justify-between gap-4">
@@ -246,14 +237,7 @@ function ConteudoQpsAjudaPage() {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={handlePrint}
-          className="print:hidden shrink-0 flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 transition-colors"
-        >
-          <Printer className="size-4" />
-          Exportar PDF
-        </button>
+        <ImprimirTopicos rotulo="Exportar PDF" className="print:hidden shrink-0 flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 transition-colors" onModoImpressao={setPrintMode} />
       </div>
 
       {/* O que é */}

@@ -1,9 +1,11 @@
 "use client";
 
+import BotoesFotosCampo from "@/components/ui/BotoesFotosCampo";
+import { avisoTamanho, fotosEnviadas } from "@/lib/fotos/lote";
 import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
-import { use, useMemo, useRef, useState } from "react";
+import { use, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -13,7 +15,6 @@ import {
   Loader2,
   AlertTriangle,
   AlertCircle,
-  Camera,
   X,
   Plus,
   ShieldAlert,
@@ -439,19 +440,18 @@ export default function DetalheNaoConformidadePage({
                     ),
                   });
                 }}
-                onUploadFoto={(file) => {
-                  if (file.size > MAX_FOTO_MB * 1024 * 1024) {
-                    toast.error(`Arquivo maior que ${MAX_FOTO_MB} MB`);
-                    return;
-                  }
+                onUploadFotos={(escolhidas) => {
+                const files = escolhidas.filter((f) => f.size <= MAX_FOTO_MB * 1024 * 1024);
+                if (files.length < escolhidas.length) toast.error(avisoTamanho(escolhidas.length - files.length, MAX_FOTO_MB));
+                if (files.length === 0) return;
                   uploadFoto.mutate(
                     {
                       id_relatorio: id,
                       id_item: item.id_item,
-                      file,
+                      files,
                     },
                     {
-                      onSuccess: () => toast.success("Foto enviada"),
+                      onSuccess: ({ enviadas }) => toast.success(fotosEnviadas(enviadas)),
                       onError: (e: Error) =>
                         toast.error(mensagemErro(e, "Falha ao enviar foto")),
                     }
@@ -663,7 +663,7 @@ function ItemNCRow({
   bloqueado,
   onPatch,
   onExcluir,
-  onUploadFoto,
+  onUploadFotos,
   onRemoverFoto,
   onAmpliarFoto,
   uploadEmAndamento,
@@ -682,12 +682,11 @@ function ItemNCRow({
     status_tratativa?: StatusTratativaNC;
   }) => void;
   onExcluir: () => void;
-  onUploadFoto: (file: File) => void;
+  onUploadFotos: (arquivos: File[]) => void;
   onRemoverFoto: (path: string) => void;
   onAmpliarFoto: (url: string) => void;
   uploadEmAndamento: boolean;
 }) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Estados locais pra textareas/inputs (salva no blur)
   const [descricao, setDescricao] = useState(item.descricao);
@@ -903,38 +902,13 @@ function ItemNCRow({
           <label className={labelCls}>Evidência fotográfica</label>
           {!bloqueado && (
             <>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) onUploadFoto(f);
-                  e.target.value = "";
-                }}
+              <BotoesFotosCampo
+                quantidade={fotoUrls.length}
+                enviando={uploadEmAndamento}
+                limiteAtingido={limiteAtingido}
+                tituloLimite={`Limite de ${MAX_FOTOS_POR_NC} fotos por NC`}
+                onArquivos={onUploadFotos}
               />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadEmAndamento || limiteAtingido}
-                className="inline-flex items-center gap-1.5 rounded-md border border-sky-300 bg-white px-2.5 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 disabled:opacity-50"
-                title={
-                  limiteAtingido
-                    ? `Limite de ${MAX_FOTOS_POR_NC} fotos por NC`
-                    : "Adicionar foto"
-                }
-              >
-                {uploadEmAndamento ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Camera className="size-4" />
-                )}
-                {temFotos
-                  ? `Adicionar foto (${fotoUrls.length})`
-                  : "Adicionar foto"}
-              </button>
             </>
           )}
         </div>

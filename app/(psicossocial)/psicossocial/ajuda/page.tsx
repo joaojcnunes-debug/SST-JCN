@@ -1,14 +1,18 @@
 import AjudaComAbas from "@/components/novidades/AjudaComAbas";
+import ImprimirTopicos from "@/components/ajuda/ImprimirTopicos";
 
 
 function ConteudoAjudaPage() {
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900">Ajuda — DRPS</h1>
-        <p className="text-sm text-gray-600">
-          Guia rápido do módulo Psicossocial.
-        </p>
+    <div data-ajuda-topicos className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">Ajuda — DRPS</h1>
+          <p className="text-sm text-gray-600">
+            Guia rápido do módulo Psicossocial.
+          </p>
+        </div>
+        <ImprimirTopicos rotulo="Exportar PDF" className="print:hidden shrink-0 flex items-center gap-2 rounded-lg bg-marca-primary px-4 py-2 text-sm font-medium text-white hover:bg-marca-accent transition-colors" />
       </div>
 
       <Secao titulo="O que é o DRPS?">

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { SITUACOES } from "@/lib/escala/tipos";
 import AjudaComAbas from "@/components/novidades/AjudaComAbas";
+import ImprimirTopicos from "@/components/ajuda/ImprimirTopicos";
 
 /**
  * Ajuda do módulo Escala de Supervisores.
@@ -29,16 +30,19 @@ import AjudaComAbas from "@/components/novidades/AjudaComAbas";
  */
 function ConteudoAjudaEscalaPage() {
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">
-          Como usar a Escala de Supervisores
-        </h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Este módulo substitui a planilha <em>Escala dos Supervisores</em> — as
-          18 abas dela viraram seis telas. É operação interna da JCN Consultoria: não tem
-          empresa cliente no meio.
-        </p>
+    <div data-ajuda-topicos className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">
+            Como usar a Escala de Supervisores
+          </h1>
+          <p className="mt-1 text-sm text-gray-600">
+            Este módulo substitui a planilha <em>Escala dos Supervisores</em> — as
+            18 abas dela viraram seis telas. É operação interna da JCN Consultoria: não tem
+            empresa cliente no meio.
+          </p>
+        </div>
+        <ImprimirTopicos rotulo="Exportar PDF" className="print:hidden shrink-0 flex items-center gap-2 rounded-lg bg-marca-primary px-4 py-2 text-sm font-medium text-white hover:bg-marca-accent transition-colors" />
       </div>
 
       {/* ── Por onde começar ────────────────────────────────── */}

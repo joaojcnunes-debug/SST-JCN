@@ -11,6 +11,7 @@ import { gravar } from "@/lib/offline/gravar";
 import { operacaoPendenteQueCria } from "@/lib/offline/operacoes";
 import type { InspecaoFull } from "@/lib/hooks/useInspecao";
 import { gerarId } from "@/lib/utils";
+import { fotosEnviadas } from "@/lib/fotos/lote";
 import { CATEGORIAS_FOTO } from "@/lib/constants";
 import type { CategoriaFoto, Foto, Setor } from "@/lib/supabase/types";
 import { useUserStore } from "@/lib/store";
@@ -39,7 +40,7 @@ export default function FotoForm({
   const [categoria, setCategoria] = useState<CategoriaFoto>("Geral");
   const [idSetor, setIdSetor] = useState<string>("");
   const [legenda, setLegenda] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export default function FotoForm({
       setCategoria((foto?.categoria as CategoriaFoto) ?? "Geral");
       setIdSetor(foto?.id_setor ?? "");
       setLegenda(foto?.legenda ?? "");
-      setFile(null);
+      setFiles([]);
       setProgress(0);
     }
   }, [open, foto]);
@@ -83,29 +84,34 @@ export default function FotoForm({
           modulo: "inspecoes",
           id_documento: idInspecao,
         });
-        return { resultado, linha: { ...foto, ...payload } as Foto };
+        return { resultado, linhas: [{ ...foto, ...payload } as Foto] };
       }
 
-      if (!file) throw new Error("Selecione um arquivo");
-
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `${idEmpresa}/${idInspecao}/${gerarId("FT")}.${ext}`;
+      if (files.length === 0) throw new Error("Selecione ao menos uma imagem");
 
       setProgress(20);
-      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
-
-      const insertRow = {
-        id_foto: gerarId("FOTO"),
-        id_inspecao: idInspecao,
-        id_empresa: idEmpresa,
-        id_setor: idSetor || null,
-        categoria,
-        legenda: legenda.trim() || null,
-        arquivo_foto: pub.publicUrl,
-        storage_path: path,
-        data_upload: new Date().toISOString(),
-        usuario: user?.email ?? null,
-      };
+      // Cada imagem vira uma foto, todas com a mesma categoria, setor e legenda.
+      const novas = files.map((file) => {
+        const ext = file.name.split(".").pop() ?? "jpg";
+        const path = `${idEmpresa}/${idInspecao}/${gerarId("FT")}.${ext}`;
+        const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+        return {
+          blob: file,
+          caminho: path,
+          linha: {
+            id_foto: gerarId("FOTO"),
+            id_inspecao: idInspecao,
+            id_empresa: idEmpresa,
+            id_setor: idSetor || null,
+            categoria,
+            legenda: legenda.trim() || null,
+            arquivo_foto: pub.publicUrl,
+            storage_path: path,
+            data_upload: new Date().toISOString(),
+            usuario: user?.email ?? null,
+          },
+        };
+      });
 
       // A foto pode ser de um setor cadastrado agora, ainda na fila.
       const criadorDoSetor = idSetor
@@ -116,20 +122,20 @@ export default function FotoForm({
       const resultado = await gravar({
         tabela: "fotos",
         tipo: "insert",
-        linhas: [insertRow],
+        linhas: novas.map((n) => n.linha),
         filtro: null,
         modulo: "inspecoes",
         id_documento: idInspecao,
-        imagens: [{ blob: file, caminho: path }],
+        imagens: novas.map(({ blob, caminho }) => ({ blob, caminho })),
         depende_de: criadorDoSetor ? [criadorDoSetor] : undefined,
       });
       setProgress(100);
-      return { resultado, linha: insertRow as unknown as Foto };
+      return { resultado, linhas: novas.map((n) => n.linha) as unknown as Foto[] };
     },
-    onSuccess: ({ resultado, linha }) => {
+    onSuccess: ({ resultado, linhas }) => {
       if (resultado.destino === "SERVIDOR") {
         qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-        toast.success(isEdit ? "Foto atualizada" : "Foto enviada");
+        toast.success(isEdit ? "Foto atualizada" : fotosEnviadas(linhas.length));
       } else {
         // Sem rede não há o que revalidar: a lista da tela é atualizada à mão.
         qc.setQueryData<InspecaoFull>(["inspecao", idInspecao], (antigo) => {
@@ -137,12 +143,12 @@ export default function FotoForm({
           return {
             ...antigo,
             fotos: isEdit
-              ? antigo.fotos.map((f) => (f.id_foto === linha.id_foto ? linha : f))
-              : [...antigo.fotos, linha],
+              ? antigo.fotos.map((f) => (f.id_foto === linhas[0].id_foto ? linhas[0] : f))
+              : [...antigo.fotos, ...linhas],
           };
         });
         toast.success(
-          isEdit ? "Alteração guardada no aparelho" : "Foto guardada no aparelho",
+          isEdit ? "Alteração guardada no aparelho" : linhas.length === 1 ? "Foto guardada no aparelho" : `${linhas.length} fotos guardadas no aparelho`,
           { icon: "📵" }
         );
       }
@@ -161,21 +167,24 @@ export default function FotoForm({
     <Modal
       open={open}
       onClose={onClose}
-      title={isEdit ? "Editar Foto" : "Enviar Foto"}
+      title={isEdit ? "Editar Foto" : "Enviar Fotos"}
     >
       <form onSubmit={onSubmit} className="space-y-4">
         {!isEdit && (
           <div>
-            <label className={lblCls}>Arquivo *</label>
+            <label className={lblCls}>Imagens *</label>
             <input
               type="file"
               accept="image/*"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              multiple
+              onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
               className="mt-1 block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-marca-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-marca-accent"
             />
-            {file && (
+            {files.length > 0 && (
               <p className="mt-1 text-xs text-gray-500">
-                {file.name} · {(file.size / 1024).toFixed(0)} KB
+                {files.length === 1
+                  ? `${files[0].name} · ${(files[0].size / 1024).toFixed(0)} KB`
+                  : `${files.length} imagens selecionadas · categoria, setor e legenda valem para todas`}
               </p>
             )}
           </div>
@@ -248,7 +257,7 @@ export default function FotoForm({
           </button>
           <button
             type="submit"
-            disabled={mutation.isPending || (!isEdit && !file)}
+            disabled={mutation.isPending || (!isEdit && files.length === 0)}
             className="rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
           >
             {mutation.isPending ? "Enviando..." : isEdit ? "Salvar" : "Enviar"}
