@@ -87,8 +87,8 @@ export interface InspecaoComercial {
   liberado_comercial_em?: string | null;
   liberado_comercial_por?: string | null;
   empresas?: unknown;
-  /** v330: `setor` da máquina (pode faltar no cadastro). */
-  maquinas: { nome: string | null; grau_risco: string | null; adequacao: boolean | null; setor?: string | null }[];
+  /** v331: `setores` da máquina, pela ligação da v160 (pode vir vazio). */
+  maquinas: { nome: string | null; grau_risco: string | null; adequacao: boolean | null; setores?: string[] }[];
   medicoes: { agente: string | null; qual: string | null; setor: string | null }[];
   quimicos: string[];
   /** v330: setores dos riscos químicos e dos psicossociais da inspeção. */
@@ -415,7 +415,7 @@ export function montarComercial(
               `${m.nome || "Máquina"}${m.grau_risco ? ` (grau ${m.grau_risco.toLowerCase()})` : ""}${m.adequacao ? " · necessita adequação" : ""}`,
           ),
           ...r.nota,
-        ], setoresDosItens(insp.maquinas));
+        ], setoresDosItens(insp.maquinas.flatMap((m): { setor: string | null }[] => (m.setores?.length ? m.setores.map((setor) => ({ setor })) : [{ setor: null }]))));
       }
       if (insp.medicoes.length > 0) {
         add(

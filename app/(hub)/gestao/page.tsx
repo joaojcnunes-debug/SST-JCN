@@ -165,7 +165,9 @@ export default function GestaoChabraPage() {
   // de topo (inbox/painel/quadro). Consolidou a antiga aba "Minhas tarefas" (removida no
   // ciclo 2) — é a única vista que exibe a agregação useMinhasTarefas (responsável+
   // seguidor). A UX-C(2) preenche este container com o quadro pessoal.
-  const [meuEspacoView, setMeuEspacoView] = useState(false);
+  // Abre sempre no Meu Espaço (0.3.252, do Painel): abria no 1º quadro. Link direto para quadro/tarefa
+  // (/gestao?quadro=…&tarefa=…, avisos e e-mails) continua abrindo o quadro — ver o efeito abaixo.
+  const [meuEspacoView, setMeuEspacoView] = useState(true);
   // "Colaboradores" (v235): gestor/supervisor acompanham o Meu Quadro dos colaboradores. A entrada
   // só aparece quando o servidor devolve alguém (gestor: todos; supervisor: as equipes dele).
   const [colabView, setColabView] = useState(false);
@@ -244,6 +246,7 @@ export default function GestaoChabraPage() {
     const tarefa = params.get("tarefa");
     const q = params.get("quadro");
     if (!tarefa && !q) return;
+    setMeuEspacoView(false);
     if (q) setQuadroId(q);
     tarefaDoLink.current = tarefa;
     params.delete("tarefa");
@@ -677,7 +680,7 @@ export default function GestaoChabraPage() {
             </div>
             {/* UX-C1: vista agregada. O container MeuEspaco reserva o ponto de extensão
                 para o quadro pessoal (UX-C2), sem construí-lo aqui. */}
-            <MeuEspaco tarefas={minhas} quadros={quadros} statusMap={statusGlobalMap} souGestor={souGestor} onAbrir={(t) => { setQuadroId(t.id_quadro); setMeuEspacoView(false); setEditando(t); setModalOpen(true); }} onAbrirQuadro={(id) => { setQuadroId(id); setMeuEspacoView(false); }} />
+            <MeuEspaco tarefas={minhas} quadros={quadros} statusMap={statusGlobalMap} souGestor={souGestor} onAbrir={(t) => { setQuadroId(t.id_quadro); setEditando(t); setModalOpen(true); }} onAbrirQuadro={(id) => { setQuadroId(id); setMeuEspacoView(false); }} />
           </div>
         ) : (
         <>

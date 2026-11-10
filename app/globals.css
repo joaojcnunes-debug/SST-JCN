@@ -78,6 +78,11 @@
    volta ao claro — sem !important e sem brigar por especificidade. */
 .force-light {
   color-scheme: light;
+  /* Herança: a cor do <body> já chega CALCULADA (clara, no escuro), não como var().
+     Sem isto, texto sem utilitário de cor — os campos digitados de inputs e
+     textareas (preflight: color: inherit) — saía branco no branco (formulário
+     público da Gestão). No claro é a mesma cor do body: nada muda. (0.3.252) */
+  color: var(--text-strong);
   --surface: #ffffff;
   --surface-2: #f9fafb;
   --surface-3: #f3f4f6;

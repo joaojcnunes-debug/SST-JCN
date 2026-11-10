@@ -127,8 +127,8 @@ test("coluna Setor: o setor de cada serviço; treinamento vale para a empresa to
     [
       insp("E1", {
         maquinas: [
-          { nome: "Serra", grau_risco: "ALTO", adequacao: true, setor: "Marcenaria" },
-          { nome: "Prensa", grau_risco: "ALTO", adequacao: false, setor: null },
+          { nome: "Serra", grau_risco: "ALTO", adequacao: true, setores: ["Marcenaria"] },
+          { nome: "Prensa", grau_risco: "ALTO", adequacao: false, setores: [] },
         ],
         medicoes: [{ agente: "Ruído", qual: "Dosimetria", setor: "Produção" }],
         quimicos: ["Tolueno"],

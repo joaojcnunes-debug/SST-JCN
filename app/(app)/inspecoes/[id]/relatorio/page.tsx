@@ -46,6 +46,7 @@ import { ConfirmHost, confirmar } from "@/components/ui/confirm";
 import EnviarRiscosSgg from "@/components/inspecoes/EnviarRiscosSgg";
 import { useAssociarUsuario, useInspecaoAssociados } from "@/lib/hooks/useInspecaoAssociados";
 import { situacaoDocumento } from "@/lib/inspecoes/documento";
+import { estaNoDocumento } from "@/lib/inspecoes/inicio";
 import { FileSignature } from "lucide-react";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
@@ -263,7 +264,8 @@ export default function RelatorioChabraPage({ params }: Props) {
   const podeElaborar = !!user && user.perfil !== "Cliente";
   const salvarElab = useSalvarElaboracao(id);
   // 28/10 (v309): quem já está no documento "inicia" (não precisa se associar de novo).
-  const souAssociado = !!user && associados.some((a) => a.id_usuario === user.id_usuario || a.nome?.trim().toLowerCase() === user.nome?.trim().toLowerCase());
+  // 10/11 (v332): o responsável sem linha de associado também conta, como na fila e no banco.
+  const souAssociado = !!user && estaNoDocumento(user, associados, data?.inspecao.elaboracao_responsavel);
 
   async function handleBaixarPdf() {
     if (!pdfAssinado) return;
@@ -276,7 +278,7 @@ export default function RelatorioChabraPage({ params }: Props) {
 
   const { data: capitulosSst = [] } = useTextosPadrao("sst");
   // 30/10: associado só abre o documento com a própria sessão de tempo aberta (supervisor/admin abrem direto).
-  const inicio = useAguardandoInicio(id, data?.inspecao.elaboracao_status);
+  const inicio = useAguardandoInicio(id, data?.inspecao.elaboracao_status, data?.inspecao.elaboracao_responsavel);
   const sessoesDoc = useSessoesDocumentos([id]);
   const agora = useAgora();
   const iniciarSessao = useIniciarSessao();
