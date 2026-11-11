@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-agenda-vazia-sem-pessoa",
+    data: "2026-11-11",
+    tipo: "correcao",
+    titulo: "Agenda: sem ninguém marcado, o calendário fica vazio",
+    texto:
+      "Na Agenda, ao desmarcar todas as pessoas (Limpar), o calendário continuava mostrando as atividades de quem estava " +
+      "marcado antes. Agora ele fica vazio até você escolher alguém.",
+    onde: "Gestão › Agenda",
+    versoes: ["0.3.270"],
+  },
+  {
     id: "gestao-regiao-produtos",
     data: "2026-11-10",
     tipo: "melhoria",

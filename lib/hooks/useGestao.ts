@@ -1737,7 +1737,8 @@ export function useTarefasDeResponsaveis(emails: string[], ini: string, fim: str
     queryKey: ["gestao-tarefas-de", lista, ini, fim],
     enabled: enabled && lista.length > 0 && !!ini && !!fim,
     staleTime: 30 * 1000,
-    placeholderData: (anterior) => anterior,
+    // Mantém a tela anterior só enquanto carrega o novo período; sem ninguém escolhido, fica vazio (0.3.270).
+    placeholderData: (anterior) => (lista.length ? anterior : undefined),
     queryFn: async () => {
       const sb = createSupabaseBrowserClient();
       const { data, error } = await sb
@@ -1786,7 +1787,8 @@ export function useAgendaDe(emails: string[], ini: string, fim: string, enabled 
     queryKey: ["gestao-agenda-de", lista, ini, fim],
     enabled: enabled && lista.length > 0 && !!ini && !!fim,
     staleTime: 30 * 1000,
-    placeholderData: (anterior) => anterior,
+    // Mantém a tela anterior só enquanto carrega o novo período; sem ninguém escolhido, fica vazio (0.3.270).
+    placeholderData: (anterior) => (lista.length ? anterior : undefined),
     queryFn: async (): Promise<TarefaAgenda[]> => {
       const sb = createSupabaseBrowserClient();
       const { data, error } = await sb
