@@ -102,6 +102,8 @@ export function mensagemErro(
   // filtra a linha, então quem escreve verifica a contagem e levanta isto. A
   // mensagem já vem pronta para o usuário e diz o que conferir.
   if (code === "nao_gravou" && raw) return raw;
+  // Recusa já escrita para o usuário (ex.: "Poucos comentários para resumir" na IA da Gestão, 0.3.275).
+  if (code === "mensagem_usuario" && raw) return raw;
 
   // Desconhecido → fallback (nunca devolve SQL cru).
   return fallback;

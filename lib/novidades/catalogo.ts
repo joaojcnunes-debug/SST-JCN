@@ -41,6 +41,41 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-ia-checklist",
+    data: "2026-11-11",
+    tipo: "melhoria",
+    titulo: "Gestão: checklist sugerido pela IA",
+    texto:
+      "Na aba Checklist, Sugerir com IA propõe itens a partir do título e da descrição da tarefa, sem repetir os que já " +
+      "existem. Você marca quais entram antes de adicionar.",
+    onde: "Gestão › tarefa › Checklist › Sugerir com IA",
+    versoes: ["0.3.275"],
+  },
+  {
+    id: "gestao-ia-resumo-comentarios",
+    data: "2026-11-11",
+    tipo: "novidade",
+    titulo: "Gestão: resumo da conversa com IA",
+    texto:
+      "Na aba Comentários, quando a tarefa tem 3 ou mais comentários, Resumir com IA mostra onde a tarefa está, o que " +
+      "já foi decidido, o que falta e o próximo passo — bom para quem pega uma tarefa no meio. O resumo não fica " +
+      "salvo; confira sempre nos comentários.",
+    onde: "Gestão › tarefa › Comentários › Resumir com IA",
+    versoes: ["0.3.275"],
+  },
+  {
+    id: "gestao-responsavel-sugerido",
+    data: "2026-11-11",
+    tipo: "novidade",
+    titulo: "Gestão: responsável sugerido",
+    texto:
+      "Quando a tarefa ainda não tem responsável, a janela mostra quem costuma fazer tarefas de título parecido naquela " +
+      "lista. Um clique coloca a pessoa como responsável.",
+    onde: "Gestão › tarefa › Responsável",
+    impacto: "A conta é feita no próprio sistema, sem IA externa, e só considera as tarefas que você já vê.",
+    versoes: ["0.3.275"],
+  },
+  {
     id: "usuarios-para-supervisores",
     data: "2026-11-11",
     tipo: "novidade",

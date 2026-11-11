@@ -28,7 +28,7 @@ import {
   PRIORIDADES, useEmpresaSugerida, useNomesEmpresas,
   useResolverComentario, useMoverForcandoRequisito, ehErroRequisito, useSlaTarefas, useTempoTarefa, totalSegundos, formatarDuracao,
   type GestaoTempo,
-  useModelos,
+  useModelos, useResponsaveisSugeridos,
   type GestaoTarefa, type StatusTarefa, type PrioridadeTarefa, type Subtarefa, type GestaoSubtarefa, type GestaoStatus, type GestaoCampo, type GestaoVinculado,
 } from "@/lib/hooks/useGestao";
 import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
@@ -290,6 +290,15 @@ export default function TarefaModal({
   const sla = tarefa ? slaDaTarefa?.get(tarefa.id_tarefa) ?? null : null;
   const { data: modelosQuadro = [] } = useModelos(open && !tarefa ? idQuadro : null);
   const modelosNovaTarefa = useMemo(() => modelosQuadro.filter((m) => m.na_criacao), [modelosQuadro]);
+  // v356 (item 15): sem responsável, sugere quem costuma fazer tarefas de título parecido neste quadro (histórico do
+  // banco, sem IA externa). O título é lido 0,7 s depois de parar de digitar.
+  const [tituloSug, setTituloSug] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setTituloSug(titulo), 700);
+    return () => clearTimeout(t);
+  }, [titulo]);
+  const pedeRespSug = open && !ehSub && podeEditar && responsaveisEmails.length === 0;
+  const { data: respSugeridos = [] } = useResponsaveisSugeridos(tarefa?.id_quadro ?? idQuadro, tituloSug, pedeRespSug);
   const { data: tempoEntries = EMPTY_TEMPO } = useTempoTarefa(tarefa?.id_tarefa);
   const tituloRef = useRef<HTMLInputElement>(null);
   const painelRef = useRef<HTMLElement>(null);
@@ -1101,6 +1110,8 @@ export default function TarefaModal({
             rascunho={rascunhoChecklist}
             setRascunho={setRascunhoChecklist}
             nomeDe={nomeDe}
+            titulo={titulo}
+            descricao={descricao}
           />
         )}
 
@@ -1226,6 +1237,26 @@ export default function TarefaModal({
                 className={`${caixaPainel} w-full`}
               />,
               true,
+            )}
+            {pedeRespSug && respSugeridos.length > 0 && (
+              <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-gray-500">
+                <span>Costuma fazer tarefas parecidas:</span>
+                {respSugeridos.map((r) => (
+                  <button
+                    key={r.email}
+                    type="button"
+                    onClick={() => {
+                      const e = r.email.toLowerCase();
+                      setResponsaveisEmails((s) => [...new Set([...s, e])]);
+                      setSeguidoresEmails((s) => s.filter((x) => x.toLowerCase() !== e)); // responsável não é também seguidor
+                    }}
+                    title={`Responsável em ${r.tarefas} tarefa(s) parecida(s) deste quadro`}
+                    className="max-w-full truncate rounded-full border border-marca-primary/40 bg-white px-2 py-0.5 font-medium text-marca-primary hover:bg-marca-light"
+                  >
+                    {r.nome}
+                  </button>
+                ))}
+              </div>
             )}
           </LinhaCampo>
           <LinhaCampo icone={Flag} rotulo="Prioridade" campo="prioridade">
