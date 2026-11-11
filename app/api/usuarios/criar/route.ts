@@ -5,6 +5,8 @@ import {
   createSupabaseServiceClient,
 } from "@/lib/supabase/client";
 import { temServiceRole } from "../service-role";
+import { erroSenha, traduzirErroSenha } from "@/lib/usuarios/senha";
+import { ehAdminTotal, motivoRecusaSupervisor, podeGerirUsuarios, semCamposSoAdmin } from "@/lib/usuarios/gestao-supervisor";
 
 export const dynamic = "force-dynamic";
 
@@ -43,12 +45,15 @@ async function handler(req: NextRequest) {
   }
   const { data: callerRow } = await supabase
     .from("usuarios")
-    .select("perfil")
+    .select("perfil, nivel, ativo_sistema")
     .eq("email", caller.email.toLowerCase())
     .single();
-  if ((callerRow as { perfil?: string } | null)?.perfil !== "Admin") {
+  // 0.3.274 (= Painel 0.3.924, v355): Admin ou supervisor. O supervisor não cria Admin nem nível de supervisão,
+  // e a conta nasce sem os campos do Admin (SGG, assinatura, certificado) — lib/usuarios/gestao-supervisor.ts.
+  const quem = callerRow as { perfil?: string | null; nivel?: string | null; ativo_sistema?: boolean } | null;
+  if (!quem?.ativo_sistema || !podeGerirUsuarios(quem)) {
     return NextResponse.json(
-      { ok: false, error: "Apenas administradores podem criar usuários" },
+      { ok: false, error: "Apenas administradores e supervisores podem criar usuários" },
       { status: 403 }
     );
   }
@@ -59,6 +64,11 @@ async function handler(req: NextRequest) {
   } catch {
     return NextResponse.json({ ok: false, error: "JSON inválido" }, { status: 400 });
   }
+  const recusa = motivoRecusaSupervisor(quem, body as { perfil?: string | null; nivel?: string | null });
+  if (recusa) {
+    return NextResponse.json({ ok: false, error: recusa }, { status: 403 });
+  }
+  if (!ehAdminTotal(quem)) body = semCamposSoAdmin(body);
   const { email, senha, id_usuario, nome, ...resto } = body as {
     email?: string;
     senha?: string;
@@ -72,15 +82,21 @@ async function handler(req: NextRequest) {
       { status: 400 }
     );
   }
-  if (typeof senha === "string" && senha.length < 6) {
-    return NextResponse.json(
-      { ok: false, error: "A senha deve ter pelo menos 6 caracteres" },
-      { status: 400 }
-    );
+  // 0.3.274 (= Painel 0.3.932): mínimo de 8 caracteres (lib/usuarios/senha.ts).
+  const erroDaSenha = typeof senha === "string" ? erroSenha(senha) : null;
+  if (erroDaSenha) {
+    return NextResponse.json({ ok: false, error: erroDaSenha }, { status: 400 });
   }
   const emailNorm = (email as string).trim().toLowerCase();
 
   if (!temServiceRole()) {
+    // A função de reserva do banco (criar_usuario_admin) só roda para Admin.
+    if (!ehAdminTotal(quem)) {
+      return NextResponse.json(
+        { ok: false, error: "Sem a chave de service role no servidor, só um administrador cria usuários" },
+        { status: 403 }
+      );
+    }
     return criarViaRpc(supabase, emailNorm, senha as string, (nome as string).trim(), resto);
   }
 
@@ -99,7 +115,7 @@ async function handler(req: NextRequest) {
     if (msg.includes("already registered") || msg.includes("already been registered")) {
       return NextResponse.json({ ok: false, error: "E-mail já cadastrado" }, { status: 400 });
     }
-    return NextResponse.json({ ok: false, error: createErr.message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: traduzirErroSenha(createErr.message) }, { status: 500 });
   }
 
   const { error: insertErr } = await service.from("usuarios").insert({
@@ -151,7 +167,7 @@ async function criarViaRpc(
     p_empresas_vinculadas: (resto.empresas_vinculadas as string[] | undefined) ?? [],
   } as never);
   if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    return NextResponse.json({ ok: false, error: traduzirErroSenha(error.message) }, { status: 400 });
   }
   const idCriado = (data as { id_usuario?: string } | null)?.id_usuario;
   const { error: upErr } = await supabase

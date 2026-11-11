@@ -35,6 +35,7 @@ import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 import { useUnidades } from "@/lib/hooks/useUnidades";
 import { useCargosPainel, useFuncoesPainel } from "@/lib/hooks/useFuncoesPainel";
 import { useCurrentUser } from "@/lib/hooks/useUsuario";
+import { SENHA_MIN, erroSenha } from "@/lib/usuarios/senha";
 import {
   useGestaoMembros,
   useMeuPapelGestao,
@@ -51,6 +52,7 @@ import type {
 } from "@/lib/supabase/types";
 import { TODOS_MODULOS } from "@/lib/supabase/types";
 import GradePermissoesModulos from "@/components/usuarios/GradePermissoesModulos";
+import { contaProtegida, ehAdminTotal, podeEditarConta } from "@/lib/usuarios/gestao-supervisor";
 import {
   flagsGerais,
   gradeComChaves,
@@ -92,6 +94,7 @@ function useUsuarios() {
 
 export default function UsuariosPage() {
   const currentUser = useCurrentUser();
+  const souAdmin = ehAdminTotal(currentUser);
   const { data: usuarios = [], isLoading } = useUsuarios();
   const [busca, setBusca] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -212,19 +215,31 @@ export default function UsuariosPage() {
                     </td>
                     <td className="px-4 py-2.5">
                       <div className="flex justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditing(u);
-                            setFormOpen(true);
-                          }}
-                          className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-marca-light hover:text-marca-primary"
-                          title="Editar"
-                        >
-                          <Pencil className="size-4" />
-                        </button>
-                        <ToggleAtivo usuario={u} />
-                        {currentUser?.email !== u.email && (
+                        {/* 10/11 (v355): o supervisor mexe só em conta comum; Admin e supervisores ficam com o Admin. */}
+                        {podeEditarConta(currentUser, u) ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditing(u);
+                                setFormOpen(true);
+                              }}
+                              className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-marca-light hover:text-marca-primary"
+                              title="Editar"
+                            >
+                              <Pencil className="size-4" />
+                            </button>
+                            <ToggleAtivo usuario={u} />
+                          </>
+                        ) : (
+                          <span
+                            className="flex size-7 items-center justify-center text-gray-300"
+                            title="Administradores e supervisores: só um administrador edita"
+                          >
+                            <Lock className="size-4" />
+                          </span>
+                        )}
+                        {souAdmin && currentUser?.email !== u.email && (
                           <button
                             type="button"
                             onClick={() => setConfirmDel(u)}
@@ -319,6 +334,8 @@ interface UsuarioFormProps {
 
 function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
   const qc = useQueryClient();
+  // 10/11 (v355): supervisor também abre o formulário; os campos do Admin ficam travados.
+  const souAdminForm = ehAdminTotal(useCurrentUser());
   const isEdit = !!usuario;
   const { data: empresas = [] } = useEmpresas();
   const { data: unidades = [] } = useUnidades();
@@ -535,9 +552,9 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
 
         // 1+2) Email e/ou senha -> rota que usa a Admin API do GoTrue (.107)
         if (emailNovo !== emailAntigo || (form.senha && form.senha.length > 0)) {
-          if (form.senha && form.senha.length > 0 && form.senha.length < 6) {
-            throw new Error("A nova senha deve ter ao menos 6 caracteres");
-          }
+          // 0.3.274 (= Painel 0.3.932): mínimo de 8 caracteres (lib/usuarios/senha.ts).
+          const erroNovaSenha = form.senha ? erroSenha(form.senha, true) : null;
+          if (erroNovaSenha) throw new Error(erroNovaSenha);
           // Trocar só a PRÓPRIA senha não precisa da Admin API: a sessão logada
           // resolve direto no Auth, sem depender da SUPABASE_SERVICE_ROLE_KEY.
           const {
@@ -618,9 +635,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         return;
       }
 
-      if (!form.senha || form.senha.length < 6) {
-        throw new Error("A senha deve ter pelo menos 6 caracteres");
-      }
+      const erroDaSenha = erroSenha(form.senha ?? "");
+      if (erroDaSenha) throw new Error(erroDaSenha);
       if (!form.funcao) {
         throw new Error("Escolha a função da conta — ela define módulos, nível e perfil");
       }
@@ -849,10 +865,10 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
               placeholder={
                 isEdit
                   ? "Vazio = senha atual permanece"
-                  : "Mínimo 6 caracteres"
+                  : `Mínimo ${SENHA_MIN} caracteres`
               }
               required={!isEdit}
-              minLength={isEdit && form.senha.length === 0 ? undefined : 6}
+              minLength={isEdit && form.senha.length === 0 ? undefined : SENHA_MIN}
             />
           </div>
         </Field>
@@ -865,7 +881,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             required={!isEdit}
           >
             <option value="">— sem função —</option>
-            {funcoes.map((f: FuncaoPainel) => (
+            {/* 10/11 (v355): o supervisor não dá função de Admin nem de supervisão. */}
+            {funcoes.filter((f: FuncaoPainel) => souAdminForm || !contaProtegida({ perfil: f.perfil_padrao, nivel: f.nivel })).map((f: FuncaoPainel) => (
               <option key={f.funcao} value={f.funcao}>
                 {f.funcao} · {f.modulos_padrao.length} módulos · nível {f.nivel}
               </option>
@@ -931,7 +948,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
               }
               className={inputCls}
             >
-              {PERFIS.map((p) => (
+              {PERFIS.filter((p) => souAdminForm || p !== "Admin").map((p) => (
                 <option key={p} value={p}>
                   {ROTULO_PERFIL[p]}
                 </option>
@@ -1119,6 +1136,13 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
           </p>
         </Field>}
 
+        {/* 10/11 (v355): assinatura e certificado seguem só do Admin (o banco recusa a troca feita por supervisor). */}
+        <fieldset disabled={!souAdminForm} className="m-0 min-w-0 space-y-4 border-0 p-0 disabled:opacity-60">
+          {!souAdminForm && (
+            <p className="rounded-md bg-gray-50 p-2 text-[11px] text-gray-500">
+              Assinatura e certificado digital: só um administrador altera.
+            </p>
+          )}
         {/* ── Assinatura digital ─────────────────────────────────── */}
         <Field label="Assinatura do Técnico">
           <p className="mt-0.5 text-[11px] text-gray-500">
@@ -1343,6 +1367,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             </div>
           )}
         </Field>
+        </fieldset>
 
         <label className="flex items-center gap-2 text-sm">
           <input

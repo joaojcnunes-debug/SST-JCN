@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { Users, Settings, FileClock, Trash2, ScrollText, Radio, BadgeCheck, Globe } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { useUserStore } from "@/lib/store";
 import { vePresencaAuditoria } from "@/lib/hooks/useUsuario";
 import { AcessoVerificando } from "@/components/layout/TravaRota";
+import { podeGerirUsuarios } from "@/lib/usuarios/gestao-supervisor";
 
 const sections: NavSection[] = [
   {
@@ -32,12 +33,13 @@ const sections: NavSection[] = [
 // ve_presenca_auditoria). O resto da área Sistema continua só Admin.
 const ROTAS_GERENCIA = ["/presenca", "/auditoria"];
 
-const sectionsGerencia: NavSection[] = [
-  {
-    label: "Administração",
-    items: sections[0].items.filter((i) => ROTAS_GERENCIA.includes(i.href)),
-  },
-];
+// 10/11 (v355): Usuários abre também para o supervisor (nível Aprovação), com as travas de
+// lib/usuarios/gestao-supervisor.ts. Funções, Configurações, Lixeira etc. seguem só Admin.
+const ROTA_USUARIOS = "/usuarios";
+
+function secoesPara(rotas: string[]): NavSection[] {
+  return [{ label: "Administração", items: sections[0].items.filter((i) => rotas.includes(i.href)) }];
+}
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   useAuth();
@@ -47,27 +49,34 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const avisouRef = useRef(false);
   const isAdmin = user?.perfil === "Admin";
   const gerencia = !isAdmin && vePresencaAuditoria(user);
-  const rotaDeGerencia = ROTAS_GERENCIA.some((r) => pathname === r || pathname.startsWith(r + "/"));
-  const liberado = isAdmin || (gerencia && rotaDeGerencia);
+  const supervisor = !isAdmin && podeGerirUsuarios(user);
+  const rotasLiberadas = useMemo(
+    () => [...(supervisor ? [ROTA_USUARIOS] : []), ...(gerencia ? ROTAS_GERENCIA : [])],
+    [supervisor, gerencia],
+  );
+  const rotaLiberada = rotasLiberadas.some((r) => pathname === r || pathname.startsWith(r + "/"));
+  const liberado = isAdmin || rotaLiberada;
 
   useEffect(() => {
     if (!user) return; // ainda carregando
     if (isAdmin) return;
-    if (gerencia && rotaDeGerencia) return;
+    if (rotaLiberada) return;
     if (!avisouRef.current) {
       avisouRef.current = true;
-      toast.error(gerencia ? "Sua função abre só Presença e Auditoria" : "Apenas administradores podem acessar esta área");
+      toast.error(
+        rotasLiberadas.length > 0 ? "Esta parte do Sistema é só de administradores" : "Apenas administradores podem acessar esta área",
+      );
     }
-    router.replace(gerencia ? "/presenca" : "/inicio");
-  }, [user, isAdmin, gerencia, rotaDeGerencia, router]);
+    router.replace(rotasLiberadas[0] ?? "/inicio");
+  }, [user, isAdmin, rotasLiberadas, rotaLiberada, router]);
 
   return (
     <div className="casca min-h-screen">
       <SidebarShell
         title="Administração"
         subtitle="JCN Consultoria"
-        logoHref={isAdmin ? "/usuarios" : "/presenca"}
-        sections={isAdmin ? sections : sectionsGerencia}
+        logoHref={isAdmin ? "/usuarios" : (rotasLiberadas[0] ?? "/inicio")}
+        sections={isAdmin ? sections : secoesPara(rotasLiberadas)}
       />
       <div className="casca-folha md:pl-[220px] print:pl-0">
         <ModuleTopbar />

@@ -21,6 +21,7 @@ import VisaoGeralView, { type PendenciaItem } from "@/components/visao-geral/Vis
 import NotificacoesSino, { linkNotificacao } from "@/components/gestao/NotificacoesSino";
 import { useNotificacoes } from "@/lib/hooks/useGestao";
 import { useMeuPapelGestao } from "@/lib/hooks/useGestaoAcesso";
+import { podeGerirUsuarios } from "@/lib/usuarios/gestao-supervisor";
 
 export default function VisaoGeralPage() {
   const router = useRouter();
@@ -131,7 +132,8 @@ export default function VisaoGeralPage() {
       logoUrl={configs?.logo_url}
       userNome={user?.nome}
       userPerfil={user?.perfil}
-      isAdmin={user?.perfil === "Admin"}
+      // Só mostra o atalho Sistema: 10/11 (v355) o supervisor também entra (em Usuários).
+      isAdmin={podeGerirUsuarios(user)}
       vinculadasCount={user?.empresas_vinculadas?.length ?? 0}
       data={data}
       isLoading={isLoading}
