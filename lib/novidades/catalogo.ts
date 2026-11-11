@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-roteamento-regiao-produto",
+    data: "2026-11-11",
+    tipo: "novidade",
+    titulo: "Gestão: venda concluída no Comercial cria os cartões de cada produto",
+    texto:
+      "Quando um cartão do Comercial vai para Concluído, os Produtos marcados decidem para onde vai o trabalho: " +
+      "programas (PGR, PCMSO, LTCAT, LI, LP) viram um cartão em Empresas Novas na lista da unidade, já com as " +
+      "subtarefas; avaliações quantitativas vão para a coluna Avaliações de Quantitativos; Treinamento, CIPA/Designado " +
+      "e Psicossocial ganham um cartão nas listas deles.",
+    onde: "Gestão › Comercial › Configurar › Automações",
+    impacto: "As listas Treinamento e CIPA/DESIGNADO são novas. A Região do cartão do Comercial decide a lista da unidade.",
+    versoes: ["0.3.277"],
+  },
+  {
     id: "comercial-botao-cadastro-empresa",
     data: "2026-11-11",
     tipo: "novidade",
