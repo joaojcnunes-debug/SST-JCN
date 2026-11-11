@@ -12,6 +12,7 @@ import { useId, useMemo, useState, type ReactNode } from "react";
 import { BadgeCheck, Building2, ChevronDown, ChevronRight, ClipboardCheck, Download, FilterX, Handshake, Info, Loader2, Mail, MapPin, Phone, Search, Undo2 } from "lucide-react";
 import { useComercial, useDesfazerVenda, useRegistrarVenda } from "@/lib/hooks/useComercial";
 import Modal from "@/components/ui/Modal";
+import BotaoCadastroEmpresa from "@/components/comercial/BotaoCadastroEmpresa";
 import { ConfirmHost, confirmar } from "@/components/ui/confirm";
 import { useUserStore } from "@/lib/store";
 import { useUnidades } from "@/lib/hooks/useUnidades";
@@ -178,14 +179,18 @@ export default function ComercialPage() {
             (Apreciação NR-12, medição quantitativa, Análise de Químicos, DRPS/Questionário e treinamentos NR).
           </p>
         </div>
-        <button
-          type="button"
-          disabled={filtradas.length === 0}
-          onClick={() => baixarCsv(linhasCsv(filtradas, unidadeDe))}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-        >
-          <Download className="size-4" /> Exportar (Excel)
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* 0.3.276 (= Painel 0.3.926): formulário de cadastro de empresa numa janela. */}
+          <BotaoCadastroEmpresa />
+          <button
+            type="button"
+            disabled={filtradas.length === 0}
+            onClick={() => baixarCsv(linhasCsv(filtradas, unidadeDe))}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Download className="size-4" /> Exportar (Excel)
+          </button>
+        </div>
       </div>
 
       {/* Contadores */}

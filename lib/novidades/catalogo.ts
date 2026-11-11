@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "comercial-botao-cadastro-empresa",
+    data: "2026-11-11",
+    tipo: "novidade",
+    titulo: "Botão Cadastrar empresa no Comercial e na lista Comercial da Gestão",
+    texto:
+      "No topo de Comercial › Oportunidades e na barra da lista Comercial da Gestão, Cadastrar empresa abre numa janela " +
+      "o formulário \"Cadastro de empresa - Comercial\", sem sair da tela. Ao enviar, o cartão novo aparece na lista.",
+    onde: "Comercial › Oportunidades; Gestão › Comercial",
+    impacto: "O formulário precisa existir e estar ativo na Gestão com esse nome; sem ele, o botão explica como criar.",
+    versoes: ["0.3.276"],
+  },
+  {
     id: "gestao-ia-checklist",
     data: "2026-11-11",
     tipo: "melhoria",
