@@ -52,6 +52,18 @@ export const CATALOGO: Novidade[] = [
     versoes: ["0.3.270"],
   },
   {
+    id: "gestao-vinculados-ao-criar",
+    data: "2026-11-11",
+    tipo: "correcao",
+    titulo: "Gestão: criar tarefa com responsável voltou a funcionar",
+    texto:
+      "Ao criar uma tarefa já com responsável (ou seguidores), aparecia \"Não foi possível salvar os vinculados\" e a tarefa " +
+      "ficava sem ninguém. Aprovar ou recusar uma aprovação também falhava. As duas coisas foram corrigidas.",
+    onde: "Gestão › Nova tarefa; aprovação na tarefa",
+    impacto: "As tarefas criadas com o erro continuam sem responsável: abra e coloque a pessoa de novo.",
+    versoes: ["0.3.270"],
+  },
+  {
     id: "gestao-regiao-produtos",
     data: "2026-11-10",
     tipo: "melhoria",

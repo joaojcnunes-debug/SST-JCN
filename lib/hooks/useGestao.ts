@@ -818,7 +818,7 @@ export function useSalvarVinculados() {
       const sb = createSupabaseBrowserClient();
       const rpc = (sb as unknown as {
         rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
-      }).rpc;
+      }).rpc.bind(sb); // 0.3.270: sem o bind, rpc(...) perde o cliente e quebra ("reading 'rest'").
       const resps = [...new Set(p.responsaveisEmails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
       const segs = [...new Set(p.seguidoresEmails.map((e) => e.trim().toLowerCase()).filter(Boolean))].filter((e) => !resps.includes(e));
 
@@ -3096,7 +3096,7 @@ export function useDecidirAprovacao() {
       const sb = createSupabaseBrowserClient();
       const rpc = (sb as unknown as {
         rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
-      }).rpc;
+      }).rpc.bind(sb); // 0.3.270: sem o bind, rpc(...) perde o cliente e quebra ("reading 'rest'").
       const { error } = await rpc("gestao_decidir_aprovacao", { p_id: p.id, p_decisao: p.decisao, p_motivo: p.motivo ?? null });
       if (error) throw error;
     },
