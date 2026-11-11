@@ -24,6 +24,7 @@ function texto(a: GestaoAtividade, nomeStatus: (slug: string | null) => string):
     case "empresa": return `empresa: ${de} → ${para}`;
     case "prioridade": return `prioridade: ${de} → ${para}`;
     case "titulo": return `renomeou: "${de}" → "${para}"`;
+    case "empresa": return `empresa: ${de} → ${para}`;
     case "tempo_iniciado": return "iniciou o cronômetro";
     case "tempo_parado": return `parou o cronômetro (${formatarDuracao(Number(p.segundos) || 0)})`;
     case "tempo_manual": return `lançou tempo (${formatarDuracao(Number(p.segundos) || 0)})`;

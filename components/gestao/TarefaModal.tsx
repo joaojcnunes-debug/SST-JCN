@@ -7,8 +7,7 @@ import { mensagemErro } from "@/lib/errors";
 import {
   Trash2, Loader2, Plus, Square, CheckSquare, X, ArrowRight, Sparkles, Maximize2, CornerDownRight, MessageSquare,
   Columns3, ArrowRightLeft, UserRound, Flag, Tag, CalendarDays, CalendarCheck, Repeat, Clock, Users, Gauge, List, Link2,
-  PanelRightClose, PanelRightOpen, MapPin, Package, ListChecks, Timer, Hourglass,
-  Building2, ExternalLink,
+  PanelRightClose, PanelRightOpen, MapPin, Package, ListChecks, Timer, Hourglass, Building2, ExternalLink, LayoutTemplate,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -29,9 +28,11 @@ import {
   PRIORIDADES, useEmpresaSugerida, useNomesEmpresas,
   useResolverComentario, useMoverForcandoRequisito, ehErroRequisito, useSlaTarefas, useTempoTarefa, totalSegundos, formatarDuracao,
   type GestaoTempo,
+  useModelos,
   type GestaoTarefa, type StatusTarefa, type PrioridadeTarefa, type Subtarefa, type GestaoSubtarefa, type GestaoStatus, type GestaoCampo, type GestaoVinculado,
 } from "@/lib/hooks/useGestao";
 import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
+import { aplicarModelo } from "@/lib/gestao/modelos";
 import AprovacaoNaTarefa from "@/components/gestao/AprovacaoNaTarefa";
 import { nomesResponsaveis } from "@/lib/gestao/responsaveis";
 import CampoInput from "@/components/gestao/CampoInput";
@@ -275,6 +276,8 @@ export default function TarefaModal({
   // pelo Admin e prazo de atendimento (só nos quadros com prazo ligado).
   const [estH, setEstH] = useState("");
   const [estM, setEstM] = useState("");
+  // v343 (= v354 do Painel): modelo usado na Nova tarefa.
+  const [modeloUsado, setModeloUsado] = useState<string | null>(null);
   const [atribuirA, setAtribuirA] = useState("");
   const resolverComentario = useResolverComentario();
   const forcarRequisito = useMoverForcandoRequisito();
@@ -282,6 +285,8 @@ export default function TarefaModal({
   const meuEmail = useUserStore((s) => s.user?.email ?? null);
   const { data: slaDaTarefa } = useSlaTarefas(tarefa && !tarefa.id_tarefa_pai ? tarefa.id_quadro : null, tarefa ? [tarefa.id_tarefa] : null);
   const sla = tarefa ? slaDaTarefa?.get(tarefa.id_tarefa) ?? null : null;
+  const { data: modelosQuadro = [] } = useModelos(open && !tarefa ? idQuadro : null);
+  const modelosNovaTarefa = useMemo(() => modelosQuadro.filter((m) => m.na_criacao), [modelosQuadro]);
   const { data: tempoEntries = EMPTY_TEMPO } = useTempoTarefa(tarefa?.id_tarefa);
   const tituloRef = useRef<HTMLInputElement>(null);
   const painelRef = useRef<HTMLElement>(null);
@@ -301,6 +306,7 @@ export default function TarefaModal({
     setCamposAbertos(new Set());
     setRascunhoChecklist([]);
     setAtribuirA("");
+    setModeloUsado(null);
     setEstH(tarefa?.tempo_estimado_min != null ? String(Math.floor(tarefa.tempo_estimado_min / 60)) : "");
     setEstM(tarefa?.tempo_estimado_min != null ? String(tarefa.tempo_estimado_min % 60) : "");
     setTitulo(tarefa?.titulo ?? "");
@@ -594,12 +600,40 @@ export default function TarefaModal({
       setSubtarefas([]);
       setNovaSub("");
       setRascunhoChecklist([]);
+      setModeloUsado(null);
       setAba("detalhes");
       requestAnimationFrame(() => tituloRef.current?.focus());
       return;
     }
     toast.success(ehSub ? "Subtarefa atualizada" : tarefa ? "Tarefa atualizada" : "Tarefa criada");
     onClose();
+  }
+
+  // v343 (= v354 do Painel, item 13): o modelo preenche o que está vazio e soma listas (lib/gestao/modelos.ts).
+  function usarModelo(id: string) {
+    const m = modelosNovaTarefa.find((x) => x.id === id);
+    if (!m) return;
+    const r = aplicarModelo(
+      { titulo, descricao, prioridade, prazo, etiquetas, checklist: rascunhoChecklist, subtarefas },
+      m,
+      isoLocal(new Date()),
+    );
+    setTitulo(r.titulo);
+    setDescricao(r.descricao);
+    setPrioridade(r.prioridade);
+    setPrazo(r.prazo);
+    setEtiquetas(r.etiquetas);
+    setRascunhoChecklist(r.checklist);
+    setSubtarefas(r.subtarefas);
+    setModeloUsado(m.titulo);
+    toast.success(`Modelo "${m.titulo}" aplicado`);
+  }
+
+  // Ctrl+Enter (ou Cmd+Enter) salva, em qualquer campo da janela.
+  function atalhoSalvar(e: { ctrlKey: boolean; metaKey: boolean; key: string; preventDefault: () => void }) {
+    if (ro || !(e.ctrlKey || e.metaKey) || e.key !== "Enter") return;
+    e.preventDefault();
+    void handleSalvar();
   }
 
   async function handleExcluir() {
@@ -776,7 +810,7 @@ export default function TarefaModal({
       }
     >
       {/* Coluna da esquerda: título, número/autoria e as abas. */}
-      <div className="flex min-w-0 flex-1 flex-col lg:min-h-0">
+      <div className="flex min-w-0 flex-1 flex-col lg:min-h-0" onKeyDown={atalhoSalvar}>
         <div className="px-6 pt-5">
           {ehSub && (
             <p className="mb-1 flex items-center gap-1.5 text-xs text-gray-500">
@@ -793,6 +827,21 @@ export default function TarefaModal({
             aria-label="Título (obrigatório)"
             className="-mx-2 w-[calc(100%+1rem)] rounded-md border border-transparent bg-transparent px-2 py-1 text-xl font-semibold text-gray-900 placeholder:font-normal placeholder:text-gray-400 hover:border-gray-200 focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:hover:border-transparent"
           />
+          {!tarefa && !ehSub && modelosNovaTarefa.length > 0 && (
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+              <LayoutTemplate className="size-3.5 shrink-0 text-gray-400" aria-hidden />
+              <select
+                value=""
+                onChange={(e) => { if (e.target.value) usarModelo(e.target.value); }}
+                aria-label="Usar modelo"
+                className="rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-xs text-gray-700 focus:border-marca-primary focus:outline-none"
+              >
+                <option value="">Usar modelo…</option>
+                {modelosNovaTarefa.map((m) => <option key={m.id} value={m.id}>{m.titulo}</option>)}
+              </select>
+              {modeloUsado && <span>Modelo <b className="font-medium text-gray-700">{modeloUsado}</b> aplicado (o que você já tinha escrito ficou)</span>}
+            </div>
+          )}
           {tarefa && (
             <div className="mt-0.5 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-gray-500">
@@ -1052,6 +1101,7 @@ export default function TarefaModal({
       {/* Coluna da direita: os campos da tarefa, um por linha (como no Runrun). Vazio = "Adicionar". */}
       <aside
         ref={painelRef}
+        onKeyDown={atalhoSalvar}
         aria-label="Campos da tarefa"
         className={`shrink-0 border-t border-gray-200 bg-gray-50 px-5 py-4 lg:w-[27rem] lg:overflow-y-auto lg:border-l lg:border-t-0 ${painelAberto ? "" : "lg:hidden"}`}
       >

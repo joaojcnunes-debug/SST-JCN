@@ -41,6 +41,31 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-modelos-de-tarefa",
+    data: "2026-11-11",
+    tipo: "novidade",
+    titulo: "Gestão: modelos de tarefa com descrição e checklist",
+    texto:
+      "Em Configurar › Modelos de tarefa, cada modelo (ex.: Visita técnica, Empresa nova) guarda descrição, " +
+      "checklist, subtarefas, prioridade, etiquetas e prazo em dias. Na Nova tarefa, Usar modelo preenche tudo isso " +
+      "sem apagar o que já foi escrito.",
+    onde: "Gestão › lista › Configurar › Modelos de tarefa; Nova tarefa › Usar modelo",
+    impacto: "Os modelos que já existiam (das automações) continuam iguais e só aparecem na Nova tarefa se alguém marcar.",
+    versoes: ["0.3.272"],
+  },
+  {
+    id: "gestao-atalhos-de-teclado",
+    data: "2026-11-11",
+    tipo: "melhoria",
+    titulo: "Gestão: atalhos de teclado",
+    texto:
+      "Com o mouse sobre um cartão: Espaço entra ou sai como responsável, D muda o prazo, L marca etiquetas e " +
+      "Enter abre. No quadro: N cria tarefa, / vai para a busca e ? mostra a lista. Na janela da tarefa, Ctrl+Enter " +
+      "salva.",
+    onde: "Gestão › lista (botão do teclado ao lado dos filtros)",
+    versoes: ["0.3.272"],
+  },
+  {
     id: "gestao-mostrar-no-filtros",
     data: "2026-11-11",
     tipo: "melhoria",
