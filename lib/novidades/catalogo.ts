@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-subtarefas-colunas-runrun",
+    data: "2026-11-11",
+    tipo: "melhoria",
+    titulo: "Gestão: a lista de subtarefas mostra as mesmas colunas do Runrun",
+    texto:
+      "Na aba Subtarefas da tarefa, cada subtarefa aparece numa tabela com Etapa, Tipo, Alocados, Horas trabalhadas, " +
+      "Progresso, Início desejado e Entrega desejada. Subtarefa aberta com a entrega vencida fica em vermelho.",
+    onde: "Gestão › abrir uma tarefa › Subtarefas",
+    impacto: "As subtarefas criadas na Gestão continuam iguais; as colunas novas ficam vazias até serem preenchidas.",
+    versoes: ["0.3.273"],
+  },
+  {
     id: "gestao-modelos-de-tarefa",
     data: "2026-11-11",
     tipo: "novidade",

@@ -7,6 +7,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
 import { mensagemErro } from "@/lib/errors";
 import { useUserStore } from "@/lib/store";
+import type { AlocadoSubtarefa } from "@/lib/gestao/subtarefa-colunas";
 import { comPadrao, type FiltrosGestao } from "@/lib/gestao/filtros";
 import type { SlaTarefa } from "@/lib/gestao/sla";
 
@@ -2767,6 +2768,15 @@ export interface GestaoSubtarefa {
   /** v300: tarefa filha criada no 1º duplo clique (janela completa da subtarefa). */
   id_tarefa_filha: string | null;
   created_at: string;
+  /** v357: colunas do Runrun (a sincronização preenche; subtarefa da Gestão fica vazia). */
+  etapa_nome: string | null;
+  tipo_cor: string | null;
+  alocados: AlocadoSubtarefa[];
+  tempo_trabalhado_seg: number | null;
+  progresso: number | null;
+  inicio_desejado: string | null;
+  /** v358: entrega desejada no Runrun. */
+  entrega_desejada: string | null;
 }
 
 /** Subtarefas de uma tarefa, ordenadas por (ordem, created_at). */
@@ -2778,7 +2788,7 @@ export function useSubtarefas(idTarefa: string | null | undefined) {
       const sb = createSupabaseBrowserClient();
       const { data, error } = await sb
         .from("gestao_subtarefas")
-        .select("id,id_tarefa,texto,feito,ordem,etapa,tipo,responsavel_email,id_tarefa_filha,created_at")
+        .select("id,id_tarefa,texto,feito,ordem,etapa,tipo,responsavel_email,id_tarefa_filha,created_at,etapa_nome,tipo_cor,alocados,tempo_trabalhado_seg,progresso,inicio_desejado,entrega_desejada")
         .eq("id_tarefa", idTarefa!)
         .order("ordem", { ascending: true })
         .order("created_at", { ascending: true });
