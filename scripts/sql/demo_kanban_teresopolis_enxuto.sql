@@ -134,3 +134,74 @@ select gen_random_uuid(), 'QDR-70A13B38', v.nome, true, 'status_muda',
   ) v(nome, produtos, etiqueta, ordem)
  where not exists (select 1 from public.gestao_automacoes a where a.id_quadro = 'QDR-70A13B38' and a.nome = v.nome);
 commit;
+
+-- ── Parte 3 (11/11/2026): as SUBTAREFAS movem o cartão de coluna (a "esteira" do Painel, GE3/v222/v224) ──
+-- Cada etapa tem uma subtarefa de CONTROLE. Concluir a subtarefa de controle move o cartão para a próxima coluna e cria a
+-- subtarefa de controle seguinte. As subtarefas de PRODUTO (PGR, PCMSO…) não movem nada até a Elaboração, onde
+-- "todas concluídas" leva o cartão para Revisão e aprovação, que pede a aprovação. Aprovada → Concluído; recusada →
+-- volta para Elaboração com a subtarefa "Corrigir a recusa" (já existe no motor, v315).
+begin;
+
+insert into public.gestao_subtarefa_modelos (id_quadro, slug, titulo, itens) values
+  ('QDR-TERDEMO1', 'ctl_triagem',  'Controle — Triagem',   '[{"texto":"Triagem: conferir dados, produtos e região","etapa":"ENTRADA"}]'),
+  ('QDR-TERDEMO1', 'ctl_agendar',  'Controle — Agendar',   '[{"texto":"Agendar visita","etapa":"A_AGENDAR"}]'),
+  ('QDR-TERDEMO1', 'ctl_visita',   'Controle — Visita',    '[{"texto":"Visita técnica","etapa":"AGENDADO"}]'),
+  ('QDR-TERDEMO1', 'ctl_inspecao', 'Controle — Inspeção',  '[{"texto":"Inspeção na pasta","etapa":"EM_INSPECAO"},{"texto":"Conferir inspeção na pasta","etapa":"EM_INSPECAO"}]')
+on conflict (id_quadro, slug) do nothing;
+
+create temp table esteira (ordem int, nome text, gatilho text, condicao jsonb, acoes jsonb) on commit drop;
+insert into esteira values
+  (10, '[Esteira] 0. Cartão novo em Entrada → subtarefa de triagem', 'tarefa_criada',
+   '{"all":[{"campo":"status","op":"=","valor":"ENTRADA"}]}',
+   '[{"id":"es00a","tipo":"criar_subtarefas_modelo","modelo_slug":"ctl_triagem"}]'),
+  (11, '[Esteira] 1. Triagem concluída → A agendar', 'subtarefa_concluida',
+   '{"all":[{"campo":"subtarefa_texto","op":"=","valor":"Triagem: conferir dados, produtos e região"}]}',
+   '[{"id":"es01a","tipo":"mover_status","valor":"A_AGENDAR"},{"id":"es01b","tipo":"criar_subtarefas_modelo","modelo_slug":"ctl_agendar"}]'),
+  (12, '[Esteira] 2. Visita agendada → Agendado', 'subtarefa_concluida',
+   '{"all":[{"campo":"subtarefa_texto","op":"=","valor":"Agendar visita"}]}',
+   '[{"id":"es02a","tipo":"mover_status","valor":"AGENDADO"},{"id":"es02b","tipo":"criar_subtarefas_modelo","modelo_slug":"ctl_visita"},{"id":"es02c","tipo":"comentar","texto":"📅 Visita agendada. {responsavel}, ponha a data e a hora da visita na subtarefa Visita técnica."}]'),
+  (13, '[Esteira] 3. Visita feita → Em inspeção', 'subtarefa_concluida',
+   '{"all":[{"campo":"subtarefa_texto","op":"=","valor":"Visita técnica"}]}',
+   '[{"id":"es03a","tipo":"mover_status","valor":"EM_INSPECAO"},{"id":"es03b","tipo":"criar_subtarefas_modelo","modelo_slug":"ctl_inspecao"}]'),
+  (14, '[Esteira] 4. Inspeção conferida → Elaboração', 'subtarefa_concluida',
+   '{"all":[{"campo":"subtarefa_texto","op":"=","valor":"Conferir inspeção na pasta"}]}',
+   '[{"id":"es04a","tipo":"mover_status","valor":"ELABORACAO"}]'),
+  (15, '[Esteira] 5. Elaboração: todas as subtarefas concluídas → Revisão e aprovação', 'subtarefa_concluida',
+   '{"all":[{"campo":"status","op":"=","valor":"ELABORACAO"}]}',
+   '[{"id":"es05a","tipo":"mover_status_se_completo","valor":"REVISAO_APROVACAO"}]'),
+  (16, '[Esteira] 5b. Entrou em Elaboração já completa → Revisão e aprovação', 'status_muda',
+   '{"all":[{"campo":"status_para","op":"=","valor":"ELABORACAO"}]}',
+   '[{"id":"es05b","tipo":"mover_status_se_completo","valor":"REVISAO_APROVACAO"}]'),
+  (17, '[Esteira] 6. Em Revisão e aprovação → pede a aprovação', 'status_muda',
+   '{"all":[{"campo":"status_para","op":"=","valor":"REVISAO_APROVACAO"}]}',
+   '[{"id":"es06a","tipo":"solicitar_aprovacao"}]'),
+  (18, '[Esteira] 7. Aprovada → Concluído', 'tarefa_aprovada', '{}',
+   '[{"id":"es07a","tipo":"mover_status","valor":"CONCLUIDO"}]'),
+  (19, '[Esteira] 8. Recusada → volta para Elaboração', 'tarefa_rejeitada', '{}',
+   '[{"id":"es08a","tipo":"mover_status","valor":"ELABORACAO"}]');
+insert into public.gestao_automacoes (id, id_quadro, nome, ativo, gatilho, condicao, acao, acoes, ordem)
+select gen_random_uuid(), 'QDR-TERDEMO1', e.nome, true, e.gatilho, e.condicao, '{}'::jsonb, e.acoes, e.ordem
+  from esteira e
+ where not exists (select 1 from public.gestao_automacoes a where a.id_quadro = 'QDR-TERDEMO1' and a.nome = e.nome);
+
+-- Os cartões DEMO ganham a subtarefa de controle da coluna em que estão (para testar clicando).
+create temp table controle (status text, texto text, ordem int) on commit drop;
+insert into controle values
+  ('ENTRADA', 'Triagem: conferir dados, produtos e região', 0),
+  ('A_AGENDAR', 'Agendar visita', 0),
+  ('AGENDADO', 'Visita técnica', 0),
+  ('EM_INSPECAO', 'Inspeção na pasta', 0),
+  ('EM_INSPECAO', 'Conferir inspeção na pasta', 1);
+insert into public.gestao_subtarefas (id, id_tarefa, texto, feito, ordem, etapa)
+select 'SUB-' || upper(substr(md5(t.id_tarefa || c.texto), 1, 8)), t.id_tarefa, c.texto, false, 100 + c.ordem, c.status
+  from public.gestao_tarefas t join controle c on c.status = t.status
+ where t.id_quadro = 'QDR-TERDEMO1' and t.titulo like 'DEMO ·%'
+   and not exists (select 1 from public.gestao_subtarefas s where s.id_tarefa = t.id_tarefa and s.texto = c.texto);
+-- Subtarefas de produto/controle que já existiam: marca a etapa em que contam (aparece na coluna Etapa da lista).
+update public.gestao_subtarefas s set etapa = 'ELABORACAO'
+  from public.gestao_tarefas t
+ where t.id_tarefa = s.id_tarefa and t.id_quadro = 'QDR-TERDEMO1' and s.etapa is null;
+update public.gestao_subtarefas s set etapa = 'EM_INSPECAO'
+  from public.gestao_tarefas t
+ where t.id_tarefa = s.id_tarefa and t.id_quadro = 'QDR-TERDEMO1' and s.texto in ('Inspeção na pasta', 'Conferir inspeção na pasta');
+commit;
