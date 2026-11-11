@@ -10,7 +10,13 @@ import {
   type FiltrosGestao, type GestaoStatus, type GestaoEtiqueta,
 } from "@/lib/hooks/useGestao";
 import { REGIOES } from "@/lib/gestao/regiao-produtos";
-import type { Criador, Pessoa, PrazoFiltro, SituacaoFiltro } from "@/lib/gestao/filtros";
+import type { Criador, MostrarItens, Pessoa, PrazoFiltro, SituacaoFiltro } from "@/lib/gestao/filtros";
+
+const MOSTRAR: { value: MostrarItens; label: string }[] = [
+  { value: "tarefas", label: "Só tarefas" },
+  { value: "subtarefas", label: "Só subtarefas" },
+  { value: "ambas", label: "Tarefas e subtarefas" },
+];
 
 const PRAZOS: { value: PrazoFiltro; label: string }[] = [
   { value: "", label: "Qualquer" },
@@ -84,6 +90,16 @@ export function CamposFiltro({
 
   return (
     <div className="space-y-3">
+      {/* 11/11/2026: tarefas, subtarefas ou as duas (v0.3.931: o seletor da barra saiu, fica só aqui). */}
+      {ve("mostrar") && (
+        <div>
+          <Rotulo>Mostrar</Rotulo>
+          <div className="flex flex-wrap gap-1.5">
+            {MOSTRAR.map((m) => <Chip key={m.value} on={(filtros.mostrar ?? "tarefas") === m.value} onClick={() => set({ mostrar: m.value })}>{m.label}</Chip>)}
+          </div>
+        </div>
+      )}
+
       {ve("responsavel") && (
         <div>
           <Rotulo>Responsável</Rotulo>

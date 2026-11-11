@@ -341,7 +341,8 @@ export default function FormularioPublico({ token }: { token: string }) {
                 {def.descricao && <p className="mt-1 whitespace-pre-line text-sm text-gray-500">{def.descricao}</p>}
                 <p className="mt-2 text-xs text-red-600">* Pergunta obrigatória</p>
               </div>
-              {def.usuario && def.perguntas.some((p) => preenchidaPeloLogin(p, def.usuario ?? null)) && (
+              {/* v0.3.935: em todo formulário — quem envia logado fica gravado como quem criou a tarefa. */}
+              {def.usuario && (
                 <p className="rounded-lg bg-[#f0f7f0] px-3 py-2 text-sm text-gray-700">
                   Enviando como <span className="font-semibold text-gray-900">{def.usuario.nome}</span> ({def.usuario.email})
                 </p>

@@ -11,6 +11,9 @@ import { CAMPO_PRODUTOS_ID, regiaoDasEtiquetas } from "@/lib/gestao/regiao-produ
 
 export type PrazoFiltro = "" | "atrasadas" | "sem" | "hoje" | "amanha" | "semana" | "mes" | "periodo";
 export type SituacaoFiltro = "" | "abertas" | "concluidas";
+/** O que a lista mostra: só as tarefas (padrão), só as subtarefas ou as duas (11/11/2026: também dentro do "Filtros"). */
+export type MostrarItens = "tarefas" | "subtarefas" | "ambas";
+const MOSTRAR_VALIDOS: readonly MostrarItens[] = ["tarefas", "subtarefas", "ambas"];
 
 export interface FiltrosGestao {
   responsavel: string;
@@ -32,16 +35,20 @@ export interface FiltrosGestao {
   /** prazo = "periodo": de/até (yyyy-MM-dd; vazio = sem limite). */
   prazoDe: string;
   prazoAte: string;
+  /** Tarefas, subtarefas ou as duas. Não entra em `passaFiltros`: a página escolhe os itens antes (ver itensMostrar). */
+  mostrar: MostrarItens;
 }
 
 export const FILTRO_VAZIO: FiltrosGestao = {
   responsavel: "", prioridades: [], status: [], etiquetas: [], prazo: "", semResponsavel: false,
   equipe: "", seguidor: "", criadoPor: "", regiao: "", produtos: [], situacao: "", prazoDe: "", prazoAte: "",
+  mostrar: "tarefas",
 };
 
 /** Critérios de um filtro salvo (talvez antigo, sem os campos novos) → filtro completo. */
 export function comPadrao(c: Partial<FiltrosGestao> | null | undefined): FiltrosGestao {
-  return { ...FILTRO_VAZIO, ...(c ?? {}) };
+  const f = { ...FILTRO_VAZIO, ...(c ?? {}) };
+  return MOSTRAR_VALIDOS.includes(f.mostrar) ? f : { ...f, mostrar: "tarefas" };
 }
 
 export function contarFiltros(f: FiltrosGestao): number {
@@ -49,6 +56,7 @@ export function contarFiltros(f: FiltrosGestao): number {
     f.responsavel, f.prioridades.length, f.status.length, f.etiquetas.length,
     f.prazo === "periodo" ? f.prazoDe || f.prazoAte : f.prazo, f.semResponsavel,
     f.equipe, f.seguidor, f.criadoPor, f.regiao, (f.produtos ?? []).length, f.situacao,
+    (f.mostrar ?? "tarefas") !== "tarefas",
   ].filter(Boolean).length;
 }
 
@@ -97,14 +105,37 @@ function nomeDoApelido(a: string): string {
 }
 
 /**
+ * Tarefa que veio de um formulário da Gestão (11/11/2026, v0.3.935). `created_by` de formulário é o responsável FIXO
+ * do formulário (ou "Formulário") — não quem preencheu — e continua assim porque decide quem vê e quem recebe aviso.
+ * Quem preencheu fica em `origem.enviado_por` (só quando enviou logado no painel): é ela que aparece em "Criada por".
+ * Sem login (ou formulário enviado antes da v0.3.935) → "Formulário: <título>" / "Formulário".
+ * Não é formulário → null (segue a regra de `criadorDe`).
+ */
+export function criadorDoFormulario(
+  t: { created_by: string | null; origem?: Record<string, unknown> | null },
+  nomeDe: (email: string) => string | null | undefined,
+): Criador | null {
+  const o = t.origem ?? {};
+  const legado = (t.created_by ?? "").trim().toLowerCase() === "formulário";
+  if (o.tipo !== "formulario" && !legado) return null;
+  const env = String(o.enviado_por ?? "").trim().toLowerCase();
+  if (env.includes("@")) return { chave: `e:${env}`, nome: nomeDe(env) || env };
+  const tit = String(o.titulo_formulario ?? "").trim();
+  return { chave: `f:${tit.toLowerCase()}`, nome: tit ? `Formulário: ${tit}` : "Formulário" };
+}
+
+/**
  * Quem criou a tarefa. `created_by` é o e-mail; nas importadas do Runrun é "importador" e o criador vem em
- * `origem.user_id` (apelido do Runrun, às vezes vazio). Sem criador conhecido → null.
+ * `origem.user_id` (apelido do Runrun, às vezes vazio); nas de formulário, ver `criadorDoFormulario`.
+ * Sem criador conhecido → null.
  */
 export function criadorDe(
   t: { created_by: string | null; origem?: Record<string, unknown> | null },
   nomePorEmail: ReadonlyMap<string, string>,
   apelidos: ReadonlyMap<string, string>,
 ): Criador | null {
+  const doForm = criadorDoFormulario(t, (e) => nomePorEmail.get(e));
+  if (doForm) return doForm;
   const cb = (t.created_by ?? "").trim().toLowerCase();
   if (cb && cb !== "importador") return { chave: `e:${cb}`, nome: nomePorEmail.get(cb) ?? cb };
   const rr = String(t.origem?.user_id ?? "").trim().toLowerCase();

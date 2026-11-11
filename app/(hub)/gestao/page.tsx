@@ -26,6 +26,7 @@ import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import SelectVerde from "@/components/gestao/SelectVerde";
 import { useQueryClient } from "@tanstack/react-query";
 import { montarSubtarefas, itensMostrar, type MostrarItens } from "@/lib/gestao/subtarefas-vista";
+import { itensDaContagem } from "@/lib/gestao/contagem-concluidas";
 import { OPCOES_ORDEM, campoTemValor, ordenarTarefas, proximaOrdem, type CampoOrdem, type OrdemColuna } from "@/lib/gestao/ordenar-coluna";
 
 /** 10/11/2026 (pedido do usuário): sem escolha da pessoa, cada coluna vem do mais recente para o mais antigo. */
@@ -71,7 +72,8 @@ function diasAte(iso: string): number {
 }
 
 /** Calendário de uma pessoa/equipe junta várias listas: status (por lista) e os filtros de pessoa não se aplicam. */
-const IGNORAR_CAL_OUTROS: ReadonlySet<keyof FiltrosGestao> = new Set<keyof FiltrosGestao>(["status", "responsavel", "semResponsavel", "equipe", "seguidor"]);
+// "mostrar" também: o calendário de pessoa/equipe só traz tarefas (as subtarefas estão na Agenda).
+const IGNORAR_CAL_OUTROS: ReadonlySet<keyof FiltrosGestao> = new Set<keyof FiltrosGestao>(["status", "responsavel", "semResponsavel", "equipe", "seguidor", "mostrar"]);
 
 /** Textos em que a busca da barra procura (título, descrição, responsável, etiquetas e campos do formulário). */
 function textosDaBusca(t: GestaoTarefa) {
@@ -187,7 +189,8 @@ export default function GestaoChabraPage() {
   const [quadroAgrupar, setQuadroAgrupar] = useState<"status" | "responsavel" | "prioridade" | "etiqueta">("status");
   // Filtro "Mostrar": só tarefas (padrão), só subtarefas ou as duas. Com subtarefas o volume cresce
   // muito (milhares no Psicossocial), então cada coluna mostra LIMITE_COL por vez ("Mostrar mais").
-  const [mostrar, setMostrar] = useState<MostrarItens>("tarefas");
+  // 11/11/2026: faz parte dos filtros (só no "Filtros"; entra no "Limpar" e nos filtros salvos).
+  const mostrar: MostrarItens = filtros.mostrar ?? "tarefas";
   const [limiteCol, setLimiteCol] = useState<Record<string, number>>({});
   // v335: menu "…" de cada coluna (como no Runrun): "Habilitar notificações" e "Ordenar por".
   // A ordem é preferência de quem olha (localStorage por quadro e agrupamento), não muda o quadro dos outros.
@@ -322,13 +325,16 @@ export default function GestaoChabraPage() {
   // v338: nome da empresa ligada, no cartão.
   const { data: nomesEmpresas } = useNomesEmpresas(tarefas.map((t) => t.id_empresa));
   const { data: usuariosEmail = [] } = useUsuarios();
-  const { data: subsQuadro } = useSubtarefasDoQuadro(quadro?.id_quadro, mostrar !== "tarefas");
+  // O Painel sempre precisa das subtarefas: pela regra da contagem (lib/gestao/contagem-concluidas.ts)
+  // subtarefa feita vale uma tarefa feita, mesmo com "Mostrar = Tarefas".
+  const precisaSubs = mostrar !== "tarefas" || vista === "painel";
+  const { data: subsQuadro } = useSubtarefasDoQuadro(quadro?.id_quadro, precisaSubs);
   const subItens = useMemo(() => {
-    if (mostrar === "tarefas" || !subsQuadro) return [];
+    if (!precisaSubs || !subsQuadro) return [];
     const nomes = new Map(usuariosEmail.map((u) => [u.email.toLowerCase(), u.nome]));
     const sts = statusList.length ? statusList : quadro ? statusPadrao(quadro.id_quadro) : [];
     return montarSubtarefas({ maes: tarefas, linhas: subsQuadro.linhas, filhas: subsQuadro.filhas, statuses: sts, nomeDe: (e) => nomes.get(e.toLowerCase()) ?? null });
-  }, [mostrar, subsQuadro, tarefas, usuariosEmail, statusList, quadro]);
+  }, [precisaSubs, subsQuadro, tarefas, usuariosEmail, statusList, quadro]);
   useEffect(() => setItems(itensMostrar(mostrar, tarefas, subItens)), [tarefas, subItens, mostrar]);
   useEffect(() => setLimiteCol({}), [quadroId, mostrar, quadroAgrupar]);
 
@@ -647,14 +653,8 @@ export default function GestaoChabraPage() {
    * lugares: a barra do desktop e a gaveta do celular. `aoNavegar` fecha a
    * gaveta ao escolher uma lista.
    */
-  const seletorMostrar = (
-    <div className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500">
-      Mostrar:
-      <SelectVerde<MostrarItens> valor={mostrar} onChange={setMostrar} className={SELECT_FILTRO}
-        opcoes={[{ value: "tarefas", label: "Só tarefas" }, { value: "subtarefas", label: "Só subtarefas" }, { value: "ambas", label: "Tarefas e subtarefas" }]} />
-      {mostrar !== "tarefas" && !subsQuadro && <span className="text-xs text-gray-400">carregando…</span>}
-    </div>
-  );
+  // v0.3.931: o seletor "Mostrar" da barra saiu (a escolha fica só no Filtros); resta o aviso enquanto as subtarefas chegam.
+  const avisoSubs = mostrar !== "tarefas" && !subsQuadro ? <span className="text-xs text-gray-400">carregando subtarefas…</span> : null;
 
   const menuLateral = (aoNavegar: () => void) => (
     <>
@@ -967,10 +967,10 @@ export default function GestaoChabraPage() {
                 <SelectVerde valor={quadroAgrupar} onChange={setQuadroAgrupar} className={SELECT_FILTRO}
                   opcoes={[{ value: "status", label: "Status" }, { value: "responsavel", label: "Responsável" }, { value: "prioridade", label: "Prioridade" }, { value: "etiqueta", label: "Etiqueta" }]} />
               </div>
-              {seletorMostrar}
+              {avisoSubs}
             </div>
           )}
-          {(vista === "calendario" || vista === "timeline" || vista === "painel") && seletorMostrar}
+          {((vista === "calendario" && !calDeOutros) || vista === "timeline" || vista === "painel") && avisoSubs}
         </div>
 
         <AvisoBuscaAproximada
@@ -1148,12 +1148,12 @@ export default function GestaoChabraPage() {
             agruparPor={agruparPor}
             onAgruparPor={mudarAgrupar}
             podeEditar={podeEditar}
-            seletorMostrar={seletorMostrar}
+            avisoBarra={avisoSubs}
             onAbrir={abrirItem}
           />
         ) : vista === "calendario" ? (
           <VistaCalendario
-            tarefas={calDeOutros ? tarefasCalOutros : calendarioPessoal ? [...items.filter(passaFiltro), ...alocadasAgenda.filter((t) => t.id_quadro !== quadro.id_quadro)] : items.filter(passaFiltro)}
+            tarefas={calDeOutros ? tarefasCalOutros : calendarioPessoal ? [...items.filter(passaFiltro), ...(mostrar === "subtarefas" ? [] : alocadasAgenda.filter((t) => t.id_quadro !== quadro.id_quadro))] : items.filter(passaFiltro)}
             statuses={statuses}
             podeEditar={calDeOutros || calendarioPessoal ? (t) => podeEditar && t.id_quadro === quadro.id_quadro : podeEditar}
             concluida={calDeOutros || calendarioPessoal ? concluidaEmQualquerLista : undefined}
@@ -1182,7 +1182,7 @@ export default function GestaoChabraPage() {
             }
           />
         ) : vista === "painel" ? (
-          <PainelGestao tarefas={items.filter(passaFiltro)} statuses={statuses} tempoPorTarefa={tempoPorTarefa} />
+          <PainelGestao tarefas={items.filter(passaFiltro)} contagem={itensDaContagem(tarefas, subItens).filter(passaFiltro)} carregandoSubs={!!quadro && !subsQuadro} statuses={statuses} tempoPorTarefa={tempoPorTarefa} />
         ) : (
           <VistaTimeline
             tarefas={items.filter(passaFiltro)}
