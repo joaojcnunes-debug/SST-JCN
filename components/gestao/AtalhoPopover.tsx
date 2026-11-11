@@ -65,8 +65,8 @@ export default function AtalhoPopover({
             </button>
           ))}
           <div className="flex items-center gap-1.5 px-2 pt-1">
-            <input type="date" value={data} onChange={(e) => setData(e.target.value)} aria-label="Outra data" className="min-w-0 flex-1 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none" />
-            <button type="button" disabled={!data} onClick={() => onPrazo(data)} className="rounded-md bg-verde-primary px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50">OK</button>
+            <input type="date" value={data} onChange={(e) => setData(e.target.value)} aria-label="Outra data" className="min-w-0 flex-1 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none" />
+            <button type="button" disabled={!data} onClick={() => onPrazo(data)} className="rounded-md bg-marca-primary px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50">OK</button>
           </div>
           {tarefa.prazo && (
             <button type="button" role="menuitem" onClick={() => onPrazo(null)} className={`${botao} mt-1 text-gray-500`}>
@@ -86,7 +86,7 @@ export default function AtalhoPopover({
                   <span className="size-3 shrink-0 rounded-sm" style={{ background: e.cor || "var(--surface-3)" }} aria-hidden />
                   <span className="truncate">{e.nome}</span>
                 </span>
-                {on && <Check className="size-4 shrink-0 text-verde-primary" />}
+                {on && <Check className="size-4 shrink-0 text-marca-primary" />}
               </button>
             );
           })}
