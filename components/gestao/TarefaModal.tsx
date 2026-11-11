@@ -52,7 +52,15 @@ import ComentariosTarefa from "@/components/gestao/ComentariosTarefa";
 import { useTarefaHistorico } from "@/lib/hooks/useTarefaHistorico";
 import { confirmar } from "@/components/ui/confirm";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
-import { alocadosExibir, corTextoSobre, entregaAtrasada, etapaExibir, fmtDataDesejada, fmtHorasTrabalhadas, progressoExibir } from "@/lib/gestao/subtarefa-colunas";
+import {
+  alocadosExibir, entregaAtrasada, etapaExibir, fmtDataDesejada, fmtHorasTrabalhadas, progressoExibir,
+  vemDoRunrun, etapaDaLinha, erroDatasSubtarefa,
+} from "@/lib/gestao/subtarefa-colunas";
+import {
+  useAtualizarSubtarefa, useAdicionarSubtarefas, useExcluirSubtarefa, useCriarSubtarefaComJanela, useAtualizarJanelaSubtarefa,
+  useJanelasDasSubtarefas, type JanelaSubtarefa, type PatchJanela,
+} from "@/lib/hooks/useSubtarefasAoVivo";
+import { DataSubtarefa, PrioridadeSubtarefa, StatusSubtarefa, TituloSubtarefa } from "@/components/gestao/SubtarefaCelulas";
 import { proximaGeracao } from "@/lib/gestao/recorrencia";
 import { horaDe, minutos, MIN_DIA } from "@/lib/gestao/calendario";
 import { useMeuQuadro } from "@/lib/hooks/useGestaoAcesso";
@@ -167,6 +175,7 @@ export default function TarefaModal({
   podeComentar,
   etiquetasSugeridas = [],
   inicial = null,
+  novaSubDe = null,
 }: {
   open: boolean;
   onClose: () => void;
@@ -182,6 +191,8 @@ export default function TarefaModal({
   etiquetasSugeridas?: string[];
   /** Tarefa NOVA criada pelo calendário (v0.3.914): já vem com o dia (prazo) e, na grade, a hora (1 hora). */
   inicial?: { prazo: string; hora?: string } | null;
+  /** Janela "Nova subtarefa" (11/11/2026): a tarefa-mãe. Com `tarefa` null, cria a subtarefa já com a janela completa. */
+  novaSubDe?: GestaoTarefa | null;
 }) {
   const salvar = useSalvarTarefa();
   const excluir = useExcluirTarefa();
@@ -190,6 +201,18 @@ export default function TarefaModal({
   const { data: subtarefasTabela = EMPTY_SUBTAREFAS } = useSubtarefas(tarefa?.id_tarefa);
   // v357: colunas do Runrun (etapa, tipo, alocados, horas, progresso, início) de cada subtarefa salva, pelo id.
   const subPorId = useMemo(() => new Map(subtarefasTabela.map((s) => [s.id, s])), [subtarefasTabela]);
+  // 11/11/2026: na tarefa salva, cada mudança na lista de subtarefas grava na hora (lib/hooks/useSubtarefasAoVivo.ts).
+  // Status, prioridade e datas vêm da janela de cada subtarefa (as do Runrun mostram, sem editar: a sincronização manda).
+  const atualizarSub = useAtualizarSubtarefa();
+  const adicionarSubs = useAdicionarSubtarefas();
+  const excluirSub = useExcluirSubtarefa();
+  const criarSubComJanela = useCriarSubtarefaComJanela();
+  const atualizarJanela = useAtualizarJanelaSubtarefa();
+  const filhasComJanela = useMemo(
+    () => subtarefasTabela.filter((s) => s.id_tarefa_filha).map((s) => s.id_tarefa_filha as string),
+    [subtarefasTabela],
+  );
+  const { data: janelas } = useJanelasDasSubtarefas(filhasComJanela);
   // Balão na lista de subtarefas: comentários da janela (tarefa filha) de cada uma.
   const filhaDaSub = useMemo(
     () => new Map(subtarefasTabela.filter((s) => s.id_tarefa_filha).map((s) => [s.id, s.id_tarefa_filha as string])),
@@ -222,8 +245,11 @@ export default function TarefaModal({
   const excluirDep = useExcluirDependencia();
   const tarefaMap = useMemo(() => new Map(tarefasQuadro.map((t) => [t.id_tarefa, t])), [tarefasQuadro]);
   // v292: esta janela é a de uma subtarefa (tarefa filha)? Sem recorrência, subtarefas e dependências.
-  const idPai = tarefa?.id_tarefa_pai ?? null;
+  // 0.3.281 (= Painel 0.3.941): também a Nova subtarefa (novaSubDe = a tarefa-mãe).
+  const idPai = tarefa?.id_tarefa_pai ?? (tarefa ? null : novaSubDe?.id_tarefa ?? null);
   const ehSub = !!idPai;
+  // Lista de subtarefas de tarefa já salva: grava cada mudança na hora. Na Nova tarefa é rascunho até "Criar tarefa".
+  const subAoVivo = !!tarefa && !ehSub;
   // Região e Produtos em toda tarefa (0.3.269 = Painel 0.3.908), como no formulário do Comercial — não na janela de
   // subtarefa. Na lista Comercial, Produtos é campo da própria lista (opções dela); nas outras, as opções vêm da v342.
   const campoProdutos = campos.find((c) => c.id === CAMPO_PRODUTOS_ID) ?? null;
@@ -231,11 +257,13 @@ export default function TarefaModal({
   // 0.3.279 (= Painel 0.3.938): a janela da subtarefa mostra também a descrição do cartão original (lida sempre do
   // banco: a da lista em mãos pode estar velha ou nem estar carregada).
   const { data: mae } = useTarefaMae(idPai);
-  const tituloPai = idPai ? tarefaMap.get(idPai)?.titulo ?? mae?.titulo ?? null : null;
+  const tituloPai = idPai ? tarefaMap.get(idPai)?.titulo ?? mae?.titulo ?? novaSubDe?.titulo ?? null : null;
   const descricaoMae = (idPai && mae?.descricao?.trim()) || null;
   // v292: duplo clique numa subtarefa abre a janela completa dela (por cima desta).
   const abrirSubtarefa = useAbrirSubtarefa();
   const [subAberta, setSubAberta] = useState<GestaoTarefa | null>(null);
+  // 11/11/2026: "Nova subtarefa" abre por cima a mesma janela da Nova tarefa (novaSubDe = esta tarefa).
+  const [novaSubAberta, setNovaSubAberta] = useState(false);
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.slug, s])), [statuses]);
 
   const [titulo, setTitulo] = useState("");
@@ -291,7 +319,7 @@ export default function TarefaModal({
   const meuEmail = useUserStore((s) => s.user?.email ?? null);
   const { data: slaDaTarefa } = useSlaTarefas(tarefa && !tarefa.id_tarefa_pai ? tarefa.id_quadro : null, tarefa ? [tarefa.id_tarefa] : null);
   const sla = tarefa ? slaDaTarefa?.get(tarefa.id_tarefa) ?? null : null;
-  const { data: modelosQuadro = [] } = useModelos(open && !tarefa ? idQuadro : null);
+  const { data: modelosQuadro = [] } = useModelos(open && !tarefa && !ehSub ? idQuadro : null);
   const modelosNovaTarefa = useMemo(() => modelosQuadro.filter((m) => m.na_criacao), [modelosQuadro]);
   // v356 (item 15): sem responsável, sugere quem costuma fazer tarefas de título parecido neste quadro (histórico do
   // banco, sem IA externa). O título é lido 0,7 s depois de parar de digitar.
@@ -429,9 +457,15 @@ export default function TarefaModal({
     setIaLoad("sub");
     try {
       const d = await gerarIaGestao({ acao: "subtarefas", titulo: titulo.trim(), descricao });
-      const novas = (d.subtarefas ?? []).map((t) => ({ texto: t, feito: false, responsavel_email: null }));
-      if (novas.length) { setSubtarefas((s) => [...s, ...novas]); toast.success(`${novas.length} subtarefa(s) sugerida(s)`); }
-      else toast.error("A IA não sugeriu subtarefas.");
+      const textos = (d.subtarefas ?? []).filter((t) => t.trim());
+      if (!textos.length) toast.error("A IA não sugeriu subtarefas.");
+      else if (subAoVivo && tarefa) {
+        // Na tarefa salva entram direto na lista (se falhar, o hook avisa).
+        adicionarSubs.mutate({ id_tarefa: tarefa.id_tarefa, textos }, { onSuccess: () => toast.success(`${textos.length} subtarefa(s) sugerida(s) e adicionada(s)`) });
+      } else {
+        setSubtarefas((s) => [...s, ...textos.map((t) => ({ texto: t, feito: false, responsavel_email: null }))]);
+        toast.success(`${textos.length} subtarefa(s) sugerida(s)`);
+      }
     } catch (e) { toast.error(mensagemErro(e, "IA indisponível no momento.")); } finally { setIaLoad(null); }
   }
 
@@ -452,8 +486,69 @@ export default function TarefaModal({
   function addSub() {
     const t = novaSub.trim();
     if (!t) return;
-    setSubtarefas((s) => [...s, { texto: t, feito: false, responsavel_email: null }]);
+    if (subAoVivo && tarefa) adicionarSubs.mutate({ id_tarefa: tarefa.id_tarefa, textos: [t] });
+    else setSubtarefas((s) => [...s, { texto: t, feito: false, responsavel_email: null }]);
     setNovaSub("");
+  }
+
+  /** Título, feito ou responsável de uma linha: na tarefa salva grava na hora; na Nova tarefa fica no rascunho. */
+  function mudarLinha(i: number, patch: Partial<Subtarefa>) {
+    const s = subtarefas[i];
+    setSubtarefas((arr) => arr.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+    if (subAoVivo && tarefa && s?.id) atualizarSub.mutate({ id: s.id, id_tarefa: tarefa.id_tarefa, patch });
+  }
+
+  async function removerLinha(i: number) {
+    const s = subtarefas[i];
+    if (!s) return;
+    if (!subAoVivo || !tarefa || !s.id) {
+      setSubtarefas((arr) => arr.filter((_, j) => j !== i));
+      return;
+    }
+    // Com janela vai para a Lixeira (v361), como o Excluir de dentro da subtarefa; sem janela é só o título, sai de vez.
+    const idFilha = subPorId.get(s.id)?.id_tarefa_filha ?? null;
+    if (!(await confirmar({
+      title: "Excluir subtarefa?",
+      description: idFilha
+        ? `"${s.texto}" vai para a Lixeira com comentários, checklist e anexos (sai também da lista de subtarefas). Dá para restaurar por ${DIAS_LIXEIRA} dias (menu da Gestão › Lixeira).`
+        : `"${s.texto}" sai da lista. Esta ação não pode ser desfeita.`,
+    }))) return;
+    const id = s.id;
+    setSubtarefas((arr) => arr.filter((x) => x.id !== id));
+    excluirSub.mutate(
+      { id, id_tarefa: tarefa.id_tarefa, id_filha: idFilha },
+      { onSuccess: () => toast.success(idFilha ? "Subtarefa enviada para a Lixeira" : "Subtarefa excluída") },
+    );
+  }
+
+  /** Etapa ou datas na própria linha: gravam na janela da subtarefa (criada na 1ª vez, como no duplo clique). */
+  async function mudarJanela(s: Subtarefa & { id?: string }, patch: PatchJanela, evento?: { acao: string; payload: Record<string, unknown> }): Promise<boolean> {
+    if (!tarefa || !s.id) return false;
+    try {
+      const idFilha = await atualizarJanela.mutateAsync({
+        id_subtarefa: s.id, id_tarefa: tarefa.id_tarefa, id_filha: subPorId.get(s.id)?.id_tarefa_filha ?? null, patch,
+      });
+      if (evento) registrarAtiv.mutate({ id_tarefa: idFilha, ator: userNome, eventos: [evento] });
+      return true;
+    } catch {
+      return false;   // o hook já avisou
+    }
+  }
+
+  function mudarDataSub(s: Subtarefa & { id?: string }, j: JanelaSubtarefa | undefined, campo: "inicio" | "entrega", data: string, hora: string): Promise<boolean> | boolean {
+    const atual = {
+      data_inicio: j?.data_inicio ?? null,
+      hora_inicio: j?.hora_inicio?.slice(0, 5) || null,
+      prazo: j?.prazo ?? null,
+      hora_fim: j?.hora_fim?.slice(0, 5) || null,
+    };
+    const patch: PatchJanela = campo === "inicio"
+      ? { data_inicio: data || null, hora_inicio: hora || null }
+      : { prazo: data || null, hora_fim: hora || null };
+    const erro = erroDatasSubtarefa({ ...atual, ...patch });
+    if (erro) { toast.error(erro); return false; }
+    const mudouPrazo = campo === "entrega" && (data || null) !== atual.prazo;
+    return mudarJanela(s, patch, mudouPrazo ? { acao: "prazo", payload: { de: atual.prazo ?? "—", para: data || "—" } } : undefined);
   }
 
   const nomeStatus = (slug: string) => statuses.find((s) => s.slug === slug)?.nome ?? slug;
@@ -504,7 +599,7 @@ export default function TarefaModal({
 
   async function handleSalvar() {
     if (!titulo.trim()) {
-      toast.error("Informe o título da tarefa.");
+      toast.error(ehSub ? "Informe o título da subtarefa." : "Informe o título da tarefa.");
       return;
     }
     if (horaInicio && horaFim && dataInicio && dataInicio === prazo && horaFim < horaInicio) {
@@ -536,8 +631,7 @@ export default function TarefaModal({
       }
     }
     const estimadoMin = estH.trim() === "" && estM.trim() === "" ? null : Math.max(0, (parseInt(estH || "0", 10) || 0) * 60 + (parseInt(estM || "0", 10) || 0));
-    const idSalvo = await salvar.mutateAsync({
-      id_tarefa: tarefa?.id_tarefa,
+    const dados: Partial<GestaoTarefa> & { id_quadro: string } = {
       id_quadro: idQuadro,
       titulo: titulo.trim(),
       descricao: descricao.trim() || null,
@@ -565,13 +659,25 @@ export default function TarefaModal({
             }),
           }
         : null,
-    });
+    };
+    let idSalvo: string;
+    if (!tarefa && novaSubDe) {
+      // Nova subtarefa (11/11/2026): a linha no fim da lista da mãe + a janela dela; o resto entra como numa edição.
+      const idFilha = await criarSubComJanela.mutateAsync({
+        id_tarefa: novaSubDe.id_tarefa, texto: titulo.trim(), responsavel_email: responsaveisEmails[0] ?? null,
+      });
+      idSalvo = await salvar.mutateAsync({ ...dados, id_tarefa: idFilha });
+    } else {
+      idSalvo = await salvar.mutateAsync({ ...dados, id_tarefa: tarefa?.id_tarefa });
+    }
 
-    // Subtarefas (F2.1/v199): na EDICAO reconcilia (delete+insert) a tabela com o estado do modal
-    // (subsFinal ja inclui o flush do novaSub — UX-A). Na CRIACAO usa append (reconciliar:false)
-    // p/ NAO apagar subtarefas que uma automacao (esteira/checklists em tarefa_criada) acabou de
-    // criar server-side. O trigger-espelho reescreve o jsonb.
-    if (!ehSub) await salvarSub.mutateAsync({ id_tarefa: idSalvo, subtarefas: subsFinal, reconciliar: !!tarefa?.id_tarefa });
+    // Subtarefas (F2.1/v199). Na CRIACAO usa append (reconciliar:false) p/ NAO apagar subtarefas que uma automacao
+    // (esteira/checklists em tarefa_criada) acabou de criar server-side; subsFinal ja inclui o flush do novaSub (UX-A).
+    // Na EDICAO (11/11/2026) a lista ja gravou cada mudanca na hora: so entra o que ficou digitado sem Enter.
+    if (!ehSub) {
+      if (!tarefa) await salvarSub.mutateAsync({ id_tarefa: idSalvo, subtarefas: subsFinal, reconciliar: false });
+      else if (subPend) await adicionarSubs.mutateAsync({ id_tarefa: idSalvo, textos: [subPend] });
+    }
     // v351: checklist feito na Nova tarefa. Se falhar, a tarefa já existe (o aviso sai do hook) e segue o fluxo.
     if (!tarefa && rascunhoChecklist.length) {
       try { await addChecklist.mutateAsync({ id_tarefa: idSalvo, textos: rascunhoChecklist, ordemInicial: 0 }); } catch { /* avisado */ }
@@ -609,7 +715,7 @@ export default function TarefaModal({
     if (!tarefa && criarOutra) {
       // Limpa só o que é de cada tarefa (título, descrição, subtarefas); responsável, datas, etiquetas e empresa
       // ficam, para criar várias parecidas em sequência.
-      toast.success("Tarefa criada. Pode escrever a próxima.");
+      toast.success(ehSub ? "Subtarefa criada. Pode escrever a próxima." : "Tarefa criada. Pode escrever a próxima.");
       setTitulo("");
       setDescricao("");
       setSubtarefas([]);
@@ -620,7 +726,7 @@ export default function TarefaModal({
       requestAnimationFrame(() => tituloRef.current?.focus());
       return;
     }
-    toast.success(ehSub ? "Subtarefa atualizada" : tarefa ? "Tarefa atualizada" : "Tarefa criada");
+    toast.success(ehSub ? (tarefa ? "Subtarefa atualizada" : "Subtarefa criada") : tarefa ? "Tarefa atualizada" : "Tarefa criada");
     onClose();
   }
 
@@ -793,7 +899,7 @@ export default function TarefaModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={ehSub ? "Subtarefa" : tarefa ? "Editar tarefa" : "Nova tarefa"}
+      title={ehSub ? (tarefa ? "Subtarefa" : "Nova subtarefa") : tarefa ? "Editar tarefa" : "Nova tarefa"}
       size="3xl"
       // Tela larga: duas colunas (como no Runrun), cada uma com a própria rolagem e altura fixa — a janela
       // não pula ao trocar de aba. Celular: uma coluna só, o conteúdo e depois os campos.
@@ -815,9 +921,9 @@ export default function TarefaModal({
               </label>
             )}
             <div className="flex items-center gap-2">
-              <button type="button" onClick={handleSalvar} disabled={salvar.isPending} className="inline-flex items-center gap-2 rounded-lg bg-marca-primary px-5 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50">
-                {salvar.isPending && <Loader2 className="size-4 animate-spin" />}
-                {tarefa ? "Salvar" : "Criar tarefa"}
+              <button type="button" onClick={handleSalvar} disabled={salvar.isPending || criarSubComJanela.isPending} className="inline-flex items-center gap-2 rounded-lg bg-marca-primary px-5 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50">
+                {(salvar.isPending || criarSubComJanela.isPending) && <Loader2 className="size-4 animate-spin" />}
+                {tarefa ? "Salvar" : ehSub ? "Criar subtarefa" : "Criar tarefa"}
               </button>
             </div>
           </div>
@@ -953,24 +1059,40 @@ export default function TarefaModal({
               {subtarefas.length > 0 ? `${feitas} de ${subtarefas.length} concluída(s)` : "Nenhuma subtarefa ainda."}
             </span>
             {!ro && (
-              <button type="button" onClick={iaSubtarefas} disabled={iaLoad !== null} className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-marca-primary hover:bg-marca-light/50 disabled:opacity-50">
-                {iaLoad === "sub" ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} Sugerir com IA
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button type="button" onClick={iaSubtarefas} disabled={iaLoad !== null} className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-marca-primary hover:bg-marca-light/50 disabled:opacity-50">
+                  {iaLoad === "sub" ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} Sugerir com IA
+                </button>
+                {/* 11/11/2026: a subtarefa completa (descrição, etapa, responsáveis, datas, checklist) numa janela igual à
+                    da Nova tarefa. Na tarefa ainda não criada só dá o "Adicionar" da lista (a janela precisa da tarefa salva). */}
+                {tarefa && (
+                  <button
+                    type="button"
+                    onClick={() => setNovaSubAberta(true)}
+                    className="inline-flex items-center gap-1 rounded-md bg-marca-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-marca-accent"
+                  >
+                    <Plus className="size-3.5" /> Nova subtarefa
+                  </button>
+                )}
+              </div>
             )}
           </div>
           <div className="space-y-1.5">
-            {/* v357: colunas como a lista de subtarefas do Runrun (Etapa, Tipo, Alocados, Horas trabalhadas, Progresso,
-                Início desejado; v358 Entrega desejada, vermelha quando vence com a subtarefa aberta). Os valores vêm da
-                sincronização; subtarefa da Gestão mostra o que tem. Rola na horizontal. */}
+            {/* v357: colunas como a lista de subtarefas do Runrun (Etapa, Alocados, Horas trabalhadas, Progresso, Início
+                desejado; v358 Entrega desejada, vermelha quando vence com a subtarefa aberta). Os valores vêm da
+                sincronização; subtarefa da Gestão mostra o que tem. Rola na horizontal.
+                11/11/2026 (pedido do usuário): Prioridade depois do título e Status no lugar de Tipo — os dois da janela
+                da subtarefa (o "Status" e a "Prioridade" dela); Etapa fica só com a etapa que vem do Runrun. */}
             {subtarefas.length > 0 && (
               <div className="overflow-x-auto rounded-md border border-gray-200">
-                <table className="w-full min-w-[1170px] text-sm">
+                <table className="w-full min-w-[1320px] text-sm">
                   <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
                     <tr>
                       <th className="w-8 px-2 py-1.5"><span className="sr-only">Concluída</span></th>
                       <th className="min-w-[220px] px-1.5 py-1.5">Título</th>
+                      <th className="px-2 py-1.5">Prioridade</th>
                       <th className="px-2 py-1.5">Etapa</th>
-                      <th className="px-2 py-1.5">Tipo</th>
+                      <th className="px-2 py-1.5">Status</th>
                       <th className="px-2 py-1.5">Alocados</th>
                       <th className="whitespace-nowrap px-2 py-1.5">Horas trabalhadas</th>
                       <th className="px-2 py-1.5">Progresso</th>
@@ -987,22 +1109,42 @@ export default function TarefaModal({
                       const prog = progressoExibir(db?.progresso);
                       const inicio = fmtDataDesejada(db?.inicio_desejado);
                       const entrega = fmtDataDesejada(db?.entrega_desejada);
-                      const atrasada = entregaAtrasada(db?.entrega_desejada, s.feito);
+                      // 11/11/2026: subtarefa da Gestão (não SRR-) numa tarefa salva edita status, prioridade e datas aqui mesmo
+                      // (na janela dela). As do Runrun mostram status e prioridade da janela, sem editar.
+                      const naLinha = subAoVivo && !!s.id && !vemDoRunrun(s.id);
+                      const janela = db?.id_tarefa_filha ? janelas?.[db.id_tarefa_filha] : undefined;
+                      const statusLinha = s.id ? etapaDaLinha(s.feito, janela?.status, statuses) : null;
+                      const atrasada = entregaAtrasada(db?.entrega_desejada, s.feito)
+                        || (naLinha && !!janela?.prazo && janela.prazo < isoLocal(new Date()) && !s.feito);
                       const n = (s.id && comentariosSub?.[filhaDaSub.get(s.id) ?? ""]) || 0;
                       return (
                         <tr key={i} className={atrasada ? "bg-red-50" : s.feito ? "bg-gray-50/70" : ""} onDoubleClick={() => abrirSub(s)} title="Duplo clique abre a subtarefa">
                           <td className="px-2 py-1">
-                            <button type="button" disabled={ro} onClick={() => setSubtarefas((arr) => arr.map((x, j) => j === i ? { ...x, feito: !x.feito } : x))} aria-label={s.feito ? `Reabrir ${s.texto}` : `Concluir ${s.texto}`} className="align-middle text-gray-400 hover:text-marca-primary">
+                            <button type="button" disabled={ro} onClick={() => mudarLinha(i, { feito: !s.feito })} aria-label={s.feito ? `Reabrir ${s.texto}` : `Concluir ${s.texto}`} className="align-middle text-gray-400 hover:text-marca-primary">
                               {s.feito ? <CheckSquare className="size-4 text-marca-primary" /> : <Square className="size-4" />}
                             </button>
                           </td>
                           <td className="px-1.5 py-1">
-                            <input
-                              value={s.texto}
-                              disabled={ro}
-                              onChange={(e) => setSubtarefas((arr) => arr.map((x, j) => j === i ? { ...x, texto: e.target.value } : x))}
-                              className={`w-full rounded border border-transparent bg-transparent px-1.5 py-1 text-sm hover:border-gray-200 focus:border-marca-primary focus:outline-none ${s.feito ? "text-gray-400 line-through" : "text-gray-700"}`}
-                            />
+                            {subAoVivo && s.id ? (
+                              <TituloSubtarefa valor={s.texto} feito={s.feito} ro={ro} rotulo={`Título da subtarefa ${i + 1}`} onSalvar={(t) => mudarLinha(i, { texto: t })} />
+                            ) : (
+                              <input
+                                value={s.texto}
+                                disabled={ro}
+                                onChange={(e) => setSubtarefas((arr) => arr.map((x, j) => j === i ? { ...x, texto: e.target.value } : x))}
+                                className={`w-full rounded border border-transparent bg-transparent px-1.5 py-1 text-sm hover:border-gray-200 focus:border-marca-primary focus:outline-none ${s.feito ? "text-gray-400 line-through" : "text-gray-700"}`}
+                              />
+                            )}
+                          </td>
+                          <td className="px-2 py-1">
+                            {s.id ? (
+                              <PrioridadeSubtarefa
+                                valor={janela?.prioridade ?? null}
+                                ro={ro || !naLinha}
+                                rotulo={`Prioridade de ${s.texto}`}
+                                onMudar={(pr) => void mudarJanela(s, { prioridade: pr }, { acao: "prioridade", payload: { de: janela?.prioridade ?? "—", para: pr } })}
+                              />
+                            ) : <span className="text-gray-300">—</span>}
                           </td>
                           <td className="px-2 py-1">
                             {etapa ? (
@@ -1010,8 +1152,14 @@ export default function TarefaModal({
                             ) : <span className="text-gray-300">—</span>}
                           </td>
                           <td className="px-2 py-1">
-                            {db?.tipo ? (
-                              <span className="inline-block whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium" style={{ backgroundColor: db.tipo_cor ?? "#6b7280", color: corTextoSobre(db.tipo_cor ?? "#6b7280") }}>{db.tipo}</span>
+                            {s.id ? (
+                              <StatusSubtarefa
+                                valor={statusLinha}
+                                statuses={statuses}
+                                ro={ro || !naLinha}
+                                rotulo={`Status de ${s.texto}`}
+                                onMudar={(slug) => void mudarJanela(s, { status: slug }, { acao: "status", payload: { de: nomeStatus(statusLinha ?? ""), para: nomeStatus(slug) } })}
+                              />
                             ) : <span className="text-gray-300">—</span>}
                           </td>
                           <td className="px-2 py-1">
@@ -1031,7 +1179,7 @@ export default function TarefaModal({
                                   <UsuarioCombobox
                                     usuarios={usuariosFull}
                                     value={s.responsavel_email ?? ""}
-                                    onChange={(em) => setSubtarefas((arr) => arr.map((x, j) => j === i ? { ...x, responsavel_email: em || null } : x))}
+                                    onChange={(em) => mudarLinha(i, { responsavel_email: em || null })}
                                     incluirVazio
                                     vazioLabel="Sem responsável"
                                     placeholder="Responsável…"
@@ -1050,9 +1198,28 @@ export default function TarefaModal({
                               <span className="text-xs tabular-nums text-gray-600">{prog.texto}</span>
                             </div>
                           </td>
-                          <td className="whitespace-nowrap px-2 py-1 text-xs tabular-nums text-gray-700">{inicio ?? <span className="text-gray-300">—</span>}</td>
+                          <td className="whitespace-nowrap px-2 py-1 text-xs tabular-nums text-gray-700">
+                            {naLinha ? (
+                              <DataSubtarefa
+                                data={janela?.data_inicio ?? ""}
+                                hora={janela?.hora_inicio?.slice(0, 5) ?? ""}
+                                ro={ro}
+                                rotulo={`Início de ${s.texto}`}
+                                onSalvar={(d, h) => mudarDataSub(s, janela, "inicio", d, h)}
+                              />
+                            ) : inicio ?? <span className="text-gray-300">—</span>}
+                          </td>
                           <td className={`whitespace-nowrap px-2 py-1 text-xs tabular-nums ${atrasada ? "font-medium text-red-700" : "text-gray-700"}`}>
-                            {entrega ? (
+                            {naLinha ? (
+                              <DataSubtarefa
+                                data={janela?.prazo ?? ""}
+                                hora={janela?.hora_fim?.slice(0, 5) ?? ""}
+                                ro={ro}
+                                atrasada={atrasada}
+                                rotulo={`Entrega de ${s.texto}`}
+                                onSalvar={(d, h) => mudarDataSub(s, janela, "entrega", d, h)}
+                              />
+                            ) : entrega ? (
                               <span className="inline-flex items-center gap-1" title={atrasada ? "Entrega desejada vencida" : undefined}>
                                 {entrega}
                                 {atrasada && <AlertCircle aria-label="Atrasada" className="size-3.5 text-red-600" />}
@@ -1084,7 +1251,7 @@ export default function TarefaModal({
                                 {abrirSubtarefa.isPending && abrirSubtarefa.variables?.id_subtarefa === s.id ? <Loader2 className="size-4 animate-spin" /> : <Maximize2 className="size-4" />}
                               </button>
                               {!ro && (
-                                <button type="button" onClick={() => setSubtarefas((arr) => arr.filter((_, j) => j !== i))} aria-label={`Remover subtarefa ${s.texto}`} className="text-gray-300 hover:text-red-600">
+                                <button type="button" onClick={() => void removerLinha(i)} disabled={excluirSub.isPending} aria-label={`Remover subtarefa ${s.texto}`} className="text-gray-300 hover:text-red-600 disabled:opacity-50">
                                   <X className="size-4" />
                                 </button>
                               )}
@@ -1106,7 +1273,7 @@ export default function TarefaModal({
                   value={novaSub}
                   onChange={(e) => setNovaSub(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSub(); } }}
-                  placeholder="Adicionar subtarefa (Enter ou +)…"
+                  placeholder={tarefa ? "Adicionar rápido: só o título (Enter ou +)…" : "Adicionar subtarefa (Enter ou +)…"}
                   className="flex-1 rounded border border-gray-200 px-1.5 py-1 text-sm focus:border-marca-primary focus:outline-none"
                 />
               </div>
@@ -1494,6 +1661,21 @@ export default function TarefaModal({
         </div>
       </aside>
 
+      {novaSubAberta && tarefa && (
+        <TarefaModal
+          open
+          onClose={() => setNovaSubAberta(false)}
+          idQuadro={tarefa.id_quadro}
+          tarefa={null}
+          novaSubDe={tarefa}
+          statusInicial={etapaDaLinha(false, null, statuses) ?? statusInicial}
+          statuses={statuses}
+          campos={campos}
+          tarefasQuadro={tarefasQuadro}
+          podeEditar={podeEditar}
+          etiquetasSugeridas={etiquetasSugeridas}
+        />
+      )}
       {subAberta && (
         <TarefaModal
           open

@@ -83,3 +83,45 @@ export function alocadosExibir(
   if (!s.responsavel_email) return [];
   return [{ email: s.responsavel_email, nome: nomeDe(s.responsavel_email) ?? s.responsavel_email, feito: false }];
 }
+
+// ── Edição na própria lista (11/11/2026) ─────────────────────────────────────────────────────────────────────────
+// Pedido do usuário: "editar os itens sem precisar abrir a subtarefa". Subtarefa criada na Gestão guarda etapa e datas
+// na janela dela (tarefa filha, v300): a lista mostra e grava lá. As do Runrun (linhas SRR-) seguem como vêm da
+// sincronização, que regrava título, feito, responsável, etapa e datas a partir do Runrun.
+
+/** Linha que a sincronização com o Runrun mantém (importador: id SRR-<id do Runrun>). */
+export function vemDoRunrun(id: string | null | undefined): boolean {
+  return !!id && id.startsWith("SRR-");
+}
+
+/** Etapa (slug) que a linha mostra: a da janela; sem janela, a que o banco daria ao abrir (gestao_status_para_feito):
+ *  feita → 1ª concluída; aberta → 1ª "não iniciado" (ou a 1ª não concluída). */
+export function etapaDaLinha(
+  feito: boolean,
+  statusJanela: string | null | undefined,
+  statuses: Pick<GestaoStatus, "slug" | "tipo" | "ordem">[],
+): string | null {
+  if (statusJanela && statuses.some((s) => s.slug === statusJanela)) return statusJanela;
+  const ord = [...statuses].sort((a, b) => a.ordem - b.ordem);
+  if (feito) return ord.find((s) => s.tipo === "concluido")?.slug ?? statusJanela ?? null;
+  return ord.find((s) => s.tipo === "nao_iniciado")?.slug ?? ord.find((s) => s.tipo !== "concluido")?.slug ?? statusJanela ?? null;
+}
+
+export interface DatasSubtarefa {
+  data_inicio: string | null;
+  hora_inicio: string | null;
+  prazo: string | null;
+  hora_fim: string | null;
+}
+
+/** Mesmas regras da janela da tarefa: hora só com data, início até a entrega e, no mesmo dia, hora fim depois do início.
+ *  Devolve o aviso para a pessoa, ou null quando pode gravar. */
+export function erroDatasSubtarefa(d: DatasSubtarefa): string | null {
+  if (d.hora_inicio && !d.data_inicio) return "Escolha a data do início antes da hora.";
+  if (d.hora_fim && !d.prazo) return "Escolha a data da entrega antes da hora.";
+  if (d.data_inicio && d.prazo && d.data_inicio > d.prazo) return "O início não pode ser depois da entrega.";
+  if (d.data_inicio && d.data_inicio === d.prazo && d.hora_inicio && d.hora_fim && d.hora_fim < d.hora_inicio) {
+    return "A hora da entrega não pode ser antes da hora do início no mesmo dia.";
+  }
+  return null;
+}

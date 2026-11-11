@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-subtarefas-edita-na-hora",
+    data: "2026-11-11",
+    tipo: "melhoria",
+    titulo: "Gestão: a lista de subtarefas grava na hora e ganhou Status e Prioridade",
+    texto:
+      "Na aba Subtarefas de uma tarefa já salva, concluir, renomear, trocar responsável, prioridade, status, etapa ou datas " +
+      "grava na hora, sem precisar de Salvar. Nova subtarefa abre uma janela completa, como a da Nova tarefa.",
+    onde: "Gestão › tarefa › Subtarefas",
+    versoes: ["0.3.281"],
+  },
+  {
     id: "gestao-lixeira",
     data: "2026-11-11",
     tipo: "novidade",
