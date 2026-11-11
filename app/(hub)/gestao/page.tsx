@@ -39,6 +39,7 @@ import SlaConfigModal from "@/components/gestao/SlaConfigModal";
 import AtalhoPopover from "@/components/gestao/AtalhoPopover";
 import AtalhosAjuda from "@/components/gestao/AtalhosAjuda";
 import { acaoDaTecla } from "@/lib/gestao/atalhos";
+import { avisoAoMover, contarWip, estadoWip } from "@/lib/gestao/wip";
 import { ShieldCheck as IconeRequisito, Timer as IconePrazo } from "lucide-react";
 import StatusManagerModal from "@/components/gestao/StatusManagerModal";
 import CamposManagerModal from "@/components/gestao/CamposManagerModal";
@@ -639,12 +640,22 @@ export default function GestaoChabraPage() {
     }
   }
 
-  function soltar(targetStatus: StatusTarefa, beforeId?: string) {
+  // v348: responsáveis de cada cartão (vínculos) e nome para os avisos do limite da coluna (WIP).
+  const responsaveisDe = (id: string) => (vincQuadro?.get(id) ?? []).filter((v) => v.tipo === "responsavel").map((v) => v.usuario_email);
+  const nomeDoEmail = (e: string) => usuariosEmail.find((u) => u.email.toLowerCase() === e.toLowerCase())?.nome ?? e;
+
+  async function soltar(targetStatus: StatusTarefa, beforeId?: string) {
     setColHover(null);
     setDropAlvo(null);
     const dragged = items.find((t) => t.id_tarefa === dragId);
     setDragId(null);
     if (!dragged || !podeEditar || dragged.sub_linha) return;
+    // v348: coluna com limite de cartões (WIP) — avisa e deixa a pessoa decidir (não é trava).
+    const colunaAlvo = statusMap.get(targetStatus);
+    if (colunaAlvo && dragged.status !== targetStatus) {
+      const aviso = avisoAoMover(colunaAlvo, contarWip(items, targetStatus, responsaveisDe), responsaveisDe(dragged.id_tarefa), false, nomeDoEmail);
+      if (aviso && !(await confirmar({ title: "Limite de cartões da coluna", description: `${aviso} Mover mesmo assim?`, confirmLabel: "Mover" }))) return;
+    }
     const rest = items.filter((t) => t.id_tarefa !== dragId);
     const col = rest.filter((t) => t.status === targetStatus).sort((a, b) => a.ordem - b.ordem);
     const fora = rest.filter((t) => t.status !== targetStatus);
@@ -662,7 +673,7 @@ export default function GestaoChabraPage() {
 
   // Soltar num grupo: por status reaproveita soltar(); nos demais, define o campo do grupo.
   function soltarGrupo(chave: string, beforeId?: string) {
-    if (quadroAgrupar === "status") { soltar(chave, beforeId); return; }
+    if (quadroAgrupar === "status") { void soltar(chave, beforeId); return; }
     setColHover(null);
     const dragged = items.find((t) => t.id_tarefa === dragId);
     setDragId(null);
@@ -1074,6 +1085,9 @@ export default function GestaoChabraPage() {
               const rotuloOrdem = ordemCol ? OPCOES_ORDEM.find((o) => o.campo === ordemCol.campo)?.label : null;
               const atrasadasCol = todas.filter((t) => t.prazo && diasAte(t.prazo) < 0 && statusMap.get(t.status)?.tipo !== "concluido").length;
               const tempoCol = todas.reduce((s, t) => s + (tempoPorTarefa.get(t.id_tarefa) ?? 0), 0);
+              // v348: limite de cartões da coluna (WIP), só agrupando por status.
+              const colStatus = quadroAgrupar === "status" ? statusMap.get(col.slug) : undefined;
+              const wip = colStatus ? estadoWip(colStatus, contarWip(todas, col.slug, responsaveisDe), nomeDoEmail) : null;
               return (
                 <div
                   key={col.slug}
@@ -1097,6 +1111,11 @@ export default function GestaoChabraPage() {
                         </span>
                       )}
                       <span className="rounded-full bg-gray-200 px-1.5 text-[11px] font-semibold text-gray-600">{temFiltro ? `${lista.length}/${todas.length}` : todas.length}</span>
+                      {wip?.texto && (
+                        <span title={wip.dica ?? undefined} className={`rounded-full px-1.5 text-[11px] font-semibold ${wip.excedido ? "bg-red-600 text-white" : "bg-white text-gray-500 ring-1 ring-gray-200"}`}>
+                          WIP {wip.texto}
+                        </span>
+                      )}
                       {atrasadasCol > 0 && <span className="rounded-full bg-red-50 px-1.5 text-[11px] font-semibold text-red-600" title="Atrasadas">{atrasadasCol} atras.</span>}
                       {tempoCol > 0 && <span className="inline-flex items-center gap-0.5 text-[11px] text-gray-400" title="Tempo total"><Clock className="size-3" />{formatarDuracao(tempoCol)}</span>}
                       {seguindo && <span title="Você é avisado quando uma tarefa entra nesta coluna"><Bell className="size-3.5 text-marca-primary" /></span>}

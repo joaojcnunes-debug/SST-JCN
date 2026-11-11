@@ -59,6 +59,9 @@ export interface GestaoStatus {
   /** v353: para ENTRAR nesta coluna — checklist todo marcado / pelo menos um anexo. */
   requer_checklist?: boolean;
   requer_anexo?: boolean;
+  /** v348: limite de cartões abertos na coluna (WIP) — aviso, não trava; por responsável se limite_por_pessoa. */
+  limite_wip?: number | null;
+  limite_por_pessoa?: boolean;
 }
 
 export interface Subtarefa {
@@ -414,6 +417,8 @@ export function useSalvarStatus() {
       if (s.tipo !== undefined) patch.tipo = s.tipo;
       if (s.requer_checklist !== undefined) patch.requer_checklist = s.requer_checklist;
       if (s.requer_anexo !== undefined) patch.requer_anexo = s.requer_anexo;
+      if (s.limite_wip !== undefined) patch.limite_wip = s.limite_wip;
+      if (s.limite_por_pessoa !== undefined) patch.limite_por_pessoa = s.limite_por_pessoa;
       const { error } = await sb.from("gestao_status").update(patch as never).eq("id", s.id);
       if (error) throw error;
       return s.id;
@@ -1430,6 +1435,7 @@ export interface AcaoAutomacao {
   id_quadro_destino?: string;                 // mover/criar_tarefa_quadro; '@unidade' = quadro da unidade da tarefa (v302, só criar)
   status_destino?: string;                    // mover/criar_tarefa_quadro: etapa no destino (criar: v302)
   titulo_template?: string;                   // criar_tarefa_quadro ({{titulo}})
+  etiquetas?: string[];                       // criar_tarefa_quadro (v348): etiquetas do cartão novo, somadas às copiadas
   copiar_campos?: string;                     // criar_tarefa_quadro — o motor lê texto ('true'|'1')
   emails?: string[];                          // adicionar_vinculados, enviar_email (endereços extras)
   vinculo_tipo?: string;                      // adicionar_vinculados: responsavel|seguidor (ver nota do executor)

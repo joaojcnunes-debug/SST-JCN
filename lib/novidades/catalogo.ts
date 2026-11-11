@@ -41,6 +41,30 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-limite-wip-coluna",
+    data: "2026-11-11",
+    tipo: "novidade",
+    titulo: "Gestão: limite de cartões por coluna",
+    texto:
+      "Em Configurar › Status, cada coluna pode ter um limite de cartões abertos (WIP), no total ou por pessoa " +
+      "responsável. O cabeçalho mostra a contagem e fica vermelho quando passa, e arrastar um cartão para uma coluna " +
+      "cheia pede confirmação.",
+    onde: "Gestão › lista › Configurar › Status",
+    impacto: "É um aviso, não uma trava: você confirma e o cartão muda de coluna. Automações não são barradas.",
+    versoes: ["0.3.278"],
+  },
+  {
+    id: "gestao-automacao-etiquetas-cartao-novo",
+    data: "2026-11-11",
+    tipo: "melhoria",
+    titulo: "Automações: o cartão criado em outra lista pode ganhar etiquetas",
+    texto:
+      "Na ação Criar tarefa em outro quadro, o campo \"etiquetas do cartão novo\" põe etiquetas no cartão criado " +
+      "(por exemplo, o tipo do serviço), além das que forem copiadas.",
+    onde: "Gestão › lista › Configurar › Automações",
+    versoes: ["0.3.278"],
+  },
+  {
     id: "gestao-roteamento-regiao-produto",
     data: "2026-11-11",
     tipo: "novidade",
