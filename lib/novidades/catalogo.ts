@@ -41,6 +41,26 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-data-criacao-no-cartao",
+    data: "2026-11-11",
+    tipo: "melhoria",
+    titulo: "Gestão: data de criação no cartão",
+    texto: "Os cartões mostram \"Criada em dd/mm/aaaa\" logo abaixo da empresa. Passe o mouse para ver a hora.",
+    onde: "Gestão › qualquer lista › Quadro",
+    versoes: ["0.3.279"],
+  },
+  {
+    id: "gestao-subtarefa-descricao-do-original",
+    data: "2026-11-11",
+    tipo: "melhoria",
+    titulo: "Gestão: a subtarefa mostra a descrição do cartão original",
+    texto:
+      "Ao abrir uma subtarefa (duplo clique, Agenda), a aba Descrição mostra primeiro a descrição do cartão original " +
+      "(empresa, CNPJ, produtos…), só para ler, e embaixo a descrição da própria subtarefa.",
+    onde: "Gestão › tarefa › Subtarefas › abrir uma subtarefa",
+    versoes: ["0.3.279"],
+  },
+  {
     id: "gestao-limite-wip-coluna",
     data: "2026-11-11",
     tipo: "novidade",

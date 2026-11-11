@@ -1979,6 +1979,8 @@ export function useSalvarTarefa() {
       qc.invalidateQueries({ queryKey: ["gestao-tarefas"] });
       // Meu Espaço (vista agregada por e-mail) também mostra a tarefa salva.
       qc.invalidateQueries({ queryKey: ["gestao-minhas"] });
+      // Descrição do cartão original mostrada na janela das subtarefas dele (0.3.279).
+      qc.invalidateQueries({ queryKey: ["gestao-tarefa-mae"] });
       // G1: o trigger v216 grava o histórico da tarefa no update/insert; refazer a linha do
       // tempo da sidebar (prefixo pega a query montada da tarefa aberta) — antes só um comentário
       // invalidava, então movimentações/campos alterados não subiam até comentar.
@@ -2893,17 +2895,21 @@ export async function buscarTarefa(idTarefa: string): Promise<GestaoTarefa | nul
   return (data as unknown as GestaoTarefa | null) ?? null;
 }
 
-/** v300: título da tarefa-mãe (cabeçalho da janela da subtarefa quando a mãe não está na lista em mãos). */
-export function useTituloTarefa(idTarefa: string | null | undefined) {
+/**
+ * v300: a tarefa-mãe da janela da subtarefa — o título vai no cabeçalho e, desde 11/11/2026, a descrição do
+ * cartão original aparece na aba Descrição da subtarefa (só leitura, sempre a atual). A RLS decide: quem não vê a
+ * mãe recebe null e a janela fica como antes.
+ */
+export function useTarefaMae(idTarefa: string | null | undefined) {
   return useQuery({
-    queryKey: ["gestao-tarefa-titulo", idTarefa],
+    queryKey: ["gestao-tarefa-mae", idTarefa],
     enabled: !!idTarefa,
     staleTime: 60 * 1000,
     queryFn: async () => {
       const sb = createSupabaseBrowserClient();
-      const { data, error } = await sb.from("gestao_tarefas").select("titulo").eq("id_tarefa", idTarefa!).maybeSingle();
+      const { data, error } = await sb.from("gestao_tarefas").select("titulo,descricao").eq("id_tarefa", idTarefa!).maybeSingle();
       if (error) throw error;
-      return (data as { titulo?: string } | null)?.titulo ?? null;
+      return (data as { titulo: string; descricao: string | null } | null) ?? null;
     },
   });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, CheckSquare, Repeat, Clock, Flag, Check, Paperclip, Target, ShieldQuestion, Building2, Timer } from "lucide-react";
+import { CalendarClock, CalendarPlus, CheckSquare, Repeat, Clock, Flag, Check, Paperclip, Target, ShieldQuestion, Building2, Timer } from "lucide-react";
 import { resumoSla, type SlaTarefa } from "@/lib/gestao/sla";
 import {
   formatarDuracao,
@@ -19,6 +19,16 @@ function diasAte(iso: string): number {
   return Math.round((new Date(iso + "T00:00:00").getTime() - hoje.getTime()) / 86_400_000);
 }
 const fmtPrazo = (iso: string) => { const [, m, d] = iso.split("-"); return `${d}/${m}`; };
+// 11/11/2026 (pedido do usuário): data de criação no cartão, abaixo da empresa. Formatadores criados uma vez só
+// (o quadro desenha milhares de cartões); horário de Brasília, como no resto da Gestão.
+const FMT_CRIACAO = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" });
+const FMT_CRIACAO_HORA = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+function fmtCriacao(iso: string | null | undefined): { dia: string; completo: string } | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return { dia: FMT_CRIACAO.format(d), completo: FMT_CRIACAO_HORA.format(d) };
+}
 
 export default function TarefaCard({
   t,
@@ -85,6 +95,7 @@ export default function TarefaCard({
   const subs = t.subtarefas ?? [];
   const subFeitas = subs.filter((s) => s.feito).length;
   const prioridadeAlta = t.prioridade === "Alta" || t.prioridade === "Urgente";
+  const criacao = fmtCriacao(t.created_at);
 
   const chipsCampos = campos
     .filter((c) => c.tipo === "checkbox" || c.tipo === "selecao" || c.tipo === "moeda")
@@ -118,6 +129,11 @@ export default function TarefaCard({
           {empresa && (
             <p className="mt-0.5 flex items-center gap-1 text-[11px] text-gray-500" title={`Empresa: ${empresa}`}>
               <Building2 className="size-3 shrink-0" aria-hidden /> <span className="truncate">{empresa}</span>
+            </p>
+          )}
+          {criacao && (
+            <p className="mt-0.5 flex items-center gap-1 text-[11px] text-gray-400" title={`Criada em ${criacao.completo}`}>
+              <CalendarPlus className="size-3 shrink-0" aria-hidden /> Criada em {criacao.dia}
             </p>
           )}
         </div>
