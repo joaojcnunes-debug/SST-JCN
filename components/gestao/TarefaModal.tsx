@@ -19,7 +19,7 @@ import BotaoAutomacoes from "@/components/gestao/BotaoAutomacoes";
 import MultiChipInput from "@/components/ui/MultiChipInput";
 import { useUserStore } from "@/lib/store";
 import {
-  useSalvarTarefa, useExcluirTarefa,
+  useSalvarTarefa, useExcluirTarefa, DIAS_LIXEIRA,
   useVinculados, useSalvarVinculados,
   useSubtarefas, useSalvarSubtarefas, useAbrirSubtarefa, useTarefaMae, useComentariosDasSubtarefas,
   useAddComentario, useExcluirComentario,
@@ -654,8 +654,8 @@ export default function TarefaModal({
   async function handleExcluir() {
     if (!tarefa) return;
     const oQue = ehSub ? "subtarefa" : "tarefa";
-    if (!(await confirmar({ title: `Excluir ${oQue}?`, description: `"${tarefa.titulo}" e seus comentários/apontamentos serão removidos${ehSub ? " (sai também da lista de subtarefas)" : ""}. Esta ação não pode ser desfeita.` }))) return;
-    excluir.mutate(tarefa.id_tarefa, { onSuccess: () => { toast.success(ehSub ? "Subtarefa excluída" : "Tarefa excluída"); onClose(); } });
+    if (!(await confirmar({ title: `Excluir ${oQue}?`, description: `"${tarefa.titulo}" vai para a Lixeira com comentários, checklist, anexos e subtarefas${ehSub ? " (sai também da lista de subtarefas)" : ""}. Dá para restaurar por ${DIAS_LIXEIRA} dias (menu da Gestão › Lixeira).` }))) return;
+    excluir.mutate(tarefa.id_tarefa, { onSuccess: () => { toast.success(ehSub ? "Subtarefa enviada para a Lixeira" : "Tarefa enviada para a Lixeira"); onClose(); } });
   }
 
   function enviarComentario() {

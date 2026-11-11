@@ -18,6 +18,8 @@ function texto(a: GestaoAtividade, nomeStatus: (slug: string | null) => string):
   const para = (p.para as string) || "—";
   switch (a.acao) {
     case "criada": return "criou a tarefa";
+    case "excluida": return "excluiu (foi para a Lixeira)";
+    case "restaurada": return "restaurou da Lixeira";
     case "status": return `mudou o status: ${de} → ${para}`;
     case "responsavel": return `responsável: ${de} → ${para}`;
     case "prazo": return `prazo: ${de} → ${para}`;

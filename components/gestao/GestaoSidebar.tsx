@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import toast from "react-hot-toast";
 import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Folder, List, Layers, Lock, UserSquare, Users, CalendarDays, ShieldCheck, Search, X } from "lucide-react";
 import {
   useSalvarEspaco, useExcluirEspaco, useSalvarPasta, useExcluirPasta,
-  useCriarQuadro, useRenomearQuadro, useExcluirQuadro,
+  useCriarQuadro, useRenomearQuadro, useExcluirQuadro, DIAS_LIXEIRA,
   type GestaoEspaco, type GestaoPasta, type GestaoQuadro,
 } from "@/lib/hooks/useGestao";
 import { confirmar } from "@/components/ui/confirm";
@@ -27,6 +28,7 @@ export default function GestaoSidebar({
   onColab,
   mostrarColab = false,
   onAcessos,
+  onLixeira,
 }: {
   espacos: GestaoEspaco[];
   pastas: GestaoPasta[];
@@ -45,6 +47,8 @@ export default function GestaoSidebar({
   mostrarColab?: boolean;
   /** "Membros e acessos": só para gestor — sem a função, o item não aparece. */
   onAcessos?: () => void;
+  /** "Lixeira" (v361): para todos — cada pessoa vê o que excluiu; gestores veem tudo. */
+  onLixeira?: () => void;
 }) {
   const salvarEspaco = useSalvarEspaco();
   const excluirEspaco = useExcluirEspaco();
@@ -112,6 +116,12 @@ export default function GestaoSidebar({
           <ShieldCheck className="size-4" /> Membros e acessos
         </button>
       )}
+      {/* 11/11/2026: logo abaixo de "Membros e acessos" (pedido do usuário). */}
+      {onLixeira && (
+        <button type="button" onClick={onLixeira} title={`Cartões e listas excluídos — restaure em até ${DIAS_LIXEIRA} dias`} className="mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-marca-accent">
+          <Trash2 className="size-4" /> Lixeira
+        </button>
+      )}
       <div className="relative mb-1">
         <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-white/40" />
         <input
@@ -155,7 +165,7 @@ export default function GestaoSidebar({
                 {listasSoltas.map((q) => (
                   <ItemLista key={q.id_quadro} q={q} ativo={q.id_quadro === quadroId} editando={editando === `q:${q.id_quadro}`}
                     onSelect={onSelect} podeEditar={podeEditar} onRenomearStart={() => setEditando(`q:${q.id_quadro}`)}
-                    onRenomear={(v) => { renomearQuadro.mutate({ id_quadro: q.id_quadro, nome: v }); setEditando(null); }} onExcluir={async () => { if (await confirmar({ title: `Excluir lista "${q.nome}"?` })) excluirQuadro.mutate(q.id_quadro); }} />
+                    onRenomear={(v) => { renomearQuadro.mutate({ id_quadro: q.id_quadro, nome: v }); setEditando(null); }} onExcluir={async () => { if (await confirmar({ title: `Excluir lista "${q.nome}"?`, description: `A lista vai para a Lixeira com status, campos, etiquetas, automações e formulários; dá para restaurar por ${DIAS_LIXEIRA} dias.` })) excluirQuadro.mutate(q.id_quadro, { onSuccess: () => toast.success(`Lista "${q.nome}" enviada para a Lixeira`) }); }} />
                 ))}
                 {podeEditar && !buscando && (
                   <button type="button" onClick={() => novaLista(esp.id, null)} className="flex w-full items-center gap-1 rounded px-1.5 py-0.5 text-xs text-white/45 hover:bg-white/10 hover:text-white">
@@ -185,7 +195,7 @@ export default function GestaoSidebar({
                           {listas.map((q) => (
                             <ItemLista key={q.id_quadro} q={q} ativo={q.id_quadro === quadroId} editando={editando === `q:${q.id_quadro}`}
                               onSelect={onSelect} podeEditar={podeEditar} onRenomearStart={() => setEditando(`q:${q.id_quadro}`)}
-                              onRenomear={(v) => { renomearQuadro.mutate({ id_quadro: q.id_quadro, nome: v }); setEditando(null); }} onExcluir={async () => { if (await confirmar({ title: `Excluir lista "${q.nome}"?` })) excluirQuadro.mutate(q.id_quadro); }} />
+                              onRenomear={(v) => { renomearQuadro.mutate({ id_quadro: q.id_quadro, nome: v }); setEditando(null); }} onExcluir={async () => { if (await confirmar({ title: `Excluir lista "${q.nome}"?`, description: `A lista vai para a Lixeira com status, campos, etiquetas, automações e formulários; dá para restaurar por ${DIAS_LIXEIRA} dias.` })) excluirQuadro.mutate(q.id_quadro, { onSuccess: () => toast.success(`Lista "${q.nome}" enviada para a Lixeira`) }); }} />
                           ))}
                           {listas.length === 0 && <p className="px-1.5 py-0.5 text-xs text-white/30">Vazia</p>}
                         </div>

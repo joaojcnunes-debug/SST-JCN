@@ -10,7 +10,7 @@ import { useUserStore, useTema } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import {
   useQuadros, useTarefas, useSubtarefasDoQuadro, useAbrirSubtarefa, useUsuarios, useReordenar, useUsuariosLista, useSalvarTarefa, useAcaoMassa,
-  useSalvarVinculados, useRegistrarAtividade,
+  useSalvarVinculados, useRegistrarAtividade, DIAS_LIXEIRA,
   useMinhasTarefas, useMinhasTarefasAgenda, useTarefasDeResponsaveis, useNomesEmpresas, useVinculadosQuadro, buscarTarefa, useTodosStatus, useNotificacoes, useMarcarLida, useLimparNotificacoes,
   usePreferenciaVisao, useSalvarPreferenciaVisao,
   useStatusQuadro, statusPadrao, useCamposQuadro, useEtiquetasQuadro,
@@ -32,6 +32,7 @@ import { OPCOES_ORDEM, campoTemValor, ordenarTarefas, proximaOrdem, type CampoOr
 /** 10/11/2026 (pedido do usuário): sem escolha da pessoa, cada coluna vem do mais recente para o mais antigo. */
 const ORDEM_PADRAO_COLUNA: OrdemColuna = { campo: "criada", dir: "desc" };
 import NotificacoesSino from "@/components/gestao/NotificacoesSino";
+import LixeiraModal from "@/components/gestao/LixeiraModal";
 import BotaoCadastroEmpresa, { ID_QUADRO_COMERCIAL } from "@/components/comercial/BotaoCadastroEmpresa";
 import TarefaModal from "@/components/gestao/TarefaModal";
 import NovaTarefaRapida from "@/components/gestao/NovaTarefaRapida";
@@ -194,6 +195,8 @@ export default function GestaoChabraPage() {
   const [modelosOpen, setModelosOpen] = useState(false);
   const [calendarioOpen, setCalendarioOpen] = useState(false);
   const [membrosOpen, setMembrosOpen] = useState(false);
+  // v361: Lixeira (cartões e listas excluídos, 180 dias).
+  const [lixeiraOpen, setLixeiraOpen] = useState(false);
   // "Compartilhar" abre o mesmo modal; desde a v0.3.910 na aba Equipes, com esta lista já marcada
   // (antes abria em "Por lista", que saiu)
   const [membrosFoco, setMembrosFoco] = useState<string | null>(null);
@@ -716,7 +719,7 @@ export default function GestaoChabraPage() {
     Promise.all(alvo.map((t) => salvar.mutateAsync({ id_tarefa: t.id_tarefa, id_quadro: t.id_quadro, etiquetas: [...new Set([...(t.etiquetas ?? []), nome])] }))).then(limparSel).catch(() => {});
   }
   async function excluirMassa() {
-    if (await confirmar({ title: `Excluir ${selecionados.size} tarefa(s)?`, description: "Esta ação não pode ser desfeita." })) acaoMassa.mutate({ ids: [...selecionados], excluir: true }, { onSuccess: limparSel });
+    if (await confirmar({ title: `Excluir ${selecionados.size} tarefa(s)?`, description: `Vão para a Lixeira (menu da Gestão › Lixeira) e podem ser restauradas por ${DIAS_LIXEIRA} dias.` })) { const n = selecionados.size; acaoMassa.mutate({ ids: [...selecionados], excluir: true }, { onSuccess: () => { limparSel(); toast.success(n === 1 ? "Tarefa enviada para a Lixeira" : `${n} tarefas enviadas para a Lixeira`); } }); }
   }
 
   /**
@@ -743,7 +746,7 @@ export default function GestaoChabraPage() {
       </Link>
       <div className="flex-1 overflow-y-auto px-2 py-2">
         <p className="mb-1 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">Espaços</p>
-        <GestaoSidebar espacos={espacos} pastas={pastas} quadros={quadros} quadroId={inboxView || meuEspacoView || colabView || agendaView ? null : (quadro?.id_quadro ?? null)} onSelect={(id) => { setQuadroId(id); setInboxView(false); setMeuEspacoView(false); setColabView(false); setAgendaView(false); aoNavegar(); }} podeEditar={souGestor} agendaAtiva={agendaView} onAgenda={() => { setAgendaView(true); setMeuEspacoView(false); setInboxView(false); setColabView(false); aoNavegar(); }} meuEspacoAtivo={meuEspacoView} onMeuEspaco={() => { setMeuEspacoView(true); setInboxView(false); setColabView(false); setAgendaView(false); aoNavegar(); }} mostrarColab={mostrarColab} colabAtivo={colabView} onColab={() => { setColabView(true); setInboxView(false); setMeuEspacoView(false); setAgendaView(false); aoNavegar(); }} onAcessos={souGestor ? () => { setMembrosFoco(null); setMembrosOpen(true); aoNavegar(); } : undefined} />
+        <GestaoSidebar espacos={espacos} pastas={pastas} quadros={quadros} quadroId={inboxView || meuEspacoView || colabView || agendaView ? null : (quadro?.id_quadro ?? null)} onSelect={(id) => { setQuadroId(id); setInboxView(false); setMeuEspacoView(false); setColabView(false); setAgendaView(false); aoNavegar(); }} podeEditar={souGestor} agendaAtiva={agendaView} onAgenda={() => { setAgendaView(true); setMeuEspacoView(false); setInboxView(false); setColabView(false); aoNavegar(); }} meuEspacoAtivo={meuEspacoView} onMeuEspaco={() => { setMeuEspacoView(true); setInboxView(false); setColabView(false); setAgendaView(false); aoNavegar(); }} mostrarColab={mostrarColab} colabAtivo={colabView} onColab={() => { setColabView(true); setInboxView(false); setMeuEspacoView(false); setAgendaView(false); aoNavegar(); }} onAcessos={souGestor ? () => { setMembrosFoco(null); setMembrosOpen(true); aoNavegar(); } : undefined} onLixeira={() => { setLixeiraOpen(true); aoNavegar(); }} />
       </div>
       <div className="space-y-0.5 border-t border-white/[0.09] p-2">
         {user?.perfil === "Admin" && (
@@ -1408,6 +1411,8 @@ export default function GestaoChabraPage() {
       )}
 
       <MembrosModal open={membrosOpen} onClose={() => setMembrosOpen(false)} quadroFoco={membrosFoco} />
+      <LixeiraModal open={lixeiraOpen} onClose={() => setLixeiraOpen(false)}
+        onAbrirQuadro={(id) => { setQuadroId(id); setInboxView(false); setMeuEspacoView(false); setColabView(false); setAgendaView(false); }} />
 
       {selecaoModo && selecionados.size > 0 && (
         <BarraAcoesMassa
