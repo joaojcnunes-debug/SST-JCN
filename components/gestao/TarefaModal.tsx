@@ -524,7 +524,8 @@ export default function TarefaModal({
     setSubAberta(null);
     // O que mudou na janela da subtarefa volta para a linha pelo banco (v292) — recarrega a lista.
     if (tarefa) qc.invalidateQueries({ queryKey: ["gestao-subtarefas", tarefa.id_tarefa] });
-    qc.invalidateQueries({ queryKey: ["gestao-subtarefas-janelas"] }); // responsáveis e datas da janela
+    qc.invalidateQueries({ queryKey: ["gestao-subtarefas-janelas"] }); // datas e status da janela
+    qc.invalidateQueries({ queryKey: ["gestao-subtarefas-responsaveis"] }); // responsáveis da janela
     qc.invalidateQueries({ queryKey: ["gestao-comentarios-subtarefas"] });
   }
 

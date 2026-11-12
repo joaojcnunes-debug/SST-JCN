@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-subtarefa-data-nao-derruba",
+    data: "2026-11-12",
+    tipo: "correcao",
+    titulo: "Mudar a data da subtarefa na lista não derruba mais a tela",
+    texto:
+      "Na janela do cartão, trocar a data de uma subtarefa direto na lista fazia a tela inteira dar erro. Agora a data " +
+      "muda e a coluna Alocados continua mostrando as pessoas.",
+    onde: "Gestão › cartão › Subtarefas",
+    versoes: ["0.3.284"],
+  },
+  {
     id: "gestao-minhas-criei-alocado-sigo",
     data: "2026-11-12",
     tipo: "correcao",

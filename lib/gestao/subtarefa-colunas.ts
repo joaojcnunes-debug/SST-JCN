@@ -88,9 +88,10 @@ export function alocadosExibir(
     vistos.add(chave);
     out.push({ ...a, nome: (a.email && nomeDe(a.email)) || a.nome || a.email || "" });
   };
-  for (const a of s.alocados ?? []) if (a && (a.email || a.nome)) por(a);
-  if (s.responsavel_email) por({ email: s.responsavel_email, nome: s.responsavel_email, feito: false });
-  for (const e of s.responsaveis ?? []) if (e) por({ email: e, nome: e, feito: false });
+  // Só listas de verdade (12/11/2026: um cache trocado por objeto derrubou a tela com "not iterable").
+  for (const a of Array.isArray(s.alocados) ? s.alocados : []) if (a && (a.email || a.nome)) por(a);
+  if (typeof s.responsavel_email === "string" && s.responsavel_email) por({ email: s.responsavel_email, nome: s.responsavel_email, feito: false });
+  for (const e of Array.isArray(s.responsaveis) ? s.responsaveis : []) if (typeof e === "string" && e) por({ email: e, nome: e, feito: false });
   return out;
 }
 

@@ -31,11 +31,15 @@ export type PatchJanela = Partial<Pick<JanelaSubtarefa, "status" | "data_inicio"
 export type PatchLinha = Partial<Pick<GestaoSubtarefa, "texto" | "feito" | "responsavel_email">>;
 
 const CHAVE_JANELAS = "gestao-subtarefas-janelas";
+// Responsáveis das janelas: chave PRÓPRIA (12/11/2026). Debaixo de CHAVE_JANELAS o onMutate da data
+// (useAtualizarJanelaSubtarefa) reescrevia este cache como se fosse de janelas e a lista quebrava ("not iterable").
+const CHAVE_RESP_JANELAS = "gestao-subtarefas-responsaveis";
 
 /** Depois de qualquer mudança: a lista, as janelas, o cartão (contagem pelo espelho jsonb), Meu espaço e Agenda. */
 function recarregar(qc: QueryClient, idTarefa: string) {
   qc.invalidateQueries({ queryKey: ["gestao-subtarefas", idTarefa] });
   qc.invalidateQueries({ queryKey: [CHAVE_JANELAS] });
+  qc.invalidateQueries({ queryKey: [CHAVE_RESP_JANELAS] });
   qc.invalidateQueries({ queryKey: ["gestao-tarefas"] });
   qc.invalidateQueries({ queryKey: ["gestao-minhas"] });
   qc.invalidateQueries({ queryKey: ["gestao-agenda-de"] });
@@ -86,12 +90,12 @@ export function useJanelasDasSubtarefas(idsFilhas: string[]) {
 
 /**
  * Responsáveis (vínculo tipo "responsavel") de cada janela, por id da tarefa filha — a linha guarda um só, a janela pode
- * ter vários (11/11/2026: a lista mostra todos). Mesma chave-base das janelas: recarrega junto.
+ * ter vários (11/11/2026: a lista mostra todos). Chave própria (ver CHAVE_RESP_JANELAS); `recarregar` atualiza as duas.
  */
 export function useResponsaveisDasJanelas(idsFilhas: string[]) {
   const chave = [...new Set(idsFilhas)].sort().join(",");
   return useQuery({
-    queryKey: [CHAVE_JANELAS, "responsaveis", chave],
+    queryKey: [CHAVE_RESP_JANELAS, chave],
     enabled: chave !== "",
     queryFn: async () => {
       const sb = createSupabaseBrowserClient();
