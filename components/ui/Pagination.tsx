@@ -9,6 +9,8 @@ interface PaginationProps {
   totalItems: number;
   pageSize: number;
   onChange: (page: number) => void;
+  /** Classes extras do contêiner (ex.: "border-t-0 border-b" quando fica no topo da lista). */
+  className?: string;
 }
 
 export default function Pagination({
@@ -17,6 +19,7 @@ export default function Pagination({
   totalItems,
   pageSize,
   onChange,
+  className,
 }: PaginationProps) {
   if (totalItems === 0) return null;
 
@@ -25,7 +28,7 @@ export default function Pagination({
   const pages = pageWindow(page, totalPages);
 
   return (
-    <div className="flex flex-col items-center justify-between gap-2 border-t border-gray-100 px-4 py-3 text-xs text-gray-500 sm:flex-row">
+    <div className={cn("flex flex-col items-center justify-between gap-2 border-t border-gray-100 px-4 py-3 text-xs text-gray-500 sm:flex-row", className)}>
       <span>
         Mostrando <strong className="text-gray-700">{start}</strong>–<strong className="text-gray-700">{end}</strong> de{" "}
         <strong className="text-gray-700">{totalItems}</strong>

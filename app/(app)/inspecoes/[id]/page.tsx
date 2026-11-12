@@ -534,9 +534,12 @@ export default function InspecaoEditorPage({ params }: Props) {
           esbarraria nela quando já não tivesse sinal para baixar nada. */}
       <LevarParaCampo idDocumento={id} dados={data} rotulo="Inspeção" />
 
-      {/* Abas */}
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-        <nav className="flex min-w-max border-b border-gray-200">
+      {/* Abas — a rolagem lateral é SÓ da fileira de abas (a barra fica logo
+          abaixo delas, no topo). Antes envolvia abas + conteúdo e a barra ia
+          parar no fim da aba, rolando o conteúdo junto. */}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="overflow-x-auto border-b border-gray-200">
+        <nav className="flex min-w-max">
           {TABS.map((t) => {
             const Icon = t.icon;
             const active = tab === t.key;
@@ -570,6 +573,7 @@ export default function InspecaoEditorPage({ params }: Props) {
             );
           })}
         </nav>
+        </div>
 
         <div className="p-4">
           {tab === "setores" && (

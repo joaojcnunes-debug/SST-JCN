@@ -41,6 +41,89 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-comentarios-conversa-e-mencao",
+    data: "2026-11-12",
+    tipo: "novidade",
+    titulo: "Comentários em forma de conversa e @ para marcar pessoas",
+    texto:
+      "Os comentários do cartão viram uma conversa, como no Runrun: os seus à direita, os dos outros à " +
+      "esquerda, o balão do robô com a criação do cartão e a caixa \"Digite uma mensagem…\" presa no rodapé, com " +
+      "emoji, @, atribuir e imagem. Ao digitar @ aparece a lista de pessoas; quem foi marcado recebe o aviso " +
+      "\"Fulano mencionou você em …\". \"@Primeiro\" só marca se o primeiro nome for único, e o @ de um e-mail não " +
+      "conta.",
+    onde: "Gestão › cartão › Comentários",
+    versoes: ["0.3.287"],
+  },
+  {
+    id: "gestao-imagem-dentro-da-descricao",
+    data: "2026-11-12",
+    tipo: "melhoria",
+    titulo: "A imagem do cartão fica dentro da descrição",
+    texto:
+      "Colar (Ctrl+V), \"Inserir imagem\" e \"Colar imagem copiada\" põem a imagem dentro da descrição, onde está o " +
+      "cursor; ela sobe ao Salvar. As imagens que estavam embaixo da descrição entram no fim do texto. Tirar " +
+      "uma imagem do texto faz o Salvar perguntar se ela deve ser excluída. Na subtarefa, \"Do cartão original\" " +
+      "mostra também as imagens do cartão principal. A IA recebe \"[imagem]\" no lugar.",
+    onde: "Gestão › cartão › Descrição",
+    versoes: ["0.3.287"],
+  },
+  {
+    id: "gestao-calendario-da-lista",
+    data: "2026-11-12",
+    tipo: "melhoria",
+    titulo: "Calendário: cada lista mostra só os cartões dela",
+    texto:
+      "O calendário de uma lista mostra só os cartões daquela lista (as outras listas de cada pessoa ficam na " +
+      "página Agenda). No calendário de uma pessoa ou equipe entram os cartões desta lista em que ela é " +
+      "responsável, segue ou criou, e o filtro de status volta a valer.",
+    onde: "Gestão › qualquer lista › Calendário",
+    versoes: ["0.3.287"],
+  },
+  {
+    id: "gestao-listas-ordem-alfabetica",
+    data: "2026-11-12",
+    tipo: "melhoria",
+    titulo: "Listas em ordem alfabética no menu",
+    texto:
+      "No menu da Gestão, as listas de cada espaço e pasta aparecem em ordem alfabética.",
+    onde: "Gestão › menu lateral",
+    versoes: ["0.3.287"],
+  },
+  {
+    id: "gestao-minhas-alocados-runrun",
+    data: "2026-11-12",
+    tipo: "correcao",
+    titulo: "\"Minhas\" acha as subtarefas em que você está entre os alocados",
+    texto:
+      "O botão Minhas dava erro ao procurar as subtarefas em que você está entre os alocados (as que vieram do " +
+      "Runrun). Agora elas aparecem.",
+    onde: "Gestão › qualquer lista › Minhas",
+    versoes: ["0.3.287"],
+  },
+  {
+    id: "inspecao-riscos-quadro-abas-paginacao",
+    data: "2026-11-12",
+    tipo: "melhoria",
+    titulo: "Inspeção: aba Riscos no Quadro por setor, abas e páginas no topo",
+    texto:
+      "A aba Riscos da inspeção mostra os riscos no Quadro, por setor, com as ações (Enviar para o Plano de " +
+      "Ação, Adicionar risco) na barra do grupo. A barra de rolagem das abas fica no topo, e na lista de " +
+      "inspeções a troca de página também.",
+    onde: "Inspeções › lista e abrir uma inspeção",
+    versoes: ["0.3.287"],
+  },
+  {
+    id: "relatorio-inspecao-forma-agente",
+    data: "2026-11-12",
+    tipo: "correcao",
+    titulo: "Relatório da inspeção: \"Forma do agente\" não sai mais como Poeira",
+    texto:
+      "Nos riscos Químicos do relatório, a \"Forma do agente\" saía sempre \"Poeira\", um texto fixo herdado do " +
+      "modelo. Agora sai em branco, porque o risco não tem esse campo.",
+    onde: "Inspeções › abrir uma inspeção › Relatório",
+    versoes: ["0.3.287"],
+  },
+  {
     id: "conciliacao-grupo-igual-consolidacao",
     data: "2026-11-12",
     tipo: "melhoria",

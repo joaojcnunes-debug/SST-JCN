@@ -11,7 +11,7 @@ import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import {
   useQuadros, useTarefas, useSubtarefasDoQuadro, useMinhasSubtarefasDoQuadro, useAbrirSubtarefa, useUsuarios, useReordenar, useUsuariosLista, useSalvarTarefa, useAcaoMassa,
   useSalvarVinculados, useRegistrarAtividade, DIAS_LIXEIRA,
-  useMinhasTarefas, useMinhasTarefasAgenda, useTarefasDeResponsaveis, useNomesEmpresas, useVinculadosQuadro, buscarTarefa, useTodosStatus, useNotificacoes, useMarcarLida, useLimparNotificacoes,
+  useMinhasTarefas, useNomesEmpresas, useVinculadosQuadro, buscarTarefa, useTodosStatus, useNotificacoes, useMarcarLida, useLimparNotificacoes,
   usePreferenciaVisao, useSalvarPreferenciaVisao,
   useStatusQuadro, statusPadrao, useCamposQuadro, useEtiquetasQuadro,
   useEspacos, usePastas, useTodasDependencias, useAutomacaoTick, useSyncGoogleAgenda, useTempoQuadro, useAnexosCountQuadro,
@@ -60,6 +60,7 @@ import TarefaCard from "@/components/gestao/TarefaCard";
 import FiltrosPanel from "@/components/gestao/FiltrosPanel";
 import { nomesResponsaveis, temResponsavel, emailsDosNomes } from "@/lib/gestao/responsaveis";
 import { eventosAlteracao } from "@/lib/gestao/alteracao-tarefa";
+import { cartaoDaPessoa } from "@/lib/gestao/calendario-pessoa";
 import MeuEspaco from "@/components/gestao/MeuEspaco";
 import CaixaEntrada from "@/components/gestao/CaixaEntrada";
 import PainelGestao from "@/components/gestao/PainelGestao";
@@ -80,9 +81,10 @@ function diasAte(iso: string): number {
   return Math.round((new Date(iso + "T00:00:00").getTime() - hoje.getTime()) / 86_400_000);
 }
 
-/** Calendário de uma pessoa/equipe junta várias listas: status (por lista) e os filtros de pessoa não se aplicam. */
+/** Calendário de uma pessoa/equipe: os filtros de pessoa não se aplicam (já é a pessoa/equipe escolhida). */
 // "mostrar" também: o calendário de pessoa/equipe só traz tarefas (as subtarefas estão na Agenda).
-const IGNORAR_CAL_OUTROS: ReadonlySet<keyof FiltrosGestao> = new Set<keyof FiltrosGestao>(["status", "responsavel", "semResponsavel", "equipe", "seguidor", "mostrar"]);
+// 12/11/2026: como agora só entram tarefas DA LISTA aberta, o filtro de status volta a valer.
+const IGNORAR_CAL_OUTROS: ReadonlySet<keyof FiltrosGestao> = new Set<keyof FiltrosGestao>(["responsavel", "semResponsavel", "equipe", "seguidor", "mostrar"]);
 
 /** Textos em que a busca da barra procura (título, descrição, responsável, etiquetas e campos do formulário). */
 function textosDaBusca(t: GestaoTarefa) {
@@ -244,13 +246,13 @@ export default function GestaoChabraPage() {
   const { data: minhasTodas = [] } = useMinhasTarefas(meuEspacoView || inboxView);
   // v300: as filhas de subtarefa ficam fora das listas, mas o aviso (prazo, comentário) abre por elas.
   const minhas = useMemo(() => minhasTodas.filter((t) => !t.id_tarefa_pai), [minhasTodas]);
-  // Calendário do MEU QUADRO: além das tarefas do quadro, mostra as que estou alocado em qualquer
-  // outro quadro (pedido do operador 2026-10-20 — "criada na Recepção e não aparece no meu calendário").
+  // 12/11/2026 (pedido do usuário): o calendário de uma lista mostra SÓ os cartões dela. Saiu o que o Meu Quadro
+  // juntava das outras listas (pedido de 20/10, "criada na Recepção…") e o de pessoa/equipe agora é DESTA lista; a
+  // visão de todas as listas de cada pessoa fica na página Agenda.
   const ehMeuQuadro = !!quadro?.dono_email && !!user?.email && quadro.dono_email.toLowerCase() === user.email.toLowerCase();
-  // Calendário de uma pessoa ou equipe: tarefas de todas as listas que eu vejo (no lugar das da lista).
+  // Calendário de uma pessoa ou equipe: as tarefas desta lista em que a pessoa (ou alguém da equipe) é responsável.
   const calDeOutros = vista === "calendario" && !meuEspacoView && !inboxView && calDe.tipo !== "lista";
   const calendarioPessoal = ehMeuQuadro && vista === "calendario" && !meuEspacoView && !inboxView && !calDeOutros;
-  const { data: alocadasAgenda = [] } = useMinhasTarefasAgenda(calendarioPessoal);
   const { data: todosStatus = [] } = useTodosStatus(meuEspacoView || inboxView || calendarioPessoal || calDeOutros || agendaView);
   const statusGlobalMap = useMemo(() => new Map(todosStatus.map((s) => [`${s.id_quadro}|${s.slug}`, s])), [todosStatus]);
   const { data: notificacoes = [] } = useNotificacoes();
@@ -431,10 +433,19 @@ export default function GestaoChabraPage() {
   }, [equipesTodas, membrosPorEquipe, user?.email]);
 
   const emailsCalDe = calDe.tipo === "pessoa" ? [calDe.email] : calDe.tipo === "equipe" ? membrosPorEquipe.get(calDe.id) ?? [] : [];
-  const { data: tarefasDe = [], isFetching: buscandoDe } = useTarefasDeResponsaveis(emailsCalDe, periodoCal[0], periodoCal[1], calDeOutros);
   const aoPeriodoCal = useCallback((a: string, b: string) => setPeriodoCal((p) => (p[0] === a && p[1] === b ? p : [a, b])), []);
 
   const chaveCriador = useCallback((t: TarefaFiltravel) => criadorDe(t, nomePorEmail, apelidosRunrun)?.chave ?? null, [nomePorEmail, apelidosRunrun]);
+  // 12/11/2026 (pedidos do usuário): o calendário de pessoa/equipe usa os cartões DESTA lista (já carregados) em que a
+  // pessoa — ou alguém da equipe — é responsável, seguidora ou criou o cartão (lib/gestao/calendario-pessoa.ts).
+  const chaveEmailsCalDe = emailsCalDe.map((e) => e.toLowerCase()).sort().join(",");
+  const tarefasDe = useMemo(() => {
+    if (!calDeOutros || !chaveEmailsCalDe) return [];
+    const emails = new Set(chaveEmailsCalDe.split(","));
+    const nomes = [...emails].map((e) => nomePorEmail.get(e) ?? "").filter(Boolean);
+    return tarefas.filter((t) => cartaoDaPessoa(t, emails, nomes, vincQuadro?.get(t.id_tarefa) ?? [], chaveCriador(t)));
+  }, [calDeOutros, chaveEmailsCalDe, tarefas, vincQuadro, nomePorEmail, chaveCriador]);
+  const buscandoDe = false;
   const baseOpcoes = calDeOutros ? tarefasDe : items;
   const criadoresOpcoes = useMemo(() => {
     const m = new Map<string, Criador>();
@@ -1303,11 +1314,11 @@ export default function GestaoChabraPage() {
           />
         ) : vista === "calendario" ? (
           <VistaCalendario
-            tarefas={calDeOutros ? tarefasCalOutros : calendarioPessoal ? [...items.filter(passaFiltro), ...(mostrar === "subtarefas" ? [] : alocadasAgenda.filter((t) => t.id_quadro !== quadro.id_quadro))] : items.filter(passaFiltro)}
+            tarefas={calDeOutros ? tarefasCalOutros : items.filter(passaFiltro)}
             statuses={statuses}
             podeEditar={calDeOutros || calendarioPessoal ? (t) => podeEditar && t.id_quadro === quadro.id_quadro : podeEditar}
             concluida={calDeOutros || calendarioPessoal ? concluidaEmQualquerLista : undefined}
-            rotulo={calDeOutros || calendarioPessoal ? (t) => quadros.find((q) => q.id_quadro === t.id_quadro)?.nome ?? "Lista" : undefined}
+            rotulo={undefined}
             inicioSemPrazo={calDeOutros || calendarioPessoal}
             statusDe={calDeOutros || calendarioPessoal ? (t) => (t.id_quadro === quadro.id_quadro ? statusMap.get(t.status) : statusGlobalMap.get(`${t.id_quadro}|${t.status}`)) : undefined}
             onCriarNoDia={podeEditar && !calDeOutros ? novaTarefaNoDia : undefined}
