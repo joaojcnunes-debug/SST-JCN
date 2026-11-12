@@ -39,6 +39,7 @@ export default function TarefaCard({
   onToggleSel,
   empresa,
   sla,
+  onPassar,
 }: {
   t: GestaoTarefa;
   statusMap: Map<string, GestaoStatus>;
@@ -60,6 +61,8 @@ export default function TarefaCard({
   onToggleSel?: () => void;
   /** v353: prazo de atendimento (só nos quadros com prazo ligado). */
   sla?: SlaTarefa;
+  /** 0.3.272 (= Painel 0.3.923): o mouse entrou/saiu do cartão (atalhos de teclado do quadro agem no cartão sob o mouse). */
+  onPassar?: (dentro: boolean) => void;
 }) {
   const resumoPrazo = sla ? resumoSla(sla) : null;
   const { data: vincMap } = useVinculadosQuadro(t.id_quadro);
@@ -97,6 +100,9 @@ export default function TarefaCard({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onClick={selecionavel ? onToggleSel : onAbrir}
+      onMouseEnter={onPassar ? () => onPassar(true) : undefined}
+      onMouseLeave={onPassar ? () => onPassar(false) : undefined}
+      data-id-tarefa={t.id_tarefa}
       style={{ borderLeftColor: corPrioridade(t.prioridade) }}
       className={`cursor-pointer rounded-lg border border-l-4 border-gray-200 bg-white p-3 shadow-sm transition-all duration-150 hover:border-gray-300 hover:shadow-md ${selecionavel ? "" : "hover:-translate-y-0.5"} ${selecionado ? "ring-2 ring-marca-primary" : ""} ${arrastando ? "rotate-1 opacity-40" : ""}`}
     >

@@ -2347,6 +2347,15 @@ export interface GestaoSubtarefaModelo {
   titulo: string;
   itens: ItemModelo[];
   created_at: string;
+  /** v354 (modelo de tarefa): o que o modelo põe na Nova tarefa. */
+  descricao?: string | null;
+  checklist?: string[];
+  prioridade?: PrioridadeTarefa | null;
+  etiquetas?: string[];
+  prazo_dias?: number | null;
+  prazo_uteis?: boolean;
+  /** Aparece em "Usar modelo" na Nova tarefa (os das automações por produto, v350, nascem fora). */
+  na_criacao?: boolean;
 }
 
 export function useModelos(idQuadro: string | null | undefined) {
@@ -2374,6 +2383,13 @@ export function useSalvarModelo() {
           slug: (m.slug ?? "").trim() || "modelo",
           titulo: (m.titulo ?? "").trim() || "Novo modelo",
           itens: m.itens ?? [],
+          descricao: m.descricao ?? null,
+          checklist: m.checklist ?? [],
+          prioridade: m.prioridade ?? null,
+          etiquetas: m.etiquetas ?? [],
+          prazo_dias: m.prazo_dias ?? null,
+          prazo_uteis: m.prazo_uteis ?? false,
+          na_criacao: m.na_criacao ?? true,
         } as never);
         if (error) throw error;
         return;

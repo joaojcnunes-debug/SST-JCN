@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
-import { ArrowLeft, KanbanSquare, Menu as MenuIcon, Plus, Search, X, LayoutList, CalendarDays, GanttChartSquare, SlidersHorizontal, Tags, Tag, Zap, Settings, ChevronDown, Clock, CheckSquare, CheckCheck, BarChart3, FileText, Bell, Trash2, Users, UserSquare, ListChecks, Sun, Moon, Share2, MoreHorizontal, BellOff, ArrowDownUp, Check } from "lucide-react";
+import { ArrowLeft, KanbanSquare, Menu as MenuIcon, Plus, Search, X, LayoutList, CalendarDays, GanttChartSquare, SlidersHorizontal, Tags, Tag, Zap, Settings, ChevronDown, Clock, CheckSquare, CheckCheck, BarChart3, FileText, Bell, Trash2, Users, UserSquare, Sun, Moon, Share2, MoreHorizontal, BellOff, ArrowDownUp, Check, Keyboard, LayoutTemplate } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUserStore, useTema } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
@@ -35,6 +35,9 @@ import NotificacoesSino from "@/components/gestao/NotificacoesSino";
 import TarefaModal from "@/components/gestao/TarefaModal";
 import NovaTarefaRapida from "@/components/gestao/NovaTarefaRapida";
 import SlaConfigModal from "@/components/gestao/SlaConfigModal";
+import AtalhoPopover from "@/components/gestao/AtalhoPopover";
+import AtalhosAjuda from "@/components/gestao/AtalhosAjuda";
+import { acaoDaTecla } from "@/lib/gestao/atalhos";
 import { ShieldCheck as IconeRequisito, Timer as IconePrazo } from "lucide-react";
 import StatusManagerModal from "@/components/gestao/StatusManagerModal";
 import CamposManagerModal from "@/components/gestao/CamposManagerModal";
@@ -151,6 +154,12 @@ export default function GestaoChabraPage() {
   const { data: tempoEntries = [] } = useTempoQuadro(quadro?.id_quadro, tarefas.map((t) => t.id_tarefa));
   const { data: anexosCount = new Map<string, number>() } = useAnexosCountQuadro(quadro?.id_quadro, tarefas.map((t) => t.id_tarefa));
   const etiquetaCor = useMemo(() => new Map(etiquetasCat.map((e) => [e.nome, e.cor])), [etiquetasCat]);
+  // 0.3.272 (= Painel 0.3.923, item 14): atalhos de teclado como no Trello — agem no cartão sob o mouse (hoverRef, sem re-render).
+  const hoverRef = useRef<string | null>(null);
+  const buscaRef = useRef<HTMLInputElement>(null);
+  const [popAtalho, setPopAtalho] = useState<{ tipo: "prazo" | "etiqueta"; t: GestaoTarefa; x: number; y: number } | null>(null);
+  const [ajudaAtalhos, setAjudaAtalhos] = useState(false);
+  const salvarVincAtalho = useSalvarVinculados();
 
   const [items, setItems] = useState<GestaoTarefa[]>([]);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -557,6 +566,56 @@ export default function GestaoChabraPage() {
     });
   }
 
+  // ── Atalhos de teclado (item 14) ──────────────────────────────────────────────────────────────────────────────
+  const atalhosAtivos = !!quadro && !inboxView && !colabView && !meuEspacoView && !agendaView;
+  const atalhoRef = useRef<(e: KeyboardEvent) => void>(() => {});
+  atalhoRef.current = (e: KeyboardEvent) => {
+    if (!atalhosAtivos || popAtalho || ajudaAtalhos) return;
+    if (document.querySelector('[role="dialog"][aria-modal="true"]')) return; // janela aberta: as teclas são dela
+    const alvo = e.target instanceof HTMLElement ? e.target : null;
+    const id = hoverRef.current;
+    const t = id ? items.find((x) => x.id_tarefa === id) ?? null : null;
+    const acao = acaoDaTecla(
+      { key: e.key, ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey, repeat: e.repeat, alvo: alvo ? { tagName: alvo.tagName, isContentEditable: alvo.isContentEditable, role: alvo.getAttribute("role") } : null },
+      !!t,
+    );
+    if (!acao) return;
+    if (acao === "ajuda") { e.preventDefault(); setAjudaAtalhos(true); return; }
+    if (acao === "buscar") { e.preventDefault(); buscaRef.current?.focus(); return; }
+    if (acao === "nova") { if (podeEditar) { e.preventDefault(); novaTarefa(statusInicialSlug); } return; }
+    if (!t) return;
+    e.preventDefault();
+    if (acao === "abrir") { abrirItem(t); return; }
+    if (t.sub_linha) { toast("Numa linha de subtarefa, abra a tarefa (Enter) para mudar."); return; }
+    if (!podeEditar) { toast.error("Você só pode ver este quadro."); return; }
+    if (acao === "me_atribuir") {
+      const eu = (user?.email ?? "").toLowerCase();
+      if (!eu) return;
+      const atuais = vincQuadro?.get(t.id_tarefa) ?? [];
+      const resp = atuais.filter((v) => v.tipo === "responsavel").map((v) => v.usuario_email.toLowerCase());
+      const seg = atuais.filter((v) => v.tipo === "seguidor").map((v) => v.usuario_email.toLowerCase());
+      const sou = resp.includes(eu);
+      salvarVincAtalho.mutate(
+        {
+          id_tarefa: t.id_tarefa,
+          responsaveisEmails: sou ? resp.filter((x) => x !== eu) : [...resp, eu],
+          seguidoresEmails: sou ? seg : seg.filter((x) => x !== eu),
+          base: { responsaveisEmails: resp, seguidoresEmails: seg }, // só a minha linha muda
+        },
+        { onSuccess: () => toast.success(sou ? "Você saiu dos responsáveis" : "Você entrou como responsável") },
+      );
+      return;
+    }
+    const el = document.querySelector<HTMLElement>(`[data-id-tarefa="${CSS.escape(t.id_tarefa)}"]`);
+    const r = el?.getBoundingClientRect();
+    setPopAtalho({ tipo: acao === "prazo" ? "prazo" : "etiqueta", t, x: r ? r.left : window.innerWidth / 2 - 128, y: r ? r.bottom + 4 : 120 });
+  };
+  useEffect(() => {
+    const ouvir = (e: KeyboardEvent) => atalhoRef.current(e);
+    document.addEventListener("keydown", ouvir);
+    return () => document.removeEventListener("keydown", ouvir);
+  }, []);
+
   function novaTarefa(status: StatusTarefa) {
     setEditando(null);
     setStatusNovo(status);
@@ -887,8 +946,13 @@ export default function GestaoChabraPage() {
           <NotificacoesSino onAbrir={abrirNotif} />
           <div className="relative w-full sm:w-64">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
-            <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar tarefa…" className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-marca-primary focus:outline-none" />
+            <input ref={buscaRef} value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar tarefa…  /" aria-label="Buscar tarefa (atalho /)" className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-marca-primary focus:outline-none" />
           </div>
+          {atalhosAtivos && (
+            <button type="button" onClick={() => setAjudaAtalhos(true)} title="Atalhos de teclado (?)" aria-label="Atalhos de teclado" className="hidden rounded-lg border border-gray-200 bg-white p-2 text-gray-500 shadow-sm hover:bg-gray-50 hover:text-gray-800 lg:inline-flex">
+              <Keyboard className="size-4" />
+            </button>
+          )}
           {vista !== "calendario" && (
             <FiltrosPanel filtros={filtros} onChange={setFiltros} idQuadro={quadro?.id_quadro ?? ""}
               opcoes={{ statuses, etiquetas: etiquetasCat, usuarios, pessoas: usuariosEmail, equipes: equipesVisiveis, criadores: criadoresOpcoes, produtos: produtosOpcoes }} />
@@ -930,7 +994,7 @@ export default function GestaoChabraPage() {
                     )}
                     <button type="button" onClick={() => { setConfigOpen(false); setFormulariosOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><FileText className="size-4 text-gray-400" /> Formulários</button>
                     {podeConfigurarAvancado && (
-                      <button type="button" onClick={() => { setConfigOpen(false); setModelosOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><ListChecks className="size-4 text-gray-400" /> Modelos de checklist</button>
+                      <button type="button" onClick={() => { setConfigOpen(false); setModelosOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><LayoutTemplate className="size-4 text-gray-400" /> Modelos de tarefa</button>
                     )}
                     {podeConfigurarAvancado && (
                       <button type="button" onClick={() => { setConfigOpen(false); setCalendarioOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><CalendarDays className="size-4 text-gray-400" /> Assinar calendário</button>
@@ -1095,6 +1159,7 @@ export default function GestaoChabraPage() {
                           anexos={anexosCount.get(t.id_tarefa) ?? 0}
                           campos={campos}
                           sla={slaMap?.get(t.id_tarefa)}
+                          onPassar={(dentro) => { if (dentro) hoverRef.current = t.id_tarefa; else if (hoverRef.current === t.id_tarefa) hoverRef.current = null; }}
                           arrastavel={podeEditar && quadroAgrupar !== "etiqueta" && !t.sub_linha}
                           arrastando={dragId === t.id_tarefa}
                           selecionavel={selecaoModo && !t.sub_linha}
@@ -1280,6 +1345,27 @@ export default function GestaoChabraPage() {
           podeEditar={podeEditar}
         />
       )}
+
+      {popAtalho && (
+          <AtalhoPopover
+            tipo={popAtalho.tipo}
+            tarefa={popAtalho.t}
+            x={popAtalho.x}
+            y={popAtalho.y}
+            etiquetas={etiquetasCat}
+            onFechar={() => setPopAtalho(null)}
+            onPrazo={(iso) => {
+              const t = popAtalho.t;
+              setPopAtalho(null);
+              salvar.mutate({ id_tarefa: t.id_tarefa, id_quadro: t.id_quadro, prazo: iso }, { onSuccess: () => toast.success(iso ? "Prazo mudado" : "Prazo tirado") });
+            }}
+            onEtiquetas={(lista) => {
+              const t = popAtalho.t;
+              salvar.mutate({ id_tarefa: t.id_tarefa, id_quadro: t.id_quadro, etiquetas: lista });
+            }}
+          />
+      )}
+      <AtalhosAjuda open={ajudaAtalhos} onClose={() => setAjudaAtalhos(false)} />
 
       {quadro && (
         <ModelosManagerModal
