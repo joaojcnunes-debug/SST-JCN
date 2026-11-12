@@ -2090,6 +2090,68 @@ export function useAcaoMassa() {
   });
 }
 
+// ── Lixeira (v361, 11/11/2026) ──────────────────────────────────────────────────────────────────────────────────
+// Cartão ou lista excluídos ficam 180 dias na Lixeira. O banco guarda o retrato na exclusão (gatilho) e devolve tudo
+// como era (gestao_lixeira_restaurar). Cada pessoa vê o que excluiu; gestores veem tudo (lista restrita só para gestor vinculado).
+
+/** Dias que um item fica na Lixeira (o mesmo prazo de gestao_lixeira_limpar). */
+export const DIAS_LIXEIRA = 180;
+
+export interface ItemLixeira {
+  id: string;
+  tipo: "tarefa" | "quadro";
+  id_item: string;
+  id_quadro: string;
+  titulo: string;
+  nome_quadro: string | null;
+  quadro_existe: boolean;
+  mae_existe: boolean;
+  excluida_por_nome: string;
+  minha: boolean;
+  excluida_em: string;
+  expira_em: string;
+  n_subtarefas: number;
+  n_comentarios: number;
+  n_anexos: number;
+  n_tarefas: number;
+  pode_restaurar: boolean;
+}
+
+export function useLixeira(enabled: boolean) {
+  return useQuery({
+    queryKey: ["gestao-lixeira"],
+    enabled,
+    staleTime: 10 * 1000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.rpc("gestao_lixeira_listar" as never);
+      if (error) throw error;
+      return (data ?? []) as unknown as ItemLixeira[];
+    },
+  });
+}
+
+export function useRestaurarLixeira() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.rpc("gestao_lixeira_restaurar" as never, { p_id: id } as never);
+      if (error) throw error;
+      return data as unknown as { tipo: "tarefa" | "quadro"; id_item: string; id_quadro: string; titulo: string; tarefas: number };
+    },
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["gestao-lixeira"] });
+      if (r.tipo === "quadro") qc.invalidateQueries({ queryKey: ["gestao-quadros"] });
+      refazerListasDeTarefas(qc);
+    },
+    onError: (e) => {
+      toast.error(mensagemErro(e, "Não foi possível restaurar."));
+      qc.invalidateQueries({ queryKey: ["gestao-lixeira"] });
+    },
+  });
+}
+
 export function useExcluirTarefa() {
   const qc = useQueryClient();
   return useMutation({

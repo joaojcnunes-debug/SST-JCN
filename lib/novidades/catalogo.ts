@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-lixeira",
+    data: "2026-11-11",
+    tipo: "novidade",
+    titulo: "Gestão: Lixeira de cartões e listas",
+    texto:
+      "Cartão ou lista excluídos vão para a Lixeira (menu da Gestão, abaixo de Membros e acessos) e podem ser " +
+      "restaurados por 180 dias, com comentários, checklist, anexos, subtarefas e responsáveis, sem avisar ninguém de novo.",
+    onde: "Gestão › Lixeira",
+    impacto: "Você vê o que excluiu; os gestores veem tudo. Depois de 180 dias o item sai sozinho.",
+    versoes: ["0.3.280"],
+  },
+  {
     id: "gestao-data-criacao-no-cartao",
     data: "2026-11-11",
     tipo: "melhoria",
