@@ -2571,6 +2571,67 @@ export function useProdutosCatalogo(enabled: boolean) {
   });
 }
 
+// ---- v350 (= v363 do Painel): tela "Produtos" (só gestores): criar, renomear e excluir os produtos da Gestão ----
+// A lista é a do campo Produtos (a mesma do catálogo acima). Renomear muda em tudo (cartões, formulários, automações,
+// responsáveis por produto, filtros salvos); excluir tira da lista e dos formulários e os cartões mantêm.
+
+export interface ProdutoGestao {
+  nome: string;
+  na_lista: boolean;
+  posicao: number | null;
+  cartoes: number;
+  automacoes: number;
+  formularios: number;
+  /** Nomes antigos (renomeados) que viram este ao chegar num cartão. */
+  apelidos: string[];
+}
+
+export function useProdutosGestao(enabled: boolean) {
+  return useQuery({
+    queryKey: ["gestao-produtos"],
+    enabled,
+    staleTime: 15_000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.rpc("gestao_produtos_listar" as never);
+      if (error) throw error;
+      return (data ?? []) as unknown as ProdutoGestao[];
+    },
+  });
+}
+
+/** Tudo o que mostra produto volta a ler depois de mexer na lista. */
+function refazerProdutos(qc: QueryClient) {
+  for (const queryKey of [["gestao-produtos"], ["gestao-produtos-catalogo"], ["gestao-campos"], ["gestao-formularios"],
+    ["gestao-automacoes"], ["gestao-produto-responsaveis"], ["gestao-filtros"]]) qc.invalidateQueries({ queryKey });
+  refazerListasDeTarefas(qc);
+}
+
+function useMutacaoProduto<P>(fn: string, args: (p: P) => Record<string, string>, falha: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: P) => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.rpc(fn as never, args(p) as never);
+      if (error) throw error;
+      return data as unknown as Record<string, number | string | boolean>;
+    },
+    onSuccess: () => refazerProdutos(qc),
+    onError: (e) => {
+      toast.error(mensagemErro(e, falha));
+      qc.invalidateQueries({ queryKey: ["gestao-produtos"] });
+    },
+  });
+}
+
+export const useCriarProduto = () =>
+  useMutacaoProduto<string>("gestao_produto_criar", (nome) => ({ p_nome: nome }), "Não foi possível criar o produto.");
+export const useRenomearProduto = () =>
+  useMutacaoProduto<{ de: string; para: string }>("gestao_produto_renomear", (p) => ({ p_de: p.de, p_para: p.para }), "Não foi possível renomear.");
+export const useExcluirProduto = () =>
+  useMutacaoProduto<string>("gestao_produto_excluir", (nome) => ({ p_nome: nome }), "Não foi possível excluir.");
+
+
 /** Nomes das empresas ligadas às tarefas da tela (cartões). Só as que a pessoa vê (RLS de empresas). */
 export function useNomesEmpresas(ids: (string | null | undefined)[]) {
   const unicos = [...new Set(ids.filter((x): x is string => !!x))].sort();
