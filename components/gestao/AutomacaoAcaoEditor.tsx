@@ -231,6 +231,18 @@ export default function AutomacaoAcaoEditor({
         {acao.tipo === "criar_tarefa_quadro" && (
           <>
             <input defaultValue={acao.titulo_template ?? ""} disabled={disabled} onBlur={(e) => onChange({ titulo_template: e.target.value.trim() || undefined })} placeholder="título (use {titulo})" className={`${sel} min-w-[10rem]`} />
+            {/* v348: etiquetas do cartão novo (ex.: o tipo do serviço), somadas às copiadas. */}
+            <input
+              defaultValue={(acao.etiquetas ?? []).join(", ")}
+              disabled={disabled}
+              onBlur={(e) => {
+                const lista = [...new Set(e.target.value.split(",").map((x) => x.trim()).filter(Boolean))];
+                onChange({ etiquetas: lista.length ? lista : undefined });
+              }}
+              placeholder="etiquetas do cartão novo (vírgula)"
+              title="Etiquetas que o cartão novo recebe, além das copiadas. Ex.: Empresa nova"
+              className={`${sel} min-w-[12rem]`}
+            />
             <label className="inline-flex items-center gap-1 text-xs text-gray-500">
               <input type="checkbox" disabled={disabled} checked={acao.copiar_campos === "true"} onChange={(e) => onChange({ copiar_campos: e.target.checked ? "true" : undefined })} className="size-3.5 rounded accent-marca-primary" /> <Dica texto={DICAS_GESTAO_AUTOMACAO.copiar_campos}>copiar campos</Dica>
             </label>

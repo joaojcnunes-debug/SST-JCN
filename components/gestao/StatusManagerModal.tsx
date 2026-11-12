@@ -89,6 +89,34 @@ export default function StatusManagerModal({
             >
               <Paperclip className="size-4" />
             </button>
+            {/* v348: limite de cartões abertos na coluna (WIP). Vazio = sem limite. */}
+            {s.tipo !== "concluido" && (
+              <div className="flex shrink-0 items-center gap-1" title="Limite de cartões abertos nesta coluna (WIP). É um aviso: quem passa do limite confirma ao mover.">
+                <input
+                  type="number"
+                  min={1}
+                  defaultValue={s.limite_wip ?? ""}
+                  disabled={!podeEditar}
+                  placeholder="WIP"
+                  aria-label={`Limite de cartões em ${s.nome}`}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim() === "" ? null : Math.max(1, parseInt(e.target.value, 10) || 0) || null;
+                    if (v !== (s.limite_wip ?? null)) salvar.mutate({ id: s.id, id_quadro: idQuadro, limite_wip: v });
+                  }}
+                  className="w-16 rounded-md border border-gray-200 px-1.5 py-1 text-xs focus:border-marca-primary focus:outline-none"
+                />
+                <label className="inline-flex items-center gap-1 text-[11px] text-gray-500">
+                  <input
+                    type="checkbox"
+                    checked={!!s.limite_por_pessoa}
+                    disabled={!podeEditar || !s.limite_wip}
+                    onChange={(e) => salvar.mutate({ id: s.id, id_quadro: idQuadro, limite_por_pessoa: e.target.checked })}
+                    className="size-3.5 rounded accent-marca-primary"
+                  />
+                  por pessoa
+                </label>
+              </div>
+            )}
             {podeEditar && (
               <div className="flex shrink-0 items-center">
                 <button type="button" onClick={() => mover(i, -1)} disabled={i === 0} className="rounded p-1 text-gray-400 hover:bg-gray-100 disabled:opacity-30"><ChevronUp className="size-4" /></button>
@@ -104,6 +132,7 @@ export default function StatusManagerModal({
           </button>
         )}
         <p className="pt-1 text-xs text-gray-400">Requisitos: com <ListChecks className="inline size-3.5" /> a tarefa só entra na coluna com o checklist todo marcado; com <Paperclip className="inline size-3.5" />, só com um anexo. Automações não são barradas, e o Admin pode forçar (fica no histórico).</p>
+        <p className="text-xs text-gray-400"><b>WIP</b> é o limite de cartões abertos na coluna (no total, ou <b>por pessoa</b> responsável). O cabeçalho mostra a contagem e fica vermelho quando passa; arrastar para uma coluna cheia pede confirmação.</p>
         <p className="text-xs text-gray-400">O tipo define a semântica: <b>Concluído</b> risca a tarefa e ignora atraso; <b>Não iniciado</b> é o status inicial de novas tarefas. Um status só pode ser excluído quando não há tarefas nele.</p>
       </div>
     </Modal>
