@@ -4,7 +4,7 @@ import type React from "react";
 import { Check } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
-import { PRIORIDADES, type GestaoTarefa } from "@/lib/hooks/useGestao";
+import { PRIORIDADES, useTarefaMae, type GestaoTarefa } from "@/lib/hooks/useGestao";
 import { COR_SITUACAO, ROTULO_SITUACAO, type Intervalo, type Situacao } from "@/lib/gestao/calendario";
 import { cn } from "@/lib/utils";
 
@@ -137,7 +137,8 @@ const dataBr = (d: string, h: string | null) => `${format(parseISO(d), "dd/MM/yy
 export function DicaTarefa({ i, x, y }: { i: ItemCal; x: number; y: number }) {
   const largura = 288;
   const left = typeof window !== "undefined" ? Math.min(x + 14, window.innerWidth - largura - 8) : x;
-  const top = typeof window !== "undefined" ? Math.min(y + 14, window.innerHeight - 200) : y;
+  // Com o texto do cartão a dica cresce (até ~380 px): sobe o bastante para caber na tela.
+  const top = typeof window !== "undefined" ? Math.max(8, Math.min(y + 14, window.innerHeight - 380)) : y;
   const prio = PRIORIDADES.find((p) => p.value === i.t.prioridade);
   const linha = (rotulo: string, valor: React.ReactNode) => (
     <p className="flex gap-1.5"><span className="shrink-0 font-semibold text-gray-700">{rotulo}:</span><span className="min-w-0 text-gray-600">{valor}</span></p>
@@ -153,6 +154,23 @@ export function DicaTarefa({ i, x, y }: { i: ItemCal; x: number; y: number }) {
       {linha("Prazo", dataBr(i.iv.fim, i.iv.horaFim))}
       {linha("Responsáveis", i.resp.length ? i.resp.join(", ") : "—")}
       {prio && linha("Prioridade", <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full" style={{ background: prio.cor }} />{prio.label}</span>)}
+      <TextoDoCartao t={i.t} />
+    </div>
+  );
+}
+
+/**
+ * 11/11/2026: o texto do cartão na dica, sem precisar abrir — na subtarefa (visita) o do cartão original
+ * (empresa, CNPJ, produtos…), lido do banco ao passar o mouse; na tarefa, a descrição dela. Até 8 linhas.
+ */
+function TextoDoCartao({ t }: { t: GestaoTarefa }) {
+  const { data: mae } = useTarefaMae(t.id_tarefa_pai ?? null);
+  const texto = (t.id_tarefa_pai ? mae?.descricao : t.descricao)?.trim();
+  if (!texto) return null;
+  return (
+    <div className="mt-1.5 border-t border-gray-100 pt-1.5">
+      <p className="font-semibold text-gray-700">{t.id_tarefa_pai ? "Do cartão original" : "Descrição"}</p>
+      <p className="line-clamp-8 whitespace-pre-line break-words text-gray-600">{texto}</p>
     </div>
   );
 }

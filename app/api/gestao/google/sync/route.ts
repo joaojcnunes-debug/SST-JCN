@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createSupabaseServiceClient, createSupabaseServerClient } from "@/lib/supabase/client";
-import { podeProcessar, montarEvento, origemPublica, planejarDestinatarios, tokenConfere, type TarefaEvento } from "@/lib/gestao/google/helpers";
+import { podeProcessar, montarEvento, descricaoDoEvento, origemPublica, planejarDestinatarios, tokenConfere, type TarefaEvento } from "@/lib/gestao/google/helpers";
+import { linkTarefa } from "@/lib/gestao/link-tarefa";
 import { puxarInboundTodas } from "@/lib/gestao/google/inbound";
 import { enviarAvisosPendentes, escolherCanalEmail } from "@/lib/gestao/avisos-email";
 
@@ -140,7 +141,7 @@ export async function GET(req: NextRequest) {
 
   for (const item of fila) {
     try {
-      await processarItem(sb, item, { clientId, clientSecret, encKey });
+      await processarItem(sb, item, { clientId, clientSecret, encKey, appUrl: origemPublica(process.env.APP_URL, req.nextUrl.origin) });
       await sb.from("gestao_google_fila").update({ processado_em: new Date().toISOString() } as never).eq("id", item.id);
       ok++;
     } catch {
@@ -171,14 +172,14 @@ export async function GET(req: NextRequest) {
 async function processarItem(
   sb: ReturnType<typeof createSupabaseServiceClient>,
   item: { id_tarefa: string; operacao: string },
-  cfg: { clientId: string; clientSecret: string; encKey: string }
+  cfg: { clientId: string; clientSecret: string; encKey: string; appUrl: string }
 ): Promise<void> {
   const idTarefa = item.id_tarefa;
 
   // Descobre a tarefa e se o status é "concluido" (tipo do status no quadro).
   const { data: tRow } = await sb
     .from("gestao_tarefas")
-    .select("id_tarefa,id_quadro,titulo,prazo,data_inicio,hora_inicio,hora_fim,status")
+    .select("id_tarefa,id_quadro,titulo,descricao,id_tarefa_pai,prazo,data_inicio,hora_inicio,hora_fim,status")
     .eq("id_tarefa", idTarefa)
     .maybeSingle();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -225,7 +226,23 @@ async function processarItem(
     conectados: conectados.map((c) => c.usuario_email as string),
     ehDelete,
   });
-  const body = !ehDelete && tarefa ? montarEvento(tarefa as TarefaEvento) : null;
+  // 11/11/2026: o evento leva o texto do cartão e, na subtarefa (visita), o do cartão original — este só para
+  // quem pode ver o original (conferido conta a conta pela RLS, gestao_google_ve_tarefa). (O JCN não tem a tarefa
+  // de acesso restrito do Painel, v306, que lá leva só o link.)
+  let body: ReturnType<typeof montarEvento> | null = null;
+  let bodySemMae: ReturnType<typeof montarEvento> | null = null;
+  let mae: { titulo: string; descricao: string | null } | null = null;
+  if (!ehDelete && tarefa) {
+    const link = linkTarefa(cfg.appUrl, { id_quadro: tarefa.id_quadro, id_tarefa: tarefa.id_tarefa });
+    if (tarefa.id_tarefa_pai) {
+      const { data: m } = await sb.from("gestao_tarefas").select("titulo,descricao").eq("id_tarefa", tarefa.id_tarefa_pai).maybeSingle();
+      const mm = m as { titulo: string; descricao: string | null } | null;
+      if (mm && (mm.descricao ?? "").trim()) mae = mm;
+    }
+    const propria = tarefa.descricao as string | null;
+    body = montarEvento(tarefa as TarefaEvento, descricaoDoEvento({ descricao: propria, mae, link }));
+    bodySemMae = mae ? montarEvento(tarefa as TarefaEvento, descricaoDoEvento({ descricao: propria, link })) : body;
+  }
 
   for (const { email, acao } of plano) {
     if (convidadosGoogle.has(email) && !comEvento.includes(email)) continue;
@@ -249,6 +266,12 @@ async function processarItem(
     // fora e lembretes próprios. Nunca é apagado: tarefa concluída/sem prazo deixa o evento como está;
     // tarefa apagada só solta o vínculo. Na atualização, não troca os lembretes dela.
     const eventoDaPessoa = mapa?.origem === "google";
+    // O cartão original só vai para a agenda de quem pode abri-lo no painel.
+    let corpo = body;
+    if (mae && tarefa?.id_tarefa_pai) {
+      const { data: ve } = await sb.rpc("gestao_google_ve_tarefa" as never, { p_email: email, p_id_tarefa: tarefa.id_tarefa_pai } as never);
+      if (ve !== true) corpo = bodySemMae;
+    }
 
     const authH = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
     const encCal = encodeURIComponent(calendarId);
@@ -272,7 +295,8 @@ async function processarItem(
     let resp: Response | null = null;
     let criado = false;
     if (mapa?.event_id) {
-      const patch = eventoDaPessoa && body ? { ...body, reminders: undefined } : body;
+      // O evento que a pessoa criou é dela: não troca os lembretes nem o texto que ela escreveu.
+      const patch = eventoDaPessoa && corpo ? { ...corpo, reminders: undefined, description: undefined } : corpo;
       resp = await fetch(`${CAL_BASE}/${encCal}/events/${encodeURIComponent(mapa.event_id)}`, {
         method: "PATCH",
         headers: authH,
@@ -286,7 +310,7 @@ async function processarItem(
       resp = await fetch(`${CAL_BASE}/${encCal}/events`, {
         method: "POST",
         headers: authH,
-        body: JSON.stringify(body),
+        body: JSON.stringify(corpo),
       });
       criado = true;
     }

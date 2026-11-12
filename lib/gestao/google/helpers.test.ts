@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { LEMBRETE_MINUTOS_ANTES, convidadosDoEvento, deveAplicarInbound, deveImportarEvento, montarEvento, origemPublica, planejarDestinatarios, textoDaDescricao, writebackDoEvento } from "./helpers";
+import { DESCRICAO_EVENTO_MAX, LEMBRETE_MINUTOS_ANTES, convidadosDoEvento, descricaoDoEvento, deveAplicarInbound, deveImportarEvento, montarEvento, origemPublica, planejarDestinatarios, textoDaDescricao, writebackDoEvento } from "./helpers";
 
 describe("origemPublica (retorno do Google e webhook)", () => {
   test("usa o APP_URL em vez do endereço interno do container", () => {
@@ -202,4 +202,29 @@ describe("Evento criado na agenda vira tarefa (v301)", () => {
     const wb = writebackDoEvento({ start: { dateTime: "2026-10-22T09:00:00-03:00" }, end: { dateTime: "2026-10-22T10:30:00-03:00" } });
     assert.deepEqual(wb, { prazo: "2026-10-22", data_inicio: null, hora_inicio: "09:00:00", hora_fim: "10:30:00" });
   });
+});
+
+
+test("descricaoDoEvento: subtarefa leva o cartão original, depois a própria, e o link no fim", () => {
+  const d = descricaoDoEvento({ descricao: "Levar o decibelímetro", mae: { titulo: "EMPADAS TERE LTDA", descricao: "CNPJ: 57.929.213/0001-10" }, link: "https://painel/x" });
+  assert.equal(d, "Do cartão original: EMPADAS TERE LTDA\n\nCNPJ: 57.929.213/0001-10\n\n— — —\n\nDesta subtarefa:\nLevar o decibelímetro\n\nAbrir no Painel SST: https://painel/x");
+});
+
+test("descricaoDoEvento: tarefa comum, sem texto e original sem descrição", () => {
+  assert.equal(descricaoDoEvento({ descricao: "  Ver NR-35 ", link: "L" }), "Ver NR-35\n\nAbrir no Painel SST: L");
+  assert.equal(descricaoDoEvento({ descricao: null, link: "L" }), "Abrir no Painel SST: L");
+  assert.equal(descricaoDoEvento({ descricao: "A", mae: { titulo: "M", descricao: " " }, link: "L" }), "A\n\nAbrir no Painel SST: L");
+});
+
+test("descricaoDoEvento: texto longo é cortado e o link sempre fica", () => {
+  const d = descricaoDoEvento({ descricao: "x".repeat(10000), link: "https://painel/x" });
+  assert.ok(d.length <= DESCRICAO_EVENTO_MAX, String(d.length));
+  assert.ok(d.endsWith("Abrir no Painel SST: https://painel/x"));
+  assert.ok(d.includes("…"));
+});
+
+test("montarEvento: com texto leva description; sem, não manda o campo", () => {
+  const t = { id_tarefa: "T1", titulo: "Visita", prazo: "2026-11-20", data_inicio: null };
+  assert.equal(montarEvento(t, "abc").description, "abc");
+  assert.equal("description" in montarEvento(t), false);
 });

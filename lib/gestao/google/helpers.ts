@@ -72,6 +72,37 @@ export interface CalendarEvent {
   end: CampoEvento;
   reminders: { useDefault: false; overrides: { method: "popup"; minutes: number }[] };
   extendedProperties: { private: { gestao_id_tarefa: string } };
+  /** 11/11/2026: o texto do cartão (e, na subtarefa, o do cartão original) + o link para abrir no painel. */
+  description?: string;
+}
+
+/** Teto do texto do evento: o Google aceita bem mais, mas agenda de celular corta e o resto é o link. */
+export const DESCRICAO_EVENTO_MAX = 4000;
+
+/**
+ * 11/11/2026 ("essas informações têm que ir também pra agenda, igual é no Runrun"): o texto do evento.
+ *  - Subtarefa (visita): primeiro o cartão original ("Do cartão original: <título>" + a descrição dele), depois a
+ *    descrição da própria subtarefa, se tiver.
+ *  - Tarefa: a descrição dela.
+ *  - Sempre termina com o link para abrir o cartão no painel.
+ * `mae` só vem quando a pessoa da agenda pode ver o cartão original (o worker confere conta a conta).
+ * Puro (testado).
+ */
+export function descricaoDoEvento(a: {
+  descricao?: string | null;
+  mae?: { titulo: string; descricao?: string | null } | null;
+  link: string;
+}): string {
+  const partes: string[] = [];
+  const maeTxt = (a.mae?.descricao ?? "").trim();
+  if (a.mae && maeTxt) partes.push(`Do cartão original: ${a.mae.titulo.trim()}\n\n${maeTxt}`);
+  const propria = (a.descricao ?? "").trim();
+  if (propria) partes.push(a.mae && maeTxt ? `Desta subtarefa:\n${propria}` : propria);
+  const rodape = `Abrir no Painel SST: ${a.link}`;
+  let corpo = partes.join("\n\n— — —\n\n");
+  const max = DESCRICAO_EVENTO_MAX - rodape.length - 2;
+  if (corpo.length > max) corpo = `${corpo.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
+  return corpo ? `${corpo}\n\n${rodape}` : rodape;
 }
 
 /** Fuso das tarefas: as horas do painel são horário de Brasília. */
@@ -111,7 +142,7 @@ function deMinutos(m: number): string {
  * - Com hora (v298): início = data_inicio (ou prazo) às hora_inicio; fim = prazo às hora_fim. Falta
  *   uma das horas → 1 h de duração a partir da que existe. Fim antes do início → fim = início + 1 h.
  */
-export function montarEvento(t: TarefaEvento): CalendarEvent {
+export function montarEvento(t: TarefaEvento, descricao?: string): CalendarEvent {
   const inicio = t.data_inicio ?? t.prazo!;
   const fimBase = t.prazo!;
   const hIni = t.hora_inicio ? paraMinutos(t.hora_inicio) : null;
@@ -119,6 +150,7 @@ export function montarEvento(t: TarefaEvento): CalendarEvent {
   const base = {
     summary: t.titulo,
     extendedProperties: { private: { gestao_id_tarefa: t.id_tarefa } },
+    ...(descricao !== undefined ? { description: descricao } : {}),
   };
 
   if (hIni == null && hFim == null) {
