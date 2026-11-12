@@ -21,7 +21,7 @@ import { useUserStore } from "@/lib/store";
 import {
   useSalvarTarefa, useExcluirTarefa,
   useVinculados, useSalvarVinculados,
-  useSubtarefas, useSalvarSubtarefas, useAbrirSubtarefa, useTituloTarefa, useComentariosDasSubtarefas,
+  useSubtarefas, useSalvarSubtarefas, useAbrirSubtarefa, useTarefaMae, useComentariosDasSubtarefas,
   useAddComentario, useExcluirComentario,
   useDependencias, useAddDependencia, useExcluirDependencia,
   useUsuarios, gerarIaGestao, useRegistrarAtividade, useCamposDeOrigem, useProdutosCatalogo, useQuadros, useChecklist, useAddChecklist,
@@ -228,8 +228,11 @@ export default function TarefaModal({
   // subtarefa. Na lista Comercial, Produtos é campo da própria lista (opções dela); nas outras, as opções vêm da v342.
   const campoProdutos = campos.find((c) => c.id === CAMPO_PRODUTOS_ID) ?? null;
   const { data: catalogoProdutos = EMPTY_TEXTOS } = useProdutosCatalogo(open && !ehSub && !campoProdutos);
-  const { data: tituloPaiLido } = useTituloTarefa(idPai && !tarefaMap.has(idPai) ? idPai : null);
-  const tituloPai = idPai ? tarefaMap.get(idPai)?.titulo ?? tituloPaiLido ?? null : null;
+  // 0.3.279 (= Painel 0.3.938): a janela da subtarefa mostra também a descrição do cartão original (lida sempre do
+  // banco: a da lista em mãos pode estar velha ou nem estar carregada).
+  const { data: mae } = useTarefaMae(idPai);
+  const tituloPai = idPai ? tarefaMap.get(idPai)?.titulo ?? mae?.titulo ?? null : null;
+  const descricaoMae = (idPai && mae?.descricao?.trim()) || null;
   // v292: duplo clique numa subtarefa abre a janela completa dela (por cima desta).
   const abrirSubtarefa = useAbrirSubtarefa();
   const [subAberta, setSubAberta] = useState<GestaoTarefa | null>(null);
@@ -915,8 +918,17 @@ export default function TarefaModal({
           <div>
             {/* Aprovação pendente (Painel 0.3.919): decide aqui, sem depender da Caixa de entrada da aprovadora. */}
             {tarefa?.id_tarefa && <AprovacaoNaTarefa idTarefa={tarefa.id_tarefa} podeEditarQuadro={podeEditar} onDecidido={onClose} />}
+            {descricaoMae && (
+              // Subtarefa: a descrição do cartão original (empresa, CNPJ, produtos…), só leitura; muda-se lá na tarefa.
+              <section aria-label="Descrição do cartão original" className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+                <p className="mb-1 text-xs font-medium text-gray-600">
+                  Do cartão original{tituloPai && <span className="font-normal text-gray-500"> · {tituloPai}</span>}
+                </p>
+                <div className="max-h-72 overflow-y-auto whitespace-pre-wrap break-words text-sm text-gray-800">{descricaoMae}</div>
+              </section>
+            )}
             <div className="mb-1 flex items-center justify-between">
-              <label htmlFor={ro ? undefined : idDescricao} className="block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.descricao}>Descrição</Dica></label>
+              <label htmlFor={ro ? undefined : idDescricao} className="block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.descricao}>{descricaoMae ? "Descrição da subtarefa" : "Descrição"}</Dica></label>
               {!ro && (
                 <button type="button" onClick={iaDescricao} disabled={iaLoad !== null} className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-marca-primary hover:bg-marca-light/50 disabled:opacity-50">
                   {iaLoad === "desc" ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} Redigir com IA
@@ -929,7 +941,7 @@ export default function TarefaModal({
                 {descricao.trim() || <span className="text-gray-400">Sem descrição.</span>}
               </div>
             ) : (
-              <textarea id={idDescricao} value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={12} className={`${inputCls} resize-y`} />
+              <textarea id={idDescricao} value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={descricaoMae ? 5 : 12} className={`${inputCls} resize-y`} />
             )}
           </div>
         )}
