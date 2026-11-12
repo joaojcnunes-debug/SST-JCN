@@ -96,6 +96,7 @@ export const TELAS_DO_MODULO: Partial<Record<ModuloPermitido, TelaModulo[]>> = {
     t("/consolidacao-grupo", "Grupos de empresas"),
     t("/consolidacao-grupo/por-empresa", "Por empresa"),
     t("/consolidacao-grupo/conciliacao", "Conciliação DRPS/QPS × AEP"),
+    t("/consolidacao-grupo/conciliacao-grupo", "Conciliação por grupo"),
     t("/consolidacao-grupo/vendas", "Vendas"),
     t("/consolidacao-grupo/intervencoes", "Intervenções"),
   ],

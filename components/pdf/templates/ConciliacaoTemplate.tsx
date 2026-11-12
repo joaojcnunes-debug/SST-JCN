@@ -6,6 +6,8 @@ import type { EmpresaPdf } from "@/components/pdf/templates/PsicossocialEmpresaT
 // Sai da foto gravada em psico_conciliacao_fechamentos (v310): nada é recalculado, então o
 // PDF de um fechamento é sempre o mesmo. Só a situação das ações vem de hoje (Plano de Ação).
 // renderToStaticMarkup + Puppeteer (lib/pdf/psicossocial-empresa.ts › responderPdf), A4 retrato.
+// v0.3.285 (banco v354): também o fechamento de um GRUPO (`grupo`): empresas do grupo, documento de cada
+// empresa, as empresas de cada setor e uma ação por empresa.
 
 const AZUL = "#4338ca";
 
@@ -19,6 +21,8 @@ export interface AcaoConciliacaoPdf {
 
 export interface ConciliacaoPdfProps {
   empresa: EmpresaPdf;
+  /** Fechamento de um grupo (v0.3.285): as empresas, com o rótulo curto usado nos itens. */
+  grupo?: { nome: string; empresas: Array<{ nome: string; cnpj: string | null; rotulo: string }> };
   logoUrl?: string | null;
   geradoEm: string;
   fechamento: {
@@ -26,12 +30,14 @@ export interface ConciliacaoPdfProps {
     em: string;
     por: string;
     observacao: string | null;
-    documentos: Array<{ origem: string; titulo: string; data: string | null }>;
+    documentos: Array<{ origem: string; titulo: string; data: string | null; empresa?: string }>;
     /** A régua gravada no fechamento (`REGUA` de conciliacao.ts). */
     regua: Record<string, unknown>;
     totais: Record<string, Record<string, number>>;
+    /** Os questionários comparados (resumo.questionarios); sem ele, todas as chaves de `totais`. */
+    questionarios?: string[];
     pareceres: { pendentes: number; semAcao: number; desatualizados: number; comParecer: number } | null;
-    itens: ItemFechamento[];
+    itens: Array<ItemFechamento & { empresas?: string[]; id_acoes?: string[] }>;
   };
   acoes: Record<string, AcaoConciliacaoPdf>;
 }
@@ -60,9 +66,10 @@ const CLASSES_RESUMO = ["Nível divergente", "Só questionário", "Só AEP", "Co
 
 const dataBr = (s: string | null) => (s ? s.slice(0, 10).split("-").reverse().join("/") : "—");
 
-export function ConciliacaoTemplate({ empresa, logoUrl, geradoEm, fechamento: f, acoes }: ConciliacaoPdfProps) {
-  const questionarios = Object.keys(f.totais);
-  const porSetor = new Map<string, ItemFechamento[]>();
+export function ConciliacaoTemplate({ empresa, grupo, logoUrl, geradoEm, fechamento: f, acoes }: ConciliacaoPdfProps) {
+  // A régua sempre grava DRPS e QPS em `totais`; o resumo diz quais existiam (12/11: sem isto saía "QPS × AEP" zerado).
+  const questionarios = f.questionarios?.length ? f.questionarios.filter((q) => q in f.totais) : Object.keys(f.totais);
+  const porSetor = new Map<string, ConciliacaoPdfProps["fechamento"]["itens"]>();
   for (const i of [...f.itens].sort((a, b) => a.setor.localeCompare(b.setor, "pt-BR") || a.fator.localeCompare(b.fator, "pt-BR"))) {
     const lista = porSetor.get(i.setor);
     if (lista) lista.push(i);
@@ -81,10 +88,12 @@ export function ConciliacaoTemplate({ empresa, logoUrl, geradoEm, fechamento: f,
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {logoUrl ? <img src={logoUrl} alt="" style={{ height: 40, objectFit: "contain" }} /> : null}
         <div style={{ flex: 1 }}>
-          <h1>Conciliação dos questionários psicossociais com a AEP</h1>
-          <p style={{ margin: "2px 0 0", fontSize: 12, fontWeight: 700 }}>{empresa.razaoSocial || empresa.nome}</p>
+          <h1>Conciliação dos questionários psicossociais com a AEP{grupo ? " — grupo de empresas" : ""}</h1>
+          <p style={{ margin: "2px 0 0", fontSize: 12, fontWeight: 700 }}>{grupo ? `Grupo ${grupo.nome}` : empresa.razaoSocial || empresa.nome}</p>
           <p style={{ margin: "1px 0 0", fontSize: 9.5, color: "#374151" }}>
-            {[empresa.cnpj ? `CNPJ ${empresa.cnpj}` : null, empresa.endereco].filter(Boolean).join(" · ")}
+            {grupo
+              ? `${grupo.empresas.length} empresa(s)`
+              : [empresa.cnpj ? `CNPJ ${empresa.cnpj}` : null, empresa.endereco].filter(Boolean).join(" · ")}
           </p>
         </div>
         <div style={{ fontSize: 8.5, color: "#6b7280", textAlign: "right" }}>
@@ -104,20 +113,54 @@ export function ConciliacaoTemplate({ empresa, logoUrl, geradoEm, fechamento: f,
         aprofundar com Análise Ergonômica do Trabalho (AET, NR-17) ou descartar com justificativa. É parte do processo de
         identificação e avaliação dos riscos do PGR (NR-01), que inclui a consulta aos trabalhadores sobre a percepção dos riscos.
       </p>
+      {grupo && (
+        <p>
+          A comparação foi feita com o <b>grupo de empresas</b> inteiro, porque os trabalhadores transitam entre elas: entraram a
+          AEP e o questionário mais recentes de cada empresa. Quando o mesmo setor e fator aparecem em mais de uma empresa, vale o
+          pior nível de cada fonte. As ações de cada risco confirmado foram criadas no Plano de Ação de cada empresa em que o setor
+          aparece.
+        </p>
+      )}
+
+      {grupo && (
+        <>
+          <h2>Empresas do grupo</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Empresa</th>
+                <th style={{ width: "24%" }}>CNPJ</th>
+                <th style={{ width: "12%" }}>Rótulo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {grupo.empresas.map((e) => (
+                <tr key={`${e.nome}|${e.cnpj ?? ""}`}>
+                  <td>{e.nome}</td>
+                  <td>{e.cnpj ?? "—"}</td>
+                  <td>{e.rotulo}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
 
       <h2>Documentos comparados</h2>
       <table>
         <thead>
           <tr>
             <th style={{ width: "14%" }}>Origem</th>
+            {grupo && <th style={{ width: "12%" }}>Empresa</th>}
             <th>Documento</th>
             <th style={{ width: "16%" }}>Data</th>
           </tr>
         </thead>
         <tbody>
-          {f.documentos.map((d) => (
-            <tr key={d.origem}>
+          {f.documentos.map((d, i) => (
+            <tr key={`${d.origem}|${i}`}>
               <td>{d.origem === "QPS" ? "QPS (Questionário)" : d.origem}</td>
+              {grupo && <td>{d.empresa ?? "—"}</td>}
               <td>{d.titulo}</td>
               <td>{dataBr(d.data)}</td>
             </tr>
@@ -197,10 +240,14 @@ export function ConciliacaoTemplate({ empresa, logoUrl, geradoEm, fechamento: f,
                   <td colSpan={6}>
                     {setor}
                     {itens[0].expostos != null && <span className="meta" style={{ fontWeight: 400 }}> · {itens[0].expostos} expostos</span>}
+                    {itens[0].empresas && itens[0].empresas.length > 0 && (
+                      <span className="meta" style={{ fontWeight: 400 }}> · empresa(s) {itens[0].empresas.join(", ")}</span>
+                    )}
                   </td>
                 </tr>
                 {itens.map((i) => {
                   const a = i.id_acao ? acoes[i.id_acao] : undefined;
+                  const varias = (i.id_acoes ?? []).length > 1 ? i.id_acoes! : null;
                   return (
                     <tr key={`${i.setor_chave}|${i.id_fator}|${i.questionario}`}>
                       <td>{i.fator}</td>
@@ -220,7 +267,21 @@ export function ConciliacaoTemplate({ empresa, logoUrl, geradoEm, fechamento: f,
                         {i.justificativa && <span style={{ display: "block" }}>{i.justificativa}</span>}
                       </td>
                       <td>
-                        {a ? (
+                        {varias ? (
+                          <>
+                            {acoes[varias[0]]?.what_acao ?? ""}
+                            {varias.map((id) => {
+                              const x = acoes[id];
+                              return (
+                                <span key={id} className="meta" style={{ display: "block" }}>
+                                  {x
+                                    ? [x.id_acao, x.who_responsavel, x.when_prazo ? `prazo ${dataBr(x.when_prazo)}` : null, `hoje: ${STATUS[x.status] ?? x.status}`].filter(Boolean).join(" · ")
+                                    : `${id} (não encontrada no plano)`}
+                                </span>
+                              );
+                            })}
+                          </>
+                        ) : a ? (
                           <>
                             {a.what_acao}
                             <span className="meta" style={{ display: "block" }}>

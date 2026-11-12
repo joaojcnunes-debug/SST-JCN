@@ -92,12 +92,16 @@ export interface LadoAep {
   degrau: number | null;
   nivelAiha: string | null;
   sinais: string[];
+  /** Empresa do documento que deu este nível (na conciliação por grupo, v0.3.285). */
+  idEmpresa?: string;
 }
 
 export interface LadoQuestionario {
   degrau: number;
   nivel: string;
   respondentes: number | null;
+  /** Empresa do documento que deu este nível (na conciliação por grupo, v0.3.285). */
+  idEmpresa?: string;
 }
 
 export interface CelulaConciliacao {
@@ -136,6 +140,8 @@ export interface SetorConciliacao {
   necessitaAet: boolean;
   /** Respondentes do setor em cada questionário. */
   respondentes: Partial<Record<Questionario, number>>;
+  /** Empresas em que cada fonte avaliou o setor (por grupo, v0.3.285; por empresa, só ela). */
+  empresas: Partial<Record<OrigemFonte, string[]>>;
 }
 
 export interface ResultadoConciliacao {
@@ -156,6 +162,8 @@ export interface ResultadoConciliacao {
 /** Setor de uma AEP avaliado (mesmo sem nenhum fator "Sim"). */
 export interface SetorAvaliadoAep {
   idDocumento: string;
+  /** Empresa da AEP (opcional: por empresa é sempre a mesma). */
+  idEmpresa?: string;
   setorOriginal: string;
   /** `qtd_expostos` do setor na AEP. */
   expostos?: number | null;
@@ -193,6 +201,8 @@ export interface ParecerConciliacao {
   classe: string;
   documentos: Partial<Record<OrigemFonte, string>>;
   id_acao: string | null;
+  /** Por grupo (v354): uma ação 5W2H em cada empresa que tem o setor; `id_acao` é a primeira. */
+  id_acoes?: string[];
   criado_por?: string | null;
   criado_em?: string | null;
   atualizado_por: string | null;
@@ -313,6 +323,9 @@ const zeroTotais = (): Record<ClasseConciliacao, number> => ({
  * @param documentos     ids dos documentos usados.
  * @param setoresAep     setores avaliados de cada AEP (inclusive sem "Sim").
  * @param deparaSetores  ligações manuais da empresa (chave sugerida → chave de destino).
+ *
+ * Por grupo (v0.3.285) é a mesma função: entram as linhas de todas as empresas do grupo e os documentos
+ * mais recentes de cada uma. No mesmo setor × fator vale o pior nível, e `idEmpresa` diz de onde veio.
  */
 export function conciliarEmpresa(p: {
   linhas: readonly LinhaFonte[];
@@ -331,7 +344,7 @@ export function conciliarEmpresa(p: {
   const ligacao = new Map((p.deparaSetores ?? []).map((d) => [d.chave_de, d]));
 
   const setores = new Map<string, SetorConciliacao>();
-  const setorDe = (origem: OrigemFonte, original: string): string | null => {
+  const setorDe = (origem: OrigemFonte, original: string, idEmpresa?: string): string | null => {
     const nome = sugerirSetorCanonico(original);
     if (!nome) return null;
     const k0 = chaveSetor(nome);
@@ -347,6 +360,7 @@ export function conciliarEmpresa(p: {
       expostos: null,
       necessitaAet: false,
       respondentes: {},
+      empresas: {},
     };
     // A sugestão tira o acento de palavra que ela não conhece ("Implementacao") e põe "Ao" em
     // maiúscula: quando ela só trocou a grafia (não juntou setores, como "Administrativo
@@ -359,13 +373,17 @@ export function conciliarEmpresa(p: {
     const orig = (s.originais[origem] ??= []);
     if (!orig.includes(original)) orig.push(original);
     if (!s.avaliadoPor.includes(origem)) s.avaliadoPor.push(origem);
+    if (idEmpresa) {
+      const emps = (s.empresas[origem] ??= []);
+      if (!emps.includes(idEmpresa)) emps.push(idEmpresa);
+    }
     setores.set(k, s);
     return k;
   };
 
   for (const sa of p.setoresAep) {
     if (!p.documentos.has(sa.idDocumento)) continue;
-    const k = setorDe("AEP", sa.setorOriginal.trim());
+    const k = setorDe("AEP", sa.setorOriginal.trim(), sa.idEmpresa);
     if (!k) continue;
     const s = setores.get(k)!;
     // Variantes do mesmo setor (com altura etc.) somam os expostos.
@@ -381,7 +399,7 @@ export function conciliarEmpresa(p: {
 
   for (const l of p.linhas) {
     if (!p.documentos.has(l.idDocumento)) continue;
-    const ks = setorDe(l.origem, l.setorOriginal);
+    const ks = setorDe(l.origem, l.setorOriginal, l.idEmpresa);
     if (!ks) continue;
     if (l.origem !== "AEP") {
       questionarios.add(l.origem);
@@ -399,20 +417,20 @@ export function conciliarEmpresa(p: {
       const atual = aep.get(k);
       // Mesmo setor duas vezes na AEP (variante): vale o pior; sem nível perde para com nível.
       if (!atual || (degrau ?? 0) > (atual.degrau ?? 0)) {
-        aep.set(k, { degrau, nivelAiha: l.nivelAiha, sinais: [...l.sinais] });
+        aep.set(k, { degrau, nivelAiha: l.nivelAiha, sinais: [...l.sinais], idEmpresa: l.idEmpresa });
       }
     } else {
       const degrau = degrauQuestionario(l.nivel);
       const mapa = quest[l.origem];
       const atual = mapa.get(k);
-      if (!atual || degrau > atual.degrau) mapa.set(k, { degrau, nivel: l.nivel, respondentes: l.respondentes });
+      if (!atual || degrau > atual.degrau) mapa.set(k, { degrau, nivel: l.nivel, respondentes: l.respondentes, idEmpresa: l.idEmpresa });
     }
   }
 
   const naoIdentificado = new Set<string>();
   for (const pd of p.pendencias) {
     if (pd.origem !== "AEP" || pd.tipo !== "nao_identificado" || !p.documentos.has(pd.idDocumento)) continue;
-    const ks = setorDe("AEP", pd.setorOriginal);
+    const ks = setorDe("AEP", pd.setorOriginal, pd.idEmpresa);
     const idFator = fatorDe("AEP", pd.fatorOriginal);
     if (ks && idFator) naoIdentificado.add(`${ks}\u0001${idFator}`);
   }

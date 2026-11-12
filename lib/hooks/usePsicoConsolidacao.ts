@@ -57,10 +57,13 @@ export function useFontesDoGrupo(idGrupo: string | null, idsEmpresa: string[]) {
  * Conciliação DRPS/QPS × AEP (29/10/2026): AEP + DRPS/QPS concluídos de todas as empresas que o
  * usuário enxerga, ou de uma só (tela de detalhe).
  */
-export function useFontesConciliacao(idEmpresa?: string) {
+/** Uma empresa, as empresas de um grupo (conciliação por grupo, v0.3.285) ou, sem filtro, todas. */
+export function useFontesConciliacao(idEmpresa?: string | string[], opcoes?: { enabled?: boolean }) {
+  const chave = Array.isArray(idEmpresa) ? `grupo:${[...idEmpresa].sort().join(",")}` : idEmpresa ?? "todas";
   return useQuery({
-    queryKey: ["psico-conciliacao", idEmpresa ?? "todas"],
+    queryKey: ["psico-conciliacao", chave],
     staleTime: 60_000,
+    enabled: opcoes?.enabled ?? true,
     queryFn: () => carregarFontesConciliacao(sb(), idEmpresa),
   });
 }
