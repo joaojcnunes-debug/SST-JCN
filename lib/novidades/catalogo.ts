@@ -41,6 +41,46 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-mostrar-no-filtros",
+    data: "2026-11-11",
+    tipo: "melhoria",
+    titulo: "Gestão: escolher tarefas, subtarefas ou as duas dentro do Filtros",
+    texto:
+      "O Mostrar (Só tarefas, Só subtarefas ou Tarefas e subtarefas) saiu da barra e agora é a primeira opção do botão " +
+      "Filtros (no Calendário, na coluna de filtros da esquerda). Ele entra no Limpar e pode ser guardado num filtro salvo.",
+    onde: "Gestão › qualquer lista › Filtros › Mostrar",
+    impacto: "A lista continua abrindo com Só tarefas. Os filtros salvos antes abrem com Só tarefas.",
+    versoes: ["0.3.271"],
+  },
+  {
+    id: "gestao-contagem-subtarefa-vale-tarefa",
+    data: "2026-11-11",
+    tipo: "melhoria",
+    titulo: "Gestão: subtarefa concluída conta como uma tarefa feita",
+    texto:
+      "No Painel da lista, Total e Concluídas agora incluem as subtarefas: fechar uma subtarefa conta uma tarefa feita, e a " +
+      "tarefa-mãe também conta quando fecha. Novo gráfico Concluídas por pessoa, com o crédito para o responsável da " +
+      "subtarefa (sem responsável nela, para o da tarefa-mãe).",
+    onde: "Gestão › lista › Painel",
+    impacto:
+      "Vale mesmo com Mostrar = Tarefas. Os gráficos por status, prioridade e responsável seguem o filtro Mostrar, como antes.",
+    versoes: ["0.3.271"],
+  },
+  {
+    id: "gestao-formulario-grava-quem-criou",
+    data: "2026-11-11",
+    tipo: "melhoria",
+    titulo: "Gestão: cartão aberto por formulário mostra quem preencheu em \"Criada por\"",
+    texto:
+      "Quem envia um formulário da Gestão logado no sistema passa a ficar registrado como quem criou o cartão: aparece " +
+      "no filtro Criada por e no topo da janela da tarefa. O formulário mostra \"Enviando como\" com o seu nome. " +
+      "Quem envia sem login aparece como \"Formulário: <nome do formulário>\".",
+    onde: "Gestão › qualquer lista › Filtros › Criada por",
+    impacto:
+      "Não muda quem vê o cartão nem quem recebe os avisos. Os cartões de formulário enviados antes aparecem como \"Formulário\".",
+    versoes: ["0.3.271"],
+  },
+  {
     id: "gestao-agenda-vazia-sem-pessoa",
     data: "2026-11-11",
     tipo: "correcao",

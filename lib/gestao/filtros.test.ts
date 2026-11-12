@@ -132,3 +132,33 @@ test("criada por: e-mail, importador com apelido do Runrun e apelido sem dono", 
   assert.equal(passaFiltros(tf({ created_by: "importador", origem: { user_id: "isabela-esteves" } }), f({ criadoPor: "e:isabela@chabra.com.br" }), ctx({ chaveCriador: chave })), true);
   assert.equal(passaFiltros(tf({ created_by: "leana@chabra.com.br" }), f({ criadoPor: "e:isabela@chabra.com.br" }), ctx({ chaveCriador: chave })), false);
 });
+
+test("Mostrar (tarefas/subtarefas): padrão só tarefas, conta quando muda e filtro salvo antigo/estranho volta ao padrão", () => {
+  assert.equal(FILTRO_VAZIO.mostrar, "tarefas");
+  assert.equal(contarFiltros(f({ mostrar: "subtarefas" })), 1);
+  assert.equal(contarFiltros(f({ mostrar: "ambas", situacao: "abertas" })), 2);
+  assert.equal(comPadrao({ responsavel: "Ana" }).mostrar, "tarefas");
+  assert.equal(comPadrao({ mostrar: "ambas" }).mostrar, "ambas");
+  assert.equal(comPadrao({ mostrar: "xyz" as never }).mostrar, "tarefas");
+  // não mexe no resto do filtro
+  assert.equal(passaFiltros(tf(), f({ mostrar: "subtarefas" }), ctx()), true);
+});
+
+test("criada por (formulário): quem enviou logado; sem login, o formulário; nunca o responsável fixo do form", () => {
+  const nomes = new Map([["ana@x.com", "Ana Clara"], ["ti@x.com", "Equipe TI"]]);
+  const ap = new Map<string, string>();
+  // enviado logado: a pessoa (mesma chave de quando ela cria pelo painel)
+  const logado = { created_by: "ti@x.com", origem: { tipo: "formulario", id_formulario: "F1", titulo_formulario: "Ordem de Serviço", enviado_por: "ANA@x.com" } };
+  assert.deepEqual(criadorDe(logado, nomes, ap), { chave: "e:ana@x.com", nome: "Ana Clara" });
+  assert.deepEqual(criadorDe({ created_by: "ana@x.com", origem: null }, nomes, ap)?.chave, "e:ana@x.com");
+  // sem login: o formulário
+  const anonimo = { created_by: "ti@x.com", origem: { tipo: "formulario", id_formulario: "F1", titulo_formulario: "Ordem de Serviço", enviado_por: null } };
+  assert.deepEqual(criadorDe(anonimo, nomes, ap), { chave: "f:ordem de serviço", nome: "Formulário: Ordem de Serviço" });
+  // enviado antes da v0.3.932 (sem título nem quem enviou) e o legado created_by="Formulário"
+  assert.deepEqual(criadorDe({ created_by: "ti@x.com", origem: { tipo: "formulario", id_formulario: "F1" } }, nomes, ap), { chave: "f:", nome: "Formulário" });
+  assert.deepEqual(criadorDe({ created_by: "Formulário", origem: null }, nomes, ap), { chave: "f:", nome: "Formulário" });
+  // filtro por criador usa a mesma chave
+  const c = ctx({ chaveCriador: (t) => criadorDe(t, nomes, ap)?.chave ?? null });
+  assert.equal(passaFiltros(tf(logado), f({ criadoPor: "e:ana@x.com" }), c), true);
+  assert.equal(passaFiltros(tf(logado), f({ criadoPor: "e:ti@x.com" }), c), false);
+});

@@ -3,8 +3,9 @@
 // (`sub_linha`), com status pelo "feito" e o resto herdado só no que faz sentido (quadro/unidade).
 
 import type { GestaoStatus, GestaoTarefa, SubtarefaDoQuadro } from "@/lib/hooks/useGestao";
+import type { MostrarItens } from "@/lib/gestao/filtros";
 
-export type MostrarItens = "tarefas" | "subtarefas" | "ambas";
+export type { MostrarItens };
 export const SUB_PREFIXO = "SUB:";
 
 /** Slug do status equivalente ao "feito" da linha (mesma régua de gestao_status_para_feito). */

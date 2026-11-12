@@ -67,10 +67,11 @@ export async function GET(req: NextRequest) {
   const f = data as any;
   if (!f || !f.ativo) return NextResponse.json({ error: "Formulário indisponível." }, { status: 404 });
   const perguntasF = (f.perguntas ?? []) as Pergunta[];
-  // Só olha a sessão se o form tem pergunta que se preenche com o login (os demais seguem iguais).
-  const usuario = perguntasF.some((p) => p.preencher) ? await usuarioDaSessao(sb) : null;
+  // v0.3.935: olha a sessão em todo formulário — quem envia logado fica gravado como quem criou a tarefa
+  // (origem.enviado_por) e o form mostra "Enviando como". Sem login: null, nada muda.
+  const usuario = await usuarioDaSessao(sb);
   return NextResponse.json({
-    // Quem está logado (só se o form usa): o form esconde as perguntas `preencher` e mostra "Enviando como".
+    // Quem está logado: o form mostra "Enviando como" e esconde as perguntas `preencher`.
     usuario,
     titulo: f.titulo,
     descricao: f.descricao,
@@ -104,7 +105,8 @@ export async function POST(req: NextRequest) {
 
   const perguntas = (f.perguntas ?? []) as Pergunta[];
   // Logado no painel: nome/e-mail das perguntas `preencher` vêm da SESSÃO (o que o navegador mandar é ignorado).
-  const usuario = perguntas.some((p) => p.preencher) ? await usuarioDaSessao(sb) : null;
+  // v0.3.935: a sessão é lida em todo formulário — quem enviou vai para origem.enviado_por ("Criada por").
+  const usuario = await usuarioDaSessao(sb);
   const respostas = preencherComUsuario(perguntas, Array.isArray(body.respostas) ? body.respostas : [], usuario);
 
   // F1.5: título composto das respostas (tokens em titulo_composicao) quando o form não pede título.
@@ -245,7 +247,9 @@ export async function POST(req: NextRequest) {
     pontos: null,
     created_by: responsavelEmailResolvido ?? "Formulário",
     // v298: marca a origem para as automações ("Origem da tarefa = Formulário").
-    origem: { tipo: "formulario", id_formulario: f.id },
+    // v0.3.935: quem enviou (logado, e-mail do cadastro — nunca o que o navegador digitou) e o nome do formulário,
+    // para o "Criada por". O created_by acima segue o responsável fixo: é ele que decide acesso e avisos.
+    origem: { tipo: "formulario", id_formulario: f.id, titulo_formulario: f.titulo ?? null, enviado_por: usuario?.email ?? null },
     created_at: now,
     updated_at: now,
   } as never);

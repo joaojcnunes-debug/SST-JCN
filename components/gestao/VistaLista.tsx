@@ -45,7 +45,7 @@ export default function VistaLista({
   agruparPor,
   onAgruparPor,
   podeEditar,
-  seletorMostrar,
+  avisoBarra,
   onAbrir,
 }: {
   tarefas: GestaoTarefa[];
@@ -56,8 +56,8 @@ export default function VistaLista({
   agruparPor: AgruparPor | null;
   onAgruparPor: (a: AgruparPor | null) => void;
   podeEditar: boolean;
-  /** Filtro "Mostrar" (tarefas/subtarefas) do quadro, desenhado ao lado do Agrupar. */
-  seletorMostrar?: React.ReactNode;
+  /** Ao lado do Agrupar (ex.: "carregando subtarefas…"; o "Mostrar" fica no Filtros desde a v0.3.931). */
+  avisoBarra?: React.ReactNode;
   onAbrir: (t: GestaoTarefa) => void;
 }) {
   const totalCols = 6 + campos.length;
@@ -199,7 +199,7 @@ export default function VistaLista({
           Agrupar:
           <SelectVerde<AgruparPor | ""> valor={agruparPor ?? ""} opcoes={AGRUPAMENTOS} onChange={(v) => onAgruparPor(v || null)} className="w-auto min-w-[9rem]" />
         </div>
-        {seletorMostrar}
+        {avisoBarra}
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">

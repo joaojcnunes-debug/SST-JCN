@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie, ResponsiveCo
 import { CheckCircle2, AlertTriangle, ListTodo, Target, Clock } from "lucide-react";
 import { PRIORIDADES, formatarDuracao, type GestaoTarefa, type GestaoStatus } from "@/lib/hooks/useGestao";
 import { nomesResponsaveis } from "@/lib/gestao/responsaveis";
+import { contarConcluidas } from "@/lib/gestao/contagem-concluidas";
 
 function diasAte(iso: string): number {
   const hoje = new Date();
@@ -34,17 +35,24 @@ function Card({ titulo, children }: { titulo: string; children: React.ReactNode 
 
 export default function PainelGestao({
   tarefas,
+  contagem,
+  carregandoSubs = false,
   statuses,
   tempoPorTarefa,
 }: {
   tarefas: GestaoTarefa[];
+  /** Tarefas + subtarefas pela regra da contagem (lib/gestao/contagem-concluidas.ts): subtarefa feita vale 1. */
+  contagem: GestaoTarefa[];
+  carregandoSubs?: boolean;
   statuses: GestaoStatus[];
   tempoPorTarefa: Map<string, number>;
 }) {
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.slug, s])), [statuses]);
 
-  const total = tarefas.length;
-  const concluidas = tarefas.filter((t) => statusMap.get(t.status)?.tipo === "concluido").length;
+  const regra = useMemo(() => contarConcluidas(contagem, statuses), [contagem, statuses]);
+  const total = regra.total;
+  const concluidas = regra.concluidas;
+  const porPessoaConcl = regra.porPessoa.slice(0, 10);
   const atrasadas = tarefas.filter((t) => t.prazo && diasAte(t.prazo) < 0 && statusMap.get(t.status)?.tipo !== "concluido").length;
   const pontosTotal = tarefas.reduce((s, t) => s + (t.pontos ?? 0), 0);
   const tempoTotal = tarefas.reduce((s, t) => s + (tempoPorTarefa.get(t.id_tarefa) ?? 0), 0);
@@ -87,8 +95,8 @@ export default function PainelGestao({
   return (
     <div className="mt-5 space-y-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <Kpi icon={<ListTodo className="size-4" />} label="Total" valor={total} cor="#0ea5e9" />
-        <Kpi icon={<CheckCircle2 className="size-4" />} label="Concluídas" valor={`${concluidas} (${total ? Math.round((concluidas / total) * 100) : 0}%)`} cor="#16a34a" />
+        <Kpi icon={<ListTodo className="size-4" />} label="Total (com subtarefas)" valor={carregandoSubs ? "…" : total} cor="#0ea5e9" />
+        <Kpi icon={<CheckCircle2 className="size-4" />} label="Concluídas (com subtarefas)" valor={carregandoSubs ? "…" : `${concluidas} (${total ? Math.round((concluidas / total) * 100) : 0}%)`} cor="#16a34a" />
         <Kpi icon={<AlertTriangle className="size-4" />} label="Atrasadas" valor={atrasadas} cor="#D32F2F" />
         <Kpi icon={<Target className="size-4" />} label="Pontos" valor={pontosTotal} cor="#6366f1" />
         <Kpi icon={<Clock className="size-4" />} label="Tempo" valor={tempoTotal > 0 ? formatarDuracao(tempoTotal) : "—"} cor="#0891b2" />
@@ -135,6 +143,27 @@ export default function PainelGestao({
               <Bar dataKey="valor" name="Tarefas" fill="#0ea5e9" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
+        </Card>
+
+        <Card titulo="Concluídas por pessoa">
+          <p className="-mt-2 mb-3 text-xs text-gray-400">
+            Subtarefa feita vale uma tarefa feita e conta para o responsável dela (sem responsável, para o da tarefa-mãe).
+            {regra.subtarefasConcluidas > 0 && ` ${regra.subtarefasConcluidas} das ${concluidas} são subtarefas.`}
+          </p>
+          {carregandoSubs ? (
+            <p className="py-8 text-center text-sm text-gray-400">Carregando subtarefas…</p>
+          ) : porPessoaConcl.length === 0 ? (
+            <p className="py-8 text-center text-sm text-gray-400">Nada concluído nesta lista ainda.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={Math.max(140, porPessoaConcl.length * 32)}>
+              <BarChart data={porPessoaConcl} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="nome" width={110} tick={{ fontSize: 11 }} />
+                <Tooltip cursor={{ fill: "var(--surface-3)" }} contentStyle={{ borderRadius: 8, border: "1px solid var(--border-app)", background: "var(--surface)", color: "var(--text-strong)", fontSize: 12 }} />
+                <Bar dataKey="concluidas" name="Concluídas" fill="#16a34a" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </Card>
 
         <Card titulo="Tempo por responsável (h)">

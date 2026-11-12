@@ -38,6 +38,7 @@ import CampoInput from "@/components/gestao/CampoInput";
 import CampoData from "@/components/gestao/CampoData";
 import ChecklistTarefa from "@/components/gestao/ChecklistTarefa";
 import { isoLocal } from "@/lib/gestao/datas-rapidas";
+import { criadorDoFormulario } from "@/lib/gestao/filtros";
 import { linkTarefa } from "@/lib/gestao/link-tarefa";
 import ListaSuspensaMultipla from "@/components/gestao/ListaSuspensaMultipla";
 import { CAMPO_PRODUTOS_ID, REGIOES, comRegiao, opcoesComMarcados, regiaoDasEtiquetas } from "@/lib/gestao/regiao-produtos";
@@ -644,7 +645,13 @@ export default function TarefaModal({
 
   const nomeQuadro = quadros?.find((q) => q.id_quadro === (tarefa?.id_quadro ?? idQuadro))?.nome ?? null;
   // "Criada por" só quando quem criou é uma pessoa (e-mail); importação, recorrência etc. ficam só com a data.
-  const criadaPor = tarefa?.created_by?.includes("@") ? nomeDe(tarefa.created_by) ?? tarefa.created_by : null;
+  // v0.3.935: a de formulário mostra quem preencheu (ou o formulário), não o responsável fixo do formulário.
+  const criadorForm = tarefa ? criadorDoFormulario(tarefa, nomeDe) : null;
+  // "Criada por Ana (formulário)" / "Criada pelo formulário Ordem de Serviço" (enviado sem login).
+  const criadaPeloForm = !!criadorForm && !criadorForm.chave.startsWith("e:");
+  const criadaPor = criadorForm
+    ? (criadaPeloForm ? criadorForm.nome.replace(/^Formulário:?\s*/, "") : `${criadorForm.nome} (formulário)`)
+    : tarefa?.created_by?.includes("@") ? nomeDe(tarefa.created_by) ?? tarefa.created_by : null;
   const criadaEm = tarefa?.created_at ? new Date(tarefa.created_at) : null;
   const corStatus = statusMap.get(status)?.cor ?? "#94a3b8";
   const corPrioridade = PRIORIDADES.find((p) => p.value === prioridade)?.cor ?? "#94a3b8";
@@ -800,7 +807,7 @@ export default function TarefaModal({
               </button>
               {criadaEm && (
                 <>
-                  {" · "}Criada{criadaPor && <> por <span className="font-medium text-gray-600">{criadaPor}</span></>}
+                  {" · "}Criada{criadaPeloForm ? <> pelo formulário{criadaPor && <> <span className="font-medium text-gray-600">{criadaPor}</span></>}</> : criadaPor && <> por <span className="font-medium text-gray-600">{criadaPor}</span></>}
                   {" em "}{criadaEm.toLocaleDateString("pt-BR")} {criadaEm.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                 </>
               )}
