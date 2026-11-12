@@ -41,6 +41,29 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-agenda-vazia-sem-pessoa",
+    data: "2026-11-11",
+    tipo: "correcao",
+    titulo: "Agenda: sem ninguém marcado, o calendário fica vazio",
+    texto:
+      "Na Agenda, ao desmarcar todas as pessoas (Limpar), o calendário continuava mostrando as atividades de quem estava " +
+      "marcado antes. Agora ele fica vazio até você escolher alguém.",
+    onde: "Gestão › Agenda",
+    versoes: ["0.3.270"],
+  },
+  {
+    id: "gestao-vinculados-ao-criar",
+    data: "2026-11-11",
+    tipo: "correcao",
+    titulo: "Gestão: criar tarefa com responsável voltou a funcionar",
+    texto:
+      "Ao criar uma tarefa já com responsável (ou seguidores), aparecia \"Não foi possível salvar os vinculados\" e a tarefa " +
+      "ficava sem ninguém. Aprovar ou recusar uma aprovação também falhava. As duas coisas foram corrigidas.",
+    onde: "Gestão › Nova tarefa; aprovação na tarefa",
+    impacto: "As tarefas criadas com o erro continuam sem responsável: abra e coloque a pessoa de novo.",
+    versoes: ["0.3.270"],
+  },
+  {
     id: "gestao-regiao-produtos",
     data: "2026-11-10",
     tipo: "melhoria",

@@ -818,7 +818,7 @@ export function useSalvarVinculados() {
       const sb = createSupabaseBrowserClient();
       const rpc = (sb as unknown as {
         rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
-      }).rpc;
+      }).rpc.bind(sb); // 0.3.270: sem o bind, rpc(...) perde o cliente e quebra ("reading 'rest'").
       const resps = [...new Set(p.responsaveisEmails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
       const segs = [...new Set(p.seguidoresEmails.map((e) => e.trim().toLowerCase()).filter(Boolean))].filter((e) => !resps.includes(e));
 
@@ -1737,7 +1737,8 @@ export function useTarefasDeResponsaveis(emails: string[], ini: string, fim: str
     queryKey: ["gestao-tarefas-de", lista, ini, fim],
     enabled: enabled && lista.length > 0 && !!ini && !!fim,
     staleTime: 30 * 1000,
-    placeholderData: (anterior) => anterior,
+    // Mantém a tela anterior só enquanto carrega o novo período; sem ninguém escolhido, fica vazio (0.3.270).
+    placeholderData: (anterior) => (lista.length ? anterior : undefined),
     queryFn: async () => {
       const sb = createSupabaseBrowserClient();
       const { data, error } = await sb
@@ -1786,7 +1787,8 @@ export function useAgendaDe(emails: string[], ini: string, fim: string, enabled 
     queryKey: ["gestao-agenda-de", lista, ini, fim],
     enabled: enabled && lista.length > 0 && !!ini && !!fim,
     staleTime: 30 * 1000,
-    placeholderData: (anterior) => anterior,
+    // Mantém a tela anterior só enquanto carrega o novo período; sem ninguém escolhido, fica vazio (0.3.270).
+    placeholderData: (anterior) => (lista.length ? anterior : undefined),
     queryFn: async (): Promise<TarefaAgenda[]> => {
       const sb = createSupabaseBrowserClient();
       const { data, error } = await sb
@@ -3094,7 +3096,7 @@ export function useDecidirAprovacao() {
       const sb = createSupabaseBrowserClient();
       const rpc = (sb as unknown as {
         rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
-      }).rpc;
+      }).rpc.bind(sb); // 0.3.270: sem o bind, rpc(...) perde o cliente e quebra ("reading 'rest'").
       const { error } = await rpc("gestao_decidir_aprovacao", { p_id: p.id, p_decisao: p.decisao, p_motivo: p.motivo ?? null });
       if (error) throw error;
     },

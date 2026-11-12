@@ -50,7 +50,9 @@ export default function AgendaView({
   const [periodo, setPeriodo] = useState<[string, string]>(["", ""]);
   const aoPeriodo = useCallback((a: string, b: string) => setPeriodo((p) => (p[0] === a && p[1] === b ? p : [a, b])), []);
 
-  const { data: tarefas = [], isFetching } = useAgendaDe(escolhidos, periodo[0], periodo[1]);
+  const { data: dados = [], isFetching } = useAgendaDe(escolhidos, periodo[0], periodo[1]);
+  // Ninguém marcado = calendário vazio (não sobra o resultado de quem estava marcado antes).
+  const tarefas = escolhidos.length ? dados : [];
 
   // v338: a empresa de cada atividade (a da tarefa ou a da tarefa-mãe) vem antes do título, para quem olha saber onde ir.
   const { data: nomesEmpresas } = useNomesEmpresas(tarefas.map((t) => t.empresa_agenda));
