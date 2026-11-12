@@ -477,6 +477,18 @@ function InspecoesInner() {
         "reveal-up overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm",
         isFetching && "opacity-70 transition-opacity"
       )}>
+        {/* Paginação no TOPO da lista (12/11, pedido do usuário): logo abaixo dos
+            filtros, sem precisar rolar as 20 linhas até o rodapé para trocar de página. */}
+        {!isLoading && items.length > 0 && total > PAGE_SIZE && (
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={total}
+            pageSize={PAGE_SIZE}
+            onChange={setPage}
+            className="border-t-0 border-b"
+          />
+        )}
         {isLoading || (f.minhas && minhas.isLoading) ? (
           <div className="p-5">
             <TabelaSkeleton linhas={6} />
@@ -528,15 +540,6 @@ function InspecoesInner() {
                 ))}
               </tbody>
             </table>
-            {total > PAGE_SIZE && (
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                totalItems={total}
-                pageSize={PAGE_SIZE}
-                onChange={setPage}
-              />
-            )}
           </div>
         )}
       </div>

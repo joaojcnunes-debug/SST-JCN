@@ -883,15 +883,22 @@ export function useSalvarVinculados() {
   });
 }
 
-/** E-mails mencionados (@nome ou @primeiroNome) num texto. */
-export function detectarMencoes(texto: string, usuarios: { nome: string; email: string }[]): string[] {
-  const t = texto.toLowerCase();
-  const emails = new Set<string>();
-  for (const u of usuarios) {
-    const primeiro = u.nome.trim().split(/\s+/)[0]?.toLowerCase();
-    if (primeiro && (t.includes("@" + u.nome.toLowerCase()) || t.includes("@" + primeiro))) emails.add(u.email);
-  }
-  return [...emails];
+/** v368: quem pode ser marcado com "@" num comentário — as mesmas pessoas da gestao_mencionados (perfil diferente de
+ *  Cliente, conta ativa, com nome). A regra de quem foi marcado fica em lib/gestao/mencoes.ts. */
+export function usePessoasMencao(enabled = true) {
+  return useQuery({
+    queryKey: ["gestao-pessoas-mencao"],
+    enabled,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.from("usuarios").select("nome,email,ativo_sistema").neq("perfil", "Cliente").order("nome", { ascending: true });
+      if (error) throw error;
+      return ((data ?? []) as { nome: string | null; email: string | null; ativo_sistema: boolean | null }[])
+        .filter((u) => u.nome?.trim() && u.email?.trim() && u.ativo_sistema !== false)
+        .map((u) => ({ nome: (u.nome as string).trim(), email: (u.email as string).trim().toLowerCase() }));
+    },
+  });
 }
 
 /** Notificações do usuário logado (polling a cada 60s; RLS já filtra ao destinatário). */
@@ -1710,7 +1717,8 @@ export function useMinhasSubtarefasDoQuadro(idQuadro: string | null | undefined,
           .eq("feito", false);
       const [resp, aloc] = await Promise.all([
         base().eq("responsavel_email", eu),
-        base().contains("alocados", [{ email: eu, feito: false }]),
+        // jsonb: vai como texto JSON — um array aqui viraria array do Postgres ({...}) e o PostgREST responde 400.
+        base().contains("alocados", JSON.stringify([{ email: eu, feito: false }])),
       ]);
       if (resp.error) throw resp.error;
       if (aloc.error) throw aloc.error;
@@ -1776,11 +1784,13 @@ export function useMinhasTarefasAgenda(enabled = true) {
  * no período [ini, fim] em que alguma das pessoas é RESPONSÁVEL, em todas as listas que EU vejo — a RLS de
  * gestao_tarefas/gestao_tarefa_vinculados decide; nada aparece aqui que eu não abriria pela própria lista.
  * Entra a tarefa cujo prazo ou início cai no período, ou que começa antes e termina depois dele.
+ * 12/11/2026 (pedido do usuário: "só os cartões daquela lista no calendário daquela lista"): com `idQuadro`, só as
+ * tarefas DESSA lista — a visão de todas as listas fica na página Agenda.
  */
-export function useTarefasDeResponsaveis(emails: string[], ini: string, fim: string, enabled: boolean) {
+export function useTarefasDeResponsaveis(emails: string[], ini: string, fim: string, enabled: boolean, idQuadro?: string | null) {
   const lista = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))].sort();
   return useQuery({
-    queryKey: ["gestao-tarefas-de", lista, ini, fim],
+    queryKey: ["gestao-tarefas-de", lista, ini, fim, idQuadro ?? ""],
     enabled: enabled && lista.length > 0 && !!ini && !!fim,
     staleTime: 30 * 1000,
     // Mantém a tela anterior só enquanto carrega o novo período; sem ninguém escolhido, fica vazio (0.3.270).
@@ -1792,6 +1802,8 @@ export function useTarefasDeResponsaveis(emails: string[], ini: string, fim: str
         .select("*, gestao_tarefa_vinculados!inner(usuario_email,tipo)")
         .in("gestao_tarefa_vinculados.usuario_email", lista)
         .eq("gestao_tarefa_vinculados.tipo", "responsavel")
+        // 12/11/2026: só a lista aberta (o calendário da lista mostra só os cartões dela).
+        .match(idQuadro ? { id_quadro: idQuadro } : {})
         // v300: a filha de uma subtarefa só abre pela subtarefa — fica fora, como nas outras vistas.
         .is("id_tarefa_pai", null)
         .or(`and(prazo.gte.${ini},prazo.lte.${fim}),and(data_inicio.gte.${ini},data_inicio.lte.${fim}),and(data_inicio.lt.${ini},prazo.gt.${fim})`)
