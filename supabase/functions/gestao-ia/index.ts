@@ -17,6 +17,11 @@ const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+// 0.3.287 (= Painel 0.3.963): a imagem fica DENTRO da descrição como ![nome](anexo:<uuid>) — a IA recebe "[imagem]"
+// no lugar (o mesmo de textoSemImagens em lib/gestao/descricao-imagens.ts).
+const TOKEN_IMAGEM = /!\[([^\]\n]*)\]\(anexo:([0-9a-fA-F-]{36})\)/g;
+const textoSemImagens = (t: string | null | undefined) => (t ?? "").replace(TOKEN_IMAGEM, "[imagem]");
 // Em ordem de preferência. O Groq retira modelos do ar sem aviso (o
 // llama-3.1-8b-instant sumiu em 2026-10 e a função passou a dar 502): se um
 // modelo não existir mais, tenta o próximo.
@@ -148,7 +153,7 @@ async function resumir(req: Request, idTarefa: string) {
   const conversa = montarConversa((lidos ?? []) as ComentarioIa[]);
   if (conversa.total < MIN_COMENTARIOS_RESUMO) return aviso(`Poucos comentários para resumir (mínimo ${MIN_COMENTARIOS_RESUMO}).`, 400);
 
-  const usuario = `Tarefa: ${t.titulo}${t.descricao ? `\nDescrição: ${t.descricao.slice(0, 1_500)}` : ""}\n\nComentários (do mais antigo ao mais novo):\n${conversa.texto}`;
+  const usuario = `Tarefa: ${t.titulo}${t.descricao ? `\nDescrição: ${textoSemImagens(t.descricao).slice(0, 1_500)}` : ""}\n\nComentários (do mais antigo ao mais novo):\n${conversa.texto}`;
   const r = await chamarGroq(PROMPT_RESUMO, usuario, 0.2, 1500);
   if ("resposta" in r) return r.resposta;
   const resumo = normalizarResumo(r.json);
@@ -178,7 +183,7 @@ Deno.serve(async (req: Request) => {
     const existentes = Array.isArray(body?.existentes)
       ? (body!.existentes as unknown[]).map((x) => String(x).trim()).filter(Boolean).slice(0, 40)
       : [];
-    const userMsg = `Título: ${titulo}${body?.descricao ? `\nDescrição atual: ${body.descricao}` : ""}`
+    const userMsg = `Título: ${titulo}${body?.descricao ? `\nDescrição atual: ${textoSemImagens(String(body.descricao))}` : ""}`
       + (acao === "checklist" && existentes.length ? `\nItens que já existem (não repita): ${existentes.join("; ")}` : "");
 
     const r = await chamarGroq(system, userMsg, 0.5, 1500);

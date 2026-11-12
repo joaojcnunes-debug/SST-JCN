@@ -4,6 +4,7 @@
 // testes importam daqui. Ver connect/callback/sync/webhook/route.ts e ./inbound.ts.
 
 import { createHash, timingSafeEqual } from "node:crypto";
+import { textoSemImagens } from "@/lib/gestao/descricao-imagens";
 
 export const STATE_COOKIE = "g_oauth_state";
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -94,9 +95,10 @@ export function descricaoDoEvento(a: {
   link: string;
 }): string {
   const partes: string[] = [];
-  const maeTxt = (a.mae?.descricao ?? "").trim();
+  // 12/11/2026: imagem dentro da descrição vai como "[imagem]" para o Google Agenda.
+  const maeTxt = textoSemImagens(a.mae?.descricao).trim();
   if (a.mae && maeTxt) partes.push(`Do cartão original: ${a.mae.titulo.trim()}\n\n${maeTxt}`);
-  const propria = (a.descricao ?? "").trim();
+  const propria = textoSemImagens(a.descricao).trim();
   if (propria) partes.push(a.mae && maeTxt ? `Desta subtarefa:\n${propria}` : propria);
   const rodape = `Abrir no Painel SST: ${a.link}`;
   let corpo = partes.join("\n\n— — —\n\n");

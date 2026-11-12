@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { Plus, ChevronDown, LayoutList, LayoutGrid, Pencil, Copy, Trash2, Loader2, Send } from "lucide-react";
+import { Plus, ChevronDown, LayoutGrid, Pencil, Copy, Trash2, Loader2, Send } from "lucide-react";
 import RiscoForm from "../RiscoForm";
 import RiscoRow from "@/components/riscos/RiscoRow";
 import NivelBadge from "@/components/riscos/NivelBadge";
@@ -13,7 +13,7 @@ import { useEnviarRiscosParaPlanoAcao } from "@/lib/hooks/useAcoes";
 import { useTipoIcone, useTiposRisco } from "@/lib/hooks/useV3";
 import { NIVEIS_QUE_VIRAM_ACAO, riscosElegiveis } from "@/lib/acoes/de-risco";
 import { cn } from "@/lib/utils";
-import type { Cargo, NivelRisco, Risco, Setor, TipoRisco } from "@/lib/supabase/types";
+import type { Cargo, Risco, Setor, TipoRisco } from "@/lib/supabase/types";
 
 interface Props {
   idInspecao: string;
@@ -42,7 +42,8 @@ export default function RiscosTab({
   const [confirm, setConfirm] = useState<Risco | null>(null);
   const [copiando, setCopiando] = useState<Risco | null>(null);
   const [openTipos, setOpenTipos] = useState<Record<string, boolean>>({});
-  const [viewMode, setViewMode] = useState<"lista" | "quadro">("lista");
+  // 12/11: abre no Quadro (riscos por setor), como o usuário pediu; o seletor Lista | Quadro continua.
+  const [viewMode, setViewMode] = useState<"lista" | "quadro">("quadro");
 
   const setorMap = useMemo(
     () => new Map(setores.map((s) => [s.id_setor, s.setor_ghe])),
@@ -135,19 +136,8 @@ export default function RiscosTab({
     <div className="space-y-3">
       {/* Barra de ações: botão adicionar + toggle de visualização */}
       <div className="flex items-center justify-between gap-2">
+        {/* 12/11: só o botão Quadro (o Lista saiu a pedido do usuário); a aba fica sempre no Quadro. */}
         <div className="flex rounded-lg border border-gray-200 bg-white p-0.5">
-          <button
-            type="button"
-            onClick={() => setViewMode("lista")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-              viewMode === "lista"
-                ? "bg-marca-primary text-white shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            )}
-          >
-            <LayoutList className="size-3.5" /> Lista
-          </button>
           <button
             type="button"
             onClick={() => setViewMode("quadro")}

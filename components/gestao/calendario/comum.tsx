@@ -7,6 +7,7 @@ import AvatarPessoa from "@/components/gestao/AvatarPessoa";
 import { PRIORIDADES, useTarefaMae, type GestaoTarefa } from "@/lib/hooks/useGestao";
 import { COR_SITUACAO, ROTULO_SITUACAO, type Intervalo, type Situacao } from "@/lib/gestao/calendario";
 import { cn } from "@/lib/utils";
+import { textoSemImagens } from "@/lib/gestao/descricao-imagens";
 
 /** Uma tarefa já pronta para o calendário: intervalo, cor e o que a tela mostra. */
 export interface ItemCal {
@@ -165,7 +166,8 @@ export function DicaTarefa({ i, x, y }: { i: ItemCal; x: number; y: number }) {
  */
 function TextoDoCartao({ t }: { t: GestaoTarefa }) {
   const { data: mae } = useTarefaMae(t.id_tarefa_pai ?? null);
-  const texto = (t.id_tarefa_pai ? mae?.descricao : t.descricao)?.trim();
+  // 12/11/2026: imagem dentro da descrição aparece como "[imagem]" na dica.
+  const texto = textoSemImagens(t.id_tarefa_pai ? mae?.descricao : t.descricao).trim();
   if (!texto) return null;
   return (
     <div className="mt-1.5 border-t border-gray-100 pt-1.5">

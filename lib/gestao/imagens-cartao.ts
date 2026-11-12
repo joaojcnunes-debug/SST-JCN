@@ -3,7 +3,8 @@
 //
 // Sem tabela nova: a imagem é um anexo (gestao_anexos + bucket "anexos"), como os da aba Anexos. A do comentário vai
 // numa pasta com o número dele — gestao/<tarefa>/comentario-<id>/<arquivo> — e é por ela que a tela sabe de qual
-// comentário é. As demais imagens do cartão aparecem abaixo da descrição; todas continuam na aba Anexos.
+// comentário é. As demais imagens do cartão ficam DENTRO da descrição (lib/gestao/descricao-imagens.ts, desde o 2º
+// pedido de 12/11: nada embaixo dela); todas continuam na aba Anexos.
 
 export interface AnexoImagem {
   id: string;

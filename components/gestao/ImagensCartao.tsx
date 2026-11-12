@@ -1,25 +1,21 @@
 "use client";
 
-// Imagens no cartão, abaixo da descrição, e as peças que os comentários também usam (12/11/2026).
-// Pedido do usuário: "conseguir inserir e colar imagens nos cartões que criamos". O Ctrl+V fica no TarefaModal
-// (vale em qualquer aba da janela); aqui ficam o "Inserir imagem", o "Colar imagem copiada", as miniaturas e a imagem
-// ampliada. As imagens são anexos (a aba Anexos continua mostrando todas).
+// Peças das imagens do cartão (12/11/2026): miniaturas dos comentários e a imagem ampliada, que a descrição também usa.
+// As imagens são anexos (a aba Anexos continua mostrando todas). Desde o 2º pedido do dia ("toda imagem colada ou
+// inserida fique dentro do campo de descrição") não há mais seção de imagens embaixo da descrição: todas ficam DENTRO
+// dela (components/gestao/DescricaoComImagens.tsx).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { ClipboardPaste, ExternalLink, ImagePlus, Loader2, Trash2, X } from "lucide-react";
+import { ExternalLink, Trash2, X } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import StorageImg from "@/components/ui/StorageImg";
-import { confirmar } from "@/components/ui/confirm";
-import { useAnexos, useExcluirAnexo, urlAssinadaAnexo, type GestaoAnexo } from "@/lib/hooks/useGestao";
-import { lerImagensCopiadas } from "@/lib/hooks/useImagensCartao";
-import { separarImagens } from "@/lib/gestao/imagens-cartao";
-import { useUserStore } from "@/lib/store";
+import { urlAssinadaAnexo, type GestaoAnexo } from "@/lib/hooks/useGestao";
 
 const QUADRO = "size-24 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-100";
 
 /** Arquivo ainda não enviado (Nova tarefa, comentário sendo escrito): miniatura pelo próprio arquivo. */
-function useUrlDoArquivo(arquivo: File | null): string | null {
+export function useUrlDoArquivo(arquivo: File | null): string | null {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     if (!arquivo) { setUrl(null); return; }
@@ -95,85 +91,5 @@ export function MiniaturaRascunho({ arquivo, onAbrir, onTirar, pequena = false }
         <X className="size-3" />
       </button>
     </div>
-  );
-}
-
-/**
- * Seção "Imagens" abaixo da descrição. Na tarefa salva, as imagens já gravadas; na Nova tarefa (e Nova subtarefa), as
- * que vão junto ao criar. `onAdicionar` decide entre gravar e guardar no rascunho (TarefaModal).
- */
-export default function ImagensCartao({ idTarefa, podeAnexar, podeEditar, rascunho, onAdicionar, onTirarRascunho, enviando }: {
-  idTarefa: string | null;
-  podeAnexar: boolean;
-  podeEditar: boolean;
-  rascunho: File[];
-  onAdicionar: (imagens: File[]) => void;
-  onTirarRascunho: (i: number) => void;
-  enviando: boolean;
-}) {
-  const { data: anexos = [] } = useAnexos(idTarefa);
-  const { doCartao } = separarImagens(anexos);
-  const excluir = useExcluirAnexo();
-  const meuEmail = useUserStore((s) => s.user?.email?.toLowerCase() ?? null);
-  const podeApagar = (a: GestaoAnexo) => podeEditar || (podeAnexar && !!meuEmail && a.created_by?.toLowerCase() === meuEmail);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [ampliada, setAmpliada] = useState<Ampliada | null>(null);
-
-  if (!podeAnexar && doCartao.length === 0) return null;
-
-  async function colarDoBotao() {
-    const r = await lerImagensCopiadas();
-    if (typeof r === "string") toast.error(r);
-    else onAdicionar(r);
-  }
-
-  async function tirar(a: GestaoAnexo) {
-    if (await confirmar({ title: "Excluir imagem?", description: `"${a.nome}" sai do cartão (e da aba Anexos).` })) {
-      excluir.mutate({ id: a.id, storage_path: a.storage_path });
-    }
-  }
-
-  return (
-    <section aria-label="Imagens do cartão" className="mt-4">
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-gray-600">Imagens{doCartao.length + rascunho.length > 0 && ` (${doCartao.length + rascunho.length})`}</span>
-        {podeAnexar && (
-          <>
-            <button type="button" onClick={() => inputRef.current?.click()} disabled={enviando}
-              className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-600 hover:border-marca-primary hover:text-marca-primary disabled:opacity-50">
-              <ImagePlus className="size-3.5" /> Inserir imagem
-            </button>
-            <button type="button" onClick={() => void colarDoBotao()} disabled={enviando}
-              className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-600 hover:border-marca-primary hover:text-marca-primary disabled:opacity-50">
-              <ClipboardPaste className="size-3.5" /> Colar imagem copiada
-            </button>
-            <span className="text-[11px] text-gray-400">ou Ctrl+V em qualquer lugar da janela</span>
-            <input ref={inputRef} type="file" accept="image/*" multiple className="hidden"
-              onChange={(e) => { const l = Array.from(e.target.files ?? []); e.target.value = ""; if (l.length) onAdicionar(l); }} />
-          </>
-        )}
-      </div>
-      {doCartao.length + rascunho.length > 0 || enviando ? (
-        <div className="flex flex-wrap gap-2">
-          {doCartao.map((a) => (
-            <MiniaturaSalva key={a.id} anexo={a} onAbrir={() => setAmpliada({ anexo: a })} onTirar={podeApagar(a) ? () => void tirar(a) : undefined} />
-          ))}
-          {rascunho.map((f, i) => (
-            <MiniaturaRascunho key={`${i}-${f.name}`} arquivo={f} onAbrir={() => setAmpliada({ arquivo: f })} onTirar={() => onTirarRascunho(i)} />
-          ))}
-          {enviando && (
-            <div className={`${QUADRO} flex items-center justify-center`} aria-label="Enviando imagem">
-              <Loader2 className="size-5 animate-spin text-gray-400" />
-            </div>
-          )}
-        </div>
-      ) : (
-        <p className="rounded-lg border border-dashed border-gray-200 px-3 py-2 text-xs text-gray-400">
-          Nenhuma imagem. Cole um print (Ctrl+V) ou use &ldquo;Inserir imagem&rdquo;.
-        </p>
-      )}
-      {rascunho.length > 0 && <p className="mt-1 text-[11px] text-gray-400">As imagens tracejadas vão junto quando você criar.</p>}
-      <ImagemAmpliada imagem={ampliada} onClose={() => setAmpliada(null)} />
-    </section>
   );
 }

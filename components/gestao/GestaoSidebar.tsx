@@ -12,6 +12,7 @@ import {
 } from "@/lib/hooks/useGestao";
 import { confirmar } from "@/components/ui/confirm";
 import { normalizarTexto, tokenizar } from "@/lib/busca/texto";
+import { ordenarPorNome } from "@/lib/gestao/ordem-alfabetica";
 
 const inputDark = "min-w-0 flex-1 rounded border border-white/40 bg-white/10 px-1 py-0.5 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-marca-accent";
 
@@ -83,7 +84,10 @@ export default function GestaoSidebar({
     const alvo = normalizarTexto(`${(q.id_espaco && nomeEspaco.get(q.id_espaco)) || ""} ${q.id_pasta ? nomePasta.get(q.id_pasta) ?? "" : ""} ${q.nome}`);
     return termos.every((t) => alvo.includes(t));
   };
-  const quadrosVisiveis = buscando ? quadros.filter(casa) : quadros;
+  // 12/11/2026: espaços, pastas e listas em ordem alfabética (lib/gestao/ordem-alfabetica.ts) — a lista nova ou
+  // renomeada já aparece no lugar certo.
+  const listasEmOrdem = ordenarPorNome(quadros);
+  const quadrosVisiveis = buscando ? listasEmOrdem.filter(casa) : listasEmOrdem;
 
   const toggle = (id: string) => setFechados((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const aberto = (id: string) => buscando || !fechados.has(id);
@@ -182,8 +186,8 @@ export default function GestaoSidebar({
       </div>
       <div className="mb-1 border-t border-white/[0.07]" />
       {buscando && quadrosVisiveis.length === 0 && <p className="px-1.5 py-1 text-xs text-white/40">Nenhuma lista encontrada.</p>}
-      {espacos.map((esp) => {
-        const pastasDoEspaco = pastas.filter((p) => p.id_espaco === esp.id && (!buscando || quadrosVisiveis.some((q) => q.id_pasta === p.id)));
+      {ordenarPorNome(espacos).map((esp) => {
+        const pastasDoEspaco = ordenarPorNome(pastas).filter((p) => p.id_espaco === esp.id && (!buscando || quadrosVisiveis.some((q) => q.id_pasta === p.id)));
         const listasSoltas = quadrosVisiveis.filter((q) => q.id_espaco === esp.id && !q.id_pasta);
         if (buscando && pastasDoEspaco.length === 0 && listasSoltas.length === 0) return null;
         return (

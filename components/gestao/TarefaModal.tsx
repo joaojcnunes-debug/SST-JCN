@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
 import {
   Trash2, Loader2, Plus, Square, CheckSquare, X, ArrowRight, Sparkles, Maximize2, CornerDownRight, MessageSquare,
+  ImagePlus, ClipboardPaste,
   Columns3, ArrowRightLeft, UserRound, Flag, Tag, CalendarDays, CalendarCheck, Repeat, Clock, Users, Gauge, List, Link2,
   PanelRightClose, PanelRightOpen, MapPin, Package, ListChecks, Timer, Hourglass, Building2, ExternalLink, LayoutTemplate,
   CheckCircle2, AlertCircle, type LucideIcon,
@@ -50,9 +51,11 @@ import { BotaoTempo, RegistroTempo } from "@/components/gestao/TempoTracker";
 import AnexosTarefa from "@/components/gestao/AnexosTarefa";
 import HistoricoTarefa from "@/components/gestao/HistoricoTarefa";
 import ComentariosTarefa from "@/components/gestao/ComentariosTarefa";
-import ImagensCartao from "@/components/gestao/ImagensCartao";
-import { useColarImagens, useComentarComImagens, useEnviarImagens } from "@/lib/hooks/useImagensCartao";
+import { textoCriacao } from "@/lib/gestao/comentarios-chat";
+import DescricaoComImagens, { type ImagemParaInserir, type PedidoInserir } from "@/components/gestao/DescricaoComImagens";
+import { lerImagensCopiadas, useColarImagens, useComentarComImagens, useEnviarImagens } from "@/lib/hooks/useImagensCartao";
 import { nomearColada, separarImagens } from "@/lib/gestao/imagens-cartao";
+import { completarComImagens, idsDasImagens, imagensForaDoTexto, textoSemImagens } from "@/lib/gestao/descricao-imagens";
 import { useTarefaHistorico } from "@/lib/hooks/useTarefaHistorico";
 import { confirmar } from "@/components/ui/confirm";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
@@ -165,6 +168,7 @@ const EMPTY_SUBTAREFAS: GestaoSubtarefa[] = [];
 const EMPTY_CHECKLIST: { feito: boolean }[] = [];
 const EMPTY_TEMPO: GestaoTempo[] = [];
 const EMPTY_TEXTOS: string[] = [];
+const SEM_IMAGENS_PENDENTES = new Map<string, File>();
 
 export default function TarefaModal({
   open,
@@ -321,9 +325,13 @@ export default function TarefaModal({
   const [criarOutra, setCriarOutra] = useState(false);
   // v351: checklist. Na Nova tarefa os itens ficam aqui até "Criar tarefa"; na existente gravam na hora.
   const [rascunhoChecklist, setRascunhoChecklist] = useState<string[]>([]);
-  // 12/11/2026: imagens no cartão (abaixo da descrição) e no comentário. Na Nova tarefa/subtarefa ficam aqui até criar;
-  // na existente gravam na hora. Ctrl+V em qualquer lugar desta janela cola no cartão; na caixa do comentário, nele.
-  const [rascunhoImagens, setRascunhoImagens] = useState<File[]>([]);
+  // 12/11/2026: imagem DENTRO da descrição (lib/gestao/descricao-imagens.ts) e no comentário. A colada na descrição fica
+  // aqui (id → arquivo) e sobe ao Salvar/Criar, junto com o texto que aponta para ela. Ctrl+V em qualquer lugar desta
+  // janela põe a imagem no fim da descrição; dentro da caixa, onde está o cursor; na caixa do comentário, nele.
+  const [imagensPendentes, setImagensPendentes] = useState<Map<string, File>>(() => new Map());
+  const [pedidoImagens, setPedidoImagens] = useState<PedidoInserir | null>(null);
+  const atenderPedidoImagens = useCallback(() => setPedidoImagens(null), []);
+  const inputImagemRef = useRef<HTMLInputElement>(null);
   const [imagensComentario, setImagensComentario] = useState<File[]>([]);
   const enviarImagens = useEnviarImagens();
   const comentarComImagens = useComentarComImagens();
@@ -359,7 +367,6 @@ export default function TarefaModal({
   const tituloRef = useRef<HTMLInputElement>(null);
   const painelRef = useRef<HTMLElement>(null);
   const { data: quadros } = useQuadros();
-  const idDescricao = useId();
   const { data: timeline } = useTarefaHistorico(tarefa?.id_tarefa);
   const nComentarios = (timeline ?? []).filter((i) => i.kind === "comentario").length;
   // v353: desde quando a tarefa está na coluna atual (última mudança de status gravada pelo banco).
@@ -373,7 +380,8 @@ export default function TarefaModal({
     setAba("detalhes");
     setCamposAbertos(new Set());
     setRascunhoChecklist([]);
-    setRascunhoImagens([]);
+    setImagensPendentes(new Map());
+    setPedidoImagens(null);
     setImagensComentario([]);
     setAtribuirA("");
     setModeloUsado(null);
@@ -474,7 +482,7 @@ export default function TarefaModal({
     if (!titulo.trim()) { toast.error("Informe o título primeiro."); return; }
     setIaLoad("desc");
     try {
-      const d = await gerarIaGestao({ acao: "descricao", titulo: titulo.trim(), descricao });
+      const d = await gerarIaGestao({ acao: "descricao", titulo: titulo.trim(), descricao: textoSemImagens(descricao) });
       if (d.descricao) { setDescricao((prev) => (prev.trim() ? `${prev}\n\n${d.descricao}` : d.descricao!)); toast.success("Descrição sugerida pela IA"); }
       else toast.error("A IA não retornou uma descrição.");
     } catch (e) { toast.error(mensagemErro(e, "IA indisponível no momento.")); } finally { setIaLoad(null); }
@@ -483,7 +491,7 @@ export default function TarefaModal({
     if (!titulo.trim()) { toast.error("Informe o título primeiro."); return; }
     setIaLoad("sub");
     try {
-      const d = await gerarIaGestao({ acao: "subtarefas", titulo: titulo.trim(), descricao });
+      const d = await gerarIaGestao({ acao: "subtarefas", titulo: titulo.trim(), descricao: textoSemImagens(descricao) });
       const textos = (d.subtarefas ?? []).filter((t) => t.trim());
       if (!textos.length) toast.error("A IA não sugeriu subtarefas.");
       else if (subAoVivo && tarefa) {
@@ -658,6 +666,25 @@ export default function TarefaModal({
       toast.error(mensagemPendencias(pendentes));
       return;
     }
+    // Imagem do cartão que a pessoa tirou da descrição (12/11/2026): como toda imagem do cartão fica dentro da descrição,
+    // ela voltaria sozinha na próxima abertura. Pergunta antes de gravar qualquer coisa: Excluir tira do cartão (e da
+    // aba Anexos) depois que o texto estiver salvo; Cancelar põe de volta no fim da descrição e salva o resto.
+    let descricaoFinal = descricao;
+    const tiradas = tarefa ? imagensForaDoTexto(descricao, imagensDoCartao) : [];
+    let excluirTiradas = false;
+    if (tiradas.length) {
+      const uma = tiradas.length === 1;
+      excluirTiradas = await confirmar({
+        title: uma ? "Excluir a imagem que saiu da descrição?" : `Excluir as ${tiradas.length} imagens que saíram da descrição?`,
+        description: `${tiradas.map((a) => `"${a.nome}"`).join(", ")} ${uma ? "sai" : "saem"} do cartão e da aba Anexos, sem volta. `
+          + `Em Cancelar, ${uma ? "ela volta" : "elas voltam"} para o fim da descrição e o resto é salvo.`,
+        confirmLabel: "Excluir",
+      });
+      if (!excluirTiradas) {
+        descricaoFinal = completarComImagens(descricao, tiradas);
+        setDescricao(descricaoFinal);
+      }
+    }
     // Responsável agora vem do vínculo (por e-mail); o texto `responsavel` (nome) é
     // mantido em compat p/ ICS/notificar. O trigger-espelho server-side também o reflete.
     // Mesmo formato do espelho do banco (v295): nomes na ordem, separados por vírgula.
@@ -680,7 +707,7 @@ export default function TarefaModal({
     const dados: Partial<GestaoTarefa> & { id_quadro: string } = {
       id_quadro: idQuadro,
       titulo: titulo.trim(),
-      descricao: descricao.trim() || null,
+      descricao: descricaoFinal.trim() || null,
       responsavel: respNome,
       prioridade,
       prazo: prazo || null,
@@ -706,6 +733,11 @@ export default function TarefaModal({
           }
         : null,
     };
+    // Imagens coladas na descrição: na tarefa que já existe sobem ANTES de gravar o texto que aponta para elas (se a
+    // imagem falhar, nada é gravado e o aviso sai); na nova, logo depois de criar (precisa do id do cartão).
+    const usadas = idsDasImagens(descricaoFinal).filter((id) => imagensPendentes.has(id));
+    const arquivosUsados = usadas.map((id) => imagensPendentes.get(id) as File);
+    if (tarefa && usadas.length) await enviarImagens.mutateAsync({ id_tarefa: tarefa.id_tarefa, files: arquivosUsados, ids: usadas });
     let idSalvo: string;
     if (!tarefa && novaSubDe) {
       // Nova subtarefa (11/11/2026): a linha no fim da lista da mãe + a janela dela; o resto entra como numa edição.
@@ -728,9 +760,17 @@ export default function TarefaModal({
     if (!tarefa && rascunhoChecklist.length) {
       try { await addChecklist.mutateAsync({ id_tarefa: idSalvo, textos: rascunhoChecklist, ordemInicial: 0 }); } catch { /* avisado */ }
     }
-    // Imagens coladas na Nova tarefa/subtarefa. Se falhar, a tarefa já existe (o aviso sai do hook) e segue o fluxo.
-    if (!tarefa && rascunhoImagens.length) {
-      try { await enviarImagens.mutateAsync({ id_tarefa: idSalvo, files: rascunhoImagens }); } catch { /* avisado */ }
+    // Imagens da descrição da Nova tarefa/subtarefa. Se falhar, a tarefa já existe (o aviso sai do hook) e segue o fluxo.
+    if (!tarefa && usadas.length) {
+      try { await enviarImagens.mutateAsync({ id_tarefa: idSalvo, files: arquivosUsados, ids: usadas }); } catch { /* avisado */ }
+    }
+    setImagensPendentes(new Map());
+    // O texto já foi gravado sem elas: agora sim sai a imagem que a pessoa mandou excluir (falha avisa pelo hook e ela
+    // volta no fim da descrição na próxima abertura).
+    if (excluirTiradas) {
+      for (const a of tiradas) {
+        try { await excluirAnexo.mutateAsync({ id: a.id, storage_path: a.storage_path }); } catch { /* avisado */ }
+      }
     }
 
     // Vínculos: N responsáveis + N seguidores (por e-mail). O espelho reflete os responsáveis.
@@ -771,7 +811,7 @@ export default function TarefaModal({
       setSubtarefas([]);
       setNovaSub("");
       setRascunhoChecklist([]);
-      setRascunhoImagens([]);
+      setImagensPendentes(new Map());
       setModeloUsado(null);
       setAba("detalhes");
       requestAnimationFrame(() => tituloRef.current?.focus());
@@ -815,23 +855,62 @@ export default function TarefaModal({
     excluir.mutate(tarefa.id_tarefa, { onSuccess: () => { toast.success(ehSub ? "Subtarefa enviada para a Lixeira" : "Tarefa enviada para a Lixeira"); onClose(); } });
   }
 
-  /** Imagens para o cartão (Ctrl+V, "Inserir imagem", "Colar imagem copiada"): grava na hora ou guarda até criar. */
-  function adicionarImagensCartao(imagens: File[]) {
-    if (!podeComentar) { toast.error("Você só pode ver este cartão."); return; }
-    const nomeadas = imagens.map((f, k) => nomearColada(f, rascunhoImagens.length + k + 1));
-    if (tarefa) {
-      enviarImagens.mutate(
-        { id_tarefa: tarefa.id_tarefa, files: nomeadas },
-        { onSuccess: (n) => { if (n) toast.success(n > 1 ? `${n} imagens adicionadas ao cartão` : "Imagem adicionada ao cartão"); } },
-      );
-    } else {
-      setRascunhoImagens((r) => [...r, ...nomeadas]);
-    }
+  /** Arquivos de imagem para a descrição: ficam pendentes (sobem ao Salvar/Criar) e voltam com o id e o nome que vão
+   *  na marcação do texto. */
+  function prepararImagens(imagens: File[]): ImagemParaInserir[] {
+    const lista = imagens.map((f, k) => {
+      const arquivo = nomearColada(f, imagensPendentes.size + k + 1);
+      return { id: crypto.randomUUID(), nome: arquivo.name, arquivo };
+    });
+    setImagensPendentes((m) => {
+      const novo = new Map(m);
+      for (const i of lista) novo.set(i.id, i.arquivo);
+      return novo;
+    });
+    return lista.map(({ id, nome }) => ({ id, nome }));
+  }
+  /** Ctrl+V fora da caixa, "Inserir imagem", "Colar imagem copiada": a imagem vai para a descrição. */
+  function imagensParaDescricao(imagens: File[], onde: "cursor" | "fim") {
+    if (ro) { toast.error("Você só pode ver a descrição deste cartão."); return; }
+    setPedidoImagens({ imagens: prepararImagens(imagens), onde });
     setAba("detalhes");   // colou em outra aba: mostra onde a imagem foi parar
   }
-  useColarImagens(open && podeComentarEf, colunaRef, adicionarImagensCartao, { ignorarDentro: "[data-colar-comentario]" });
+  async function colarImagemCopiada() {
+    const r = await lerImagensCopiadas();
+    if (typeof r === "string") toast.error(r);
+    else imagensParaDescricao(r, "cursor");
+  }
+  useColarImagens(open && !ro, colunaRef, (imgs) => imagensParaDescricao(imgs, "fim"), { ignorarDentro: "[data-colar-comentario]" });
   const { data: anexosTarefa = [] } = useAnexos(tarefa?.id_tarefa);
-
+  const anexosPorId = useMemo(() => new Map(anexosTarefa.map((a) => [a.id.toLowerCase(), a])), [anexosTarefa]);
+  // "Do cartão original" na subtarefa: as imagens da descrição da mãe são anexos da mãe.
+  const { data: anexosMae = [] } = useAnexos(idPai);
+  const anexosMaePorId = useMemo(() => new Map(anexosMae.map((a) => [a.id.toLowerCase(), a])), [anexosMae]);
+  // 12/11/2026, 2º pedido: "toda imagem colada ou inserida fique dentro do campo de descrição" — não existe mais seção
+  // de imagens embaixo. A imagem do cartão (fora as dos comentários) que não está no texto entra no fim da caixa assim
+  // que os anexos chegam, e vai para o texto do cartão no próximo Salvar (lib/gestao/descricao-imagens.ts diz de onde
+  // ela vem). Cada uma entra UMA vez por abertura: se a pessoa a tira da caixa, ela não volta sozinha, e o Salvar
+  // pergunta se exclui.
+  const imagensDoCartao = useMemo(() => separarImagens(anexosTarefa).doCartao, [anexosTarefa]);
+  const imagensPostasRef = useRef<{ base: unknown[]; ids: Set<string> }>({ base: [], ids: new Set() });
+  useEffect(() => {
+    if (!open || !tarefa) { imagensPostasRef.current = { base: [], ids: new Set() }; return; }
+    // O efeito de abertura (lá em cima) recarrega a descrição do banco quando estes mudam: a conta recomeça junto.
+    const base = [tarefa, statusInicial, inicial];
+    if (base.some((v, k) => !Object.is(v, imagensPostasRef.current.base[k]))) imagensPostasRef.current = { base, ids: new Set() };
+    const postas = imagensPostasRef.current.ids;
+    const novas = imagensDoCartao.filter((a) => !postas.has(a.id.toLowerCase()));
+    if (!novas.length) return;
+    for (const a of novas) postas.add(a.id.toLowerCase());
+    setDescricao((d) => completarComImagens(d, novas));
+  }, [open, tarefa, statusInicial, inicial, imagensDoCartao]);
+  // "Do cartão original": as imagens da mãe que não estão no texto dela aparecem no fim (só leitura, nada é gravado).
+  const imagensDaMae = useMemo(() => separarImagens(anexosMae).doCartao, [anexosMae]);
+  const descricaoMaeCompleta = useMemo(
+    () => (idPai ? completarComImagens(descricaoMae ?? "", imagensDaMae) : ""),
+    [idPai, descricaoMae, imagensDaMae],
+  );
+  const temMae = !!descricaoMaeCompleta.trim();
   function enviarComentario() {
     if (!tarefa || (!novoComentario.trim() && imagensComentario.length === 0)) return;
     const t = tarefa;
@@ -860,8 +939,6 @@ export default function TarefaModal({
     );
   }
 
-  const inputCls =
-    "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-gray-50";
   // Caixas do painel de campos: mais baixas e com fundo próprio (o painel é cinza); a largura vem de quem usa.
   const caixaPainel =
     "rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-gray-50";
@@ -1110,44 +1187,60 @@ export default function TarefaModal({
           </button>
         </div>
 
-        <div role="tabpanel" className="px-6 py-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+        <div
+          role="tabpanel"
+          className={
+            // Comentários (jeito do Runrun): a conversa rola sozinha e a caixa de escrever fica presa no rodapé.
+            abaAtiva === "comentarios" && tarefa
+              ? "flex flex-col px-6 pb-4 pt-3 lg:min-h-0 lg:flex-1 lg:overflow-hidden"
+              : "px-6 py-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
+          }
+        >
         {abaAtiva === "detalhes" && (
           <div>
             {/* Aprovação pendente (Painel 0.3.919): decide aqui, sem depender da Caixa de entrada da aprovadora. */}
             {tarefa?.id_tarefa && <AprovacaoNaTarefa idTarefa={tarefa.id_tarefa} podeEditarQuadro={podeEditar} onDecidido={onClose} />}
-            {descricaoMae && (
+            {temMae && (
               // Subtarefa: a descrição do cartão original (empresa, CNPJ, produtos…), só leitura; muda-se lá na tarefa.
               <section aria-label="Descrição do cartão original" className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
                 <p className="mb-1 text-xs font-medium text-gray-600">
                   Do cartão original{tituloPai && <span className="font-normal text-gray-500"> · {tituloPai}</span>}
                 </p>
-                <div className="max-h-72 overflow-y-auto whitespace-pre-wrap break-words text-sm text-gray-800">{descricaoMae}</div>
+                <div className="max-h-72 overflow-y-auto">
+                  <DescricaoComImagens valor={descricaoMaeCompleta} ro compacta salvas={anexosMaePorId} pendentes={SEM_IMAGENS_PENDENTES} rotulo="Descrição do cartão original" />
+                </div>
               </section>
             )}
-            <div className="mb-1 flex items-center justify-between">
-              <label htmlFor={ro ? undefined : idDescricao} className="block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.descricao}>{descricaoMae ? "Descrição da subtarefa" : "Descrição"}</Dica></label>
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-1">
+              <span className="block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.descricao}>{temMae ? "Descrição da subtarefa" : "Descrição"}</Dica></span>
               {!ro && (
-                <button type="button" onClick={iaDescricao} disabled={iaLoad !== null} className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-marca-primary hover:bg-marca-light/50 disabled:opacity-50">
-                  {iaLoad === "desc" ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} Redigir com IA
-                </button>
+                <div className="flex flex-wrap items-center gap-1">
+                  {/* 12/11/2026: a imagem entra DENTRO da descrição, onde está o cursor (Ctrl+V também). */}
+                  <button type="button" onClick={() => inputImagemRef.current?.click()} className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-marca-primary">
+                    <ImagePlus className="size-3.5" /> Inserir imagem
+                  </button>
+                  <button type="button" onClick={() => void colarImagemCopiada()} className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-marca-primary">
+                    <ClipboardPaste className="size-3.5" /> Colar imagem copiada
+                  </button>
+                  <input ref={inputImagemRef} type="file" accept="image/*" multiple className="hidden"
+                    onChange={(e) => { const l = Array.from(e.target.files ?? []); e.target.value = ""; if (l.length) imagensParaDescricao(l, "cursor"); }} />
+                  <button type="button" onClick={iaDescricao} disabled={iaLoad !== null} className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-marca-primary hover:bg-marca-light/50 disabled:opacity-50">
+                    {iaLoad === "desc" ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} Redigir com IA
+                  </button>
+                </div>
               )}
             </div>
-            {ro ? (
-              // Quem só lê vê o texto (a caixa desabilitada ficava clara no tema escuro, com a letra apagada).
-              <div id={idDescricao} className="whitespace-pre-wrap break-words text-sm text-gray-800">
-                {descricao.trim() || <span className="text-gray-400">Sem descrição.</span>}
-              </div>
-            ) : (
-              <textarea id={idDescricao} value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={descricaoMae ? 5 : 12} className={`${inputCls} resize-y`} />
-            )}
-            <ImagensCartao
-              idTarefa={tarefa?.id_tarefa ?? null}
-              podeAnexar={podeComentarEf}
-              podeEditar={podeEditar}
-              rascunho={rascunhoImagens}
-              onAdicionar={adicionarImagensCartao}
-              onTirarRascunho={(i) => setRascunhoImagens((r) => r.filter((_, j) => j !== i))}
-              enviando={enviarImagens.isPending}
+            <DescricaoComImagens
+              valor={descricao}
+              onChange={setDescricao}
+              ro={ro}
+              compacta={temMae}
+              rotulo={temMae ? "Descrição da subtarefa" : "Descrição"}
+              salvas={anexosPorId}
+              pendentes={imagensPendentes}
+              onImagens={prepararImagens}
+              pedido={pedidoImagens}
+              onPedidoAtendido={atenderPedidoImagens}
             />
           </div>
         )}
@@ -1425,7 +1518,7 @@ export default function TarefaModal({
             setRascunho={setRascunhoChecklist}
             nomeDe={nomeDe}
             titulo={titulo}
-            descricao={descricao}
+            descricao={textoSemImagens(descricao)}
           />
         )}
 
@@ -1436,6 +1529,8 @@ export default function TarefaModal({
             podeComentar={podeComentarEf}
             usuarios={usuariosFull}
             meuEmail={meuEmail}
+            meuNome={userNome}
+            criacao={tarefa.created_at ? { em: tarefa.created_at, texto: textoCriacao({ criadaPor, peloFormulario: criadaPeloForm, createdBy: tarefa.created_by }) } : undefined}
             podeResolverTodos={podeEditar}
             atribuirA={atribuirA}
             setAtribuirA={setAtribuirA}
