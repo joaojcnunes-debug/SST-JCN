@@ -24,7 +24,10 @@ const ICONE: Record<TipoRecurso, typeof List> = { space: LayoutGrid, folder: Fol
  * Papel `supervisor` = vê o Meu Quadro dos membros da equipe (edit). Várias pessoas entram de uma
  * vez; os acessos pedem motivo na hora de confirmar.
  * v0.3.910: é a única aba que dá acesso; o "Compartilhar" da lista chega aqui com a lista já
- * marcada em "Dar acesso" (recursosIniciais) — falta só escolher a equipe e o nível.
+ * marcada em "Dar acesso" (recursosIniciais) — falta só escolher a equipe.
+ * v366 (11/11/2026, pedido do usuário): o NÍVEL saiu dos acessos da equipe e foi para cada funcionário — a equipe diz
+ * ONDE (espaços, pastas, listas) e cada membro tem o seu nível, que vale para todos esses acessos. A concessão da
+ * equipe é gravada como "Completo" e o banco usa o menor entre ela e o nível do membro.
  */
 export default function EquipesTab({
   d,
@@ -48,7 +51,8 @@ export default function EquipesTab({
   const [editNome, setEditNome] = useState<string | null>(null);
   const [novas, setNovas] = useState<string[]>([]);
   const [novoPapel, setNovoPapel] = useState<PapelEquipe>("membro");
-  const [novoNivel, setNovoNivel] = useState<GestaoNivel | "">("");
+  // nível de quem entra na equipe (cada um pode ser mudado depois, na linha da pessoa)
+  const [novoNivelMembro, setNovoNivelMembro] = useState<GestaoNivel | "">("full");
   const [recursos, setRecursos] = useState<Set<string>>(() => new Set(recursosIniciais ?? []));
   const listaDoCompartilhar = recursosIniciais?.length ? d.recursoDe("list", lerChave(recursosIniciais[0]).id).caminho : null;
 
@@ -76,28 +80,30 @@ export default function EquipesTab({
   }
 
   async function adicionarPessoas() {
-    if (!equipe || !novas.length) return;
-    // entrar na equipe não tem motivo no banco (gestao_equipe_definir_membro); já libera o módulo
-    const passos: Passo[] = novas.map((email) => ({ op: "entrar_equipe", id_equipe: equipe.id, email, papel: novoPapel }));
-    if (await executar(passos, "entrada na equipe", `${novas.length} pessoa(s) na equipe ${equipe.nome}`)) setNovas([]);
+    if (!equipe || !novas.length || !novoNivelMembro) return;
+    // entrar na equipe não tem motivo no banco (gestao_equipe_definir_membro); já libera o módulo. Entra em "Completo"
+    // (padrão da coluna); outro nível escolhido vira um passo a mais, com o motivo "entrada na equipe".
+    const passos: Passo[] = novas.flatMap((email): Passo[] => [
+      { op: "entrar_equipe", id_equipe: equipe.id, email, papel: novoPapel },
+      ...(novoNivelMembro !== "full" ? [{ op: "nivel_membro" as const, id_equipe: equipe.id, email, nivel: novoNivelMembro }] : []),
+    ]);
+    if (await executar(passos, "entrada na equipe", `${novas.length} pessoa(s) na equipe ${equipe.nome} — ${rotuloNivel(novoNivelMembro)}`)) setNovas([]);
+  }
+
+  async function mudarNivelMembro(email: string, nome: string, de: GestaoNivel, para: GestaoNivel) {
+    if (!equipe || de === para) return;
+    const motivo = await pedirMotivo("Alterar nível na equipe", `${nome} em ${equipe.nome}: ${rotuloNivel(de)} → ${rotuloNivel(para)}`);
+    if (!motivo) return;
+    await executar([{ op: "nivel_membro", id_equipe: equipe.id, email, nivel: para }], motivo, `Nível de ${nome} alterado`);
   }
 
   async function conceder() {
-    if (!equipe || !recursos.size || !novoNivel) return;
-    const motivo = await pedirMotivo("Dar acesso à equipe", `${equipe.nome} × ${recursos.size} recurso(s) — ${rotuloNivel(novoNivel)}`);
+    if (!equipe || !recursos.size) return;
+    const motivo = await pedirMotivo("Dar acesso à equipe", `${equipe.nome} × ${recursos.size} recurso(s) — cada pessoa no nível dela`);
     if (!motivo) return;
-    const passos: Passo[] = [...recursos].map((k) => ({ op: "equipe", id_equipe: equipe.id, ...lerChave(k), nivel: novoNivel }));
-    if (await executar(passos, motivo, `Equipe com acesso a ${recursos.size} recurso(s)`)) {
-      setRecursos(new Set());
-      setNovoNivel("");
-    }
-  }
-
-  async function mudarNivel(a: (typeof d.acessos)[number], n: GestaoNivel) {
-    if (!equipe) return;
-    const motivo = await pedirMotivo("Alterar nível da equipe", `${equipe.nome}: ${rotuloNivel(a.nivel)} → ${rotuloNivel(n)}`);
-    if (!motivo) return;
-    await executar([{ op: "equipe", id_equipe: equipe.id, tipo: a.recurso_tipo as TipoRecurso, id: a.recurso_id!, nivel: n }], motivo, "Nível alterado");
+    // v366: a concessão da equipe vai sempre como "Completo"; quem limita é o nível de cada membro.
+    const passos: Passo[] = [...recursos].map((k) => ({ op: "equipe", id_equipe: equipe.id, ...lerChave(k), nivel: "full" }));
+    if (await executar(passos, motivo, `Equipe com acesso a ${recursos.size} recurso(s)`)) setRecursos(new Set());
   }
 
   async function removerAcesso(a: (typeof d.acessos)[number], caminho: string) {
@@ -172,6 +178,9 @@ export default function EquipesTab({
                       <option value="membro">Membro</option>
                       <option value="supervisor">Supervisor</option>
                     </select>
+                    <SeletorNivel value={m.nivel ?? "full"} disabled={pendente} title={`Nível de ${nome} nos acessos da equipe: ${rotuloNivel(m.nivel ?? "full")}`}
+                      onChange={(n) => mudarNivelMembro(m.usuario_email, nome, m.nivel ?? "full", n)}
+                      className="w-[14.5rem] max-w-full rounded-md border border-gray-200 px-1.5 py-1 text-xs text-gray-700 focus:outline-none disabled:opacity-50" />
                     <button type="button" disabled={pendente} title="Remover da equipe" onClick={() => definirMembro.mutate({ id_equipe: equipe.id, email: m.usuario_email, papel: m.papel, ativo: false })} className="flex size-7 shrink-0 items-center justify-center rounded-md text-gray-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"><Trash2 className="size-4" /></button>
                   </div>
                 );
@@ -184,7 +193,8 @@ export default function EquipesTab({
                     <option value="membro">Membro</option>
                     <option value="supervisor">Supervisor</option>
                   </select>
-                  <button type="button" onClick={adicionarPessoas} disabled={!novas.length || pendente} className="rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50">
+                  <SeletorNivel value={novoNivelMembro} onChange={setNovoNivelMembro} title="Nível de quem entra (dá para mudar depois, pessoa por pessoa)" className={`${inputCls} w-[15.5rem] max-w-full`} />
+                  <button type="button" onClick={adicionarPessoas} disabled={!novas.length || !novoNivelMembro || pendente} className="rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50">
                     Adicionar {novas.length ? `(${novas.length})` : ""}
                   </button>
                 </div>
@@ -205,7 +215,6 @@ export default function EquipesTab({
                     <span className="min-w-0 flex-1 truncate text-sm text-gray-800" title={r.caminho}>
                       {r.caminho} <span className="text-[10px] text-gray-400">{ROTULO_TIPO[a.recurso_tipo as TipoRecurso]}</span>
                     </span>
-                    <SeletorNivel value={a.nivel} disabled={pendente} title={rotuloNivel(a.nivel)} onChange={(n) => mudarNivel(a, n)} className="rounded-md border border-gray-200 px-1.5 py-1 text-xs text-gray-700 focus:outline-none disabled:opacity-50" />
                     <button type="button" disabled={pendente} title="Remover acesso" onClick={() => removerAcesso(a, r.caminho)} className="flex size-7 shrink-0 items-center justify-center rounded-md text-gray-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"><Trash2 className="size-4" /></button>
                   </div>
                 );
@@ -214,13 +223,13 @@ export default function EquipesTab({
                 <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500"><Dica texto={DICAS_GESTAO_ACESSOS.equipe_acesso}>Dar acesso</Dica> ({recursos.size})</p>
                 <RecursoPicker arvore={d.arvore} value={recursos} onChange={setRecursos} altura="max-h-44" />
                 <div className="flex flex-wrap items-center justify-end gap-2">
-                  <SeletorNivel value={novoNivel} onChange={setNovoNivel} className={inputCls} />
-                  <button type="button" onClick={conceder} disabled={!recursos.size || !novoNivel || pendente} className="rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50">Conceder à equipe</button>
+                  <span className="mr-auto text-[11px] text-gray-400">Cada pessoa entra no nível dela (em Membros).</span>
+                  <button type="button" onClick={conceder} disabled={!recursos.size || pendente} className="rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50">Conceder à equipe</button>
                 </div>
               </div>
             </div>
           </div>
-          <p className="flex items-center gap-1 text-[11px] text-gray-400"><ShieldCheck className="size-3.5" /> Supervisor vê o Meu Quadro dos membros desta equipe (e edita). Acessos pedem motivo e ficam no histórico.</p>
+          <p className="flex items-center gap-1 text-[11px] text-gray-400"><ShieldCheck className="size-3.5" /> O nível de cada pessoa vale para todos os acessos da equipe. Supervisor vê o Meu Quadro dos membros desta equipe (e edita). Acessos e níveis pedem motivo e ficam no histórico.</p>
         </div>
       )}
     </div>

@@ -31,11 +31,15 @@ export type PatchJanela = Partial<Pick<JanelaSubtarefa, "status" | "data_inicio"
 export type PatchLinha = Partial<Pick<GestaoSubtarefa, "texto" | "feito" | "responsavel_email">>;
 
 const CHAVE_JANELAS = "gestao-subtarefas-janelas";
+// Responsáveis das janelas: chave PRÓPRIA (12/11/2026). Debaixo de CHAVE_JANELAS o onMutate da data
+// (useAtualizarJanelaSubtarefa) reescrevia este cache como se fosse de janelas e a lista quebrava ("not iterable").
+const CHAVE_RESP_JANELAS = "gestao-subtarefas-responsaveis";
 
 /** Depois de qualquer mudança: a lista, as janelas, o cartão (contagem pelo espelho jsonb), Meu espaço e Agenda. */
 function recarregar(qc: QueryClient, idTarefa: string) {
   qc.invalidateQueries({ queryKey: ["gestao-subtarefas", idTarefa] });
   qc.invalidateQueries({ queryKey: [CHAVE_JANELAS] });
+  qc.invalidateQueries({ queryKey: [CHAVE_RESP_JANELAS] });
   qc.invalidateQueries({ queryKey: ["gestao-tarefas"] });
   qc.invalidateQueries({ queryKey: ["gestao-minhas"] });
   qc.invalidateQueries({ queryKey: ["gestao-agenda-de"] });
@@ -80,6 +84,87 @@ export function useJanelasDasSubtarefas(idsFilhas: string[]) {
       const porId: Record<string, JanelaSubtarefa> = {};
       for (const t of (data ?? []) as unknown as JanelaSubtarefa[]) porId[t.id_tarefa] = t;
       return porId;
+    },
+  });
+}
+
+/**
+ * Responsáveis (vínculo tipo "responsavel") de cada janela, por id da tarefa filha — a linha guarda um só, a janela pode
+ * ter vários (11/11/2026: a lista mostra todos). Chave própria (ver CHAVE_RESP_JANELAS); `recarregar` atualiza as duas.
+ */
+export function useResponsaveisDasJanelas(idsFilhas: string[]) {
+  const chave = [...new Set(idsFilhas)].sort().join(",");
+  return useQuery({
+    queryKey: [CHAVE_RESP_JANELAS, chave],
+    enabled: chave !== "",
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("gestao_tarefa_vinculados")
+        .select("id_tarefa,usuario_email,created_at")
+        .eq("tipo", "responsavel")
+        .in("id_tarefa", chave.split(","))
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      const porId: Record<string, string[]> = {};
+      for (const v of (data ?? []) as unknown as { id_tarefa: string; usuario_email: string }[]) {
+        (porId[v.id_tarefa] ??= []).push(v.usuario_email.toLowerCase());
+      }
+      return porId;
+    },
+  });
+}
+
+/** Mensagem da recusa do banco (gestao_vincular/desvincular) para a pessoa. */
+function mensagemAlocar(e: unknown, tirar: boolean): string {
+  const raw = String((e as { message?: string } | null)?.message ?? "");
+  if (/so pode (des)?vincular a si mesmo/i.test(raw)) {
+    return tirar
+      ? "Você só pode tirar a si mesmo. Para tirar outra pessoa, é preciso nível Completo nesta lista."
+      : "Você só pode se alocar. Para alocar outra pessoa, é preciso nível Completo nesta lista.";
+  }
+  if (/sem edicao/i.test(raw)) return "Você não pode editar esta lista.";
+  return mensagemErro(e, tirar ? "Não foi possível tirar a pessoa." : "Não foi possível alocar a pessoa.");
+}
+
+/**
+ * Põe ou tira uma pessoa da subtarefa pela própria lista (11/11/2026, pedido do usuário: "acrescentar alguém pelo lado
+ * de fora, sem abrir a subtarefa"). Vale nos responsáveis da janela (tarefa filha) pelas mesmas RPCs da janela
+ * (gestao_vincular / gestao_desvincular — mesmas regras: pessoa comum só a si mesma; nível Completo, qualquer um).
+ * Sem janela: a 1ª pessoa vai no responsável da linha; a 2ª abre a janela (gestao_subtarefa_abrir leva o da linha) e
+ * vincula. O banco espelha o 1º responsável da janela no da linha (gestao_vinculo_sync_subtarefa_trg).
+ */
+export function useAlocarNaSubtarefa() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { idTarefa: string; idSubtarefa: string; idFilha: string | null; responsavelLinha: string | null; email: string; tirar?: boolean }) => {
+      const sb = createSupabaseBrowserClient();
+      const email = p.email.trim().toLowerCase();
+      const daLinha = (p.responsavelLinha ?? "").trim().toLowerCase();
+      if (!p.idFilha) {
+        // sem janela: só existe o responsável da linha
+        if (p.tirar) {
+          if (daLinha !== email) return;
+          const { error } = await sb.from("gestao_subtarefas").update({ responsavel_email: null } as never).eq("id", p.idSubtarefa);
+          if (error) throw error;
+          return;
+        }
+        if (!daLinha) {
+          const { error } = await sb.from("gestao_subtarefas").update({ responsavel_email: email } as never).eq("id", p.idSubtarefa);
+          if (error) throw error;
+          return;
+        }
+        if (daLinha === email) return;
+      }
+      const filha = p.idFilha ?? (await abrirJanela(p.idSubtarefa));
+      const { error } = await sb.rpc((p.tirar ? "gestao_desvincular" : "gestao_vincular") as never,
+        { p_id_tarefa: filha, p_email: email, p_tipo: "responsavel" } as never);
+      if (error) throw error;
+    },
+    onSuccess: (_r, p) => recarregar(qc, p.idTarefa),
+    onError: (e, p) => {
+      toast.error(mensagemAlocar(e, !!p.tirar));
+      recarregar(qc, p.idTarefa);
     },
   });
 }

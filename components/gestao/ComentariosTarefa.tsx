@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { Send, X, CheckCircle2, CircleDot, UserRound, Sparkles, Loader2 } from "lucide-react";
+import { Send, X, CheckCircle2, CircleDot, UserRound, Sparkles, Loader2, ImagePlus } from "lucide-react";
 import { mensagemErro } from "@/lib/errors";
-import { resumirComentariosIa } from "@/lib/hooks/useGestao";
+import { resumirComentariosIa, useAnexos } from "@/lib/hooks/useGestao";
+import { useColarImagens } from "@/lib/hooks/useImagensCartao";
+import { separarImagens, TEXTO_SO_IMAGEM } from "@/lib/gestao/imagens-cartao";
+import { ImagemAmpliada, MiniaturaRascunho, MiniaturaSalva, type Ampliada } from "@/components/gestao/ImagensCartao";
 import { MIN_COMENTARIOS_RESUMO, type ResumoIa } from "@/lib/gestao/ia-resumo";
 import { useTarefaHistorico } from "@/lib/hooks/useTarefaHistorico";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
@@ -27,6 +30,8 @@ function quando(iso: string): string {
  * alguém marcar "Resolver" (quem recebeu ou quem edita o quadro).
  * 0.3.275 (= Painel 0.3.925): "Resumir com IA" — situação, o que já foi decidido, o que falta e o próximo passo. A IA lê
  * os comentários com o login da pessoa (só o que ela já vê). O resumo não fica salvo.
+ * 12/11/2026 (= Painel 0.3.953): imagem no comentário — Ctrl+V na caixa de escrever ou o botão de imagem; ela vai
+ * junto ao enviar e aparece embaixo do texto (anexo na pasta comentario-<id>, lib/gestao/imagens-cartao.ts).
  */
 export default function ComentariosTarefa({
   idTarefa,
@@ -43,6 +48,9 @@ export default function ComentariosTarefa({
   atribuirA = "",
   setAtribuirA,
   onResolver,
+  imagensRascunho = [],
+  onAdicionarImagens,
+  onTirarImagem,
 }: {
   idTarefa: string;
   ro: boolean;
@@ -60,8 +68,19 @@ export default function ComentariosTarefa({
   atribuirA?: string;
   setAtribuirA?: (email: string) => void;
   onResolver?: (idComentario: string, resolvido: boolean) => void;
+  /** Imagens do comentário que está sendo escrito (vão junto ao enviar). Sem `onAdicionarImagens`, sem imagem. */
+  imagensRascunho?: File[];
+  onAdicionarImagens?: (imagens: File[]) => void;
+  onTirarImagem?: (i: number) => void;
 }) {
   const { data: itens = [], isLoading } = useTarefaHistorico(idTarefa);
+  const { data: anexos = [] } = useAnexos(idTarefa);
+  const { porComentario } = separarImagens(anexos);
+  const [ampliada, setAmpliada] = useState<Ampliada | null>(null);
+  const caixaRef = useRef<HTMLDivElement>(null);
+  const arquivoRef = useRef<HTMLInputElement>(null);
+  useColarImagens(!ro && !!onAdicionarImagens, caixaRef, (imgs) => onAdicionarImagens?.(imgs), { soDentro: "[data-colar-comentario]" });
+  const podeEnviar = !!novoComentario.trim() || imagensRascunho.length > 0;
   const comentarios = itens.filter((i) => i.kind === "comentario");
   const nomeDe = (email: string | null | undefined) =>
     email ? usuarios.find((u) => u.email.toLowerCase() === email.toLowerCase())?.nome ?? email : "—";
@@ -134,7 +153,16 @@ export default function ComentariosTarefa({
                 <p className="text-[11px] text-gray-400">
                   {item.ator ?? "—"} · {quando(item.created_at)}
                 </p>
-                <p className="whitespace-pre-wrap break-words text-sm text-gray-700">{item.texto}</p>
+                {!(item.texto === TEXTO_SO_IMAGEM && porComentario.has(idComentario)) && (
+                  <p className="whitespace-pre-wrap break-words text-sm text-gray-700">{item.texto}</p>
+                )}
+                {(porComentario.get(idComentario) ?? []).length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {porComentario.get(idComentario)!.map((a) => (
+                      <MiniaturaSalva key={a.id} anexo={a} onAbrir={() => setAmpliada({ anexo: a })} />
+                    ))}
+                  </div>
+                )}
                 {atribuido && (
                   <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
                     <span className="inline-flex items-center gap-1 font-medium text-gray-600">
@@ -175,20 +203,43 @@ export default function ComentariosTarefa({
       </div>
 
       {podeComentar && (
-        <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:items-center">
+        <div ref={caixaRef} data-colar-comentario="" className="mt-3 border-t border-gray-100 pt-3">
+        {imagensRascunho.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {imagensRascunho.map((f, i) => (
+              <MiniaturaRascunho key={`${i}-${f.name}`} arquivo={f} pequena onAbrir={() => setAmpliada({ arquivo: f })} onTirar={() => onTirarImagem?.(i)} />
+            ))}
+          </div>
+        )}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
             value={novoComentario}
             onChange={(e) => setNovoComentario(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && novoComentario.trim()) {
+              if (e.key === "Enter" && podeEnviar && !enviando) {
                 e.preventDefault();
                 onEnviar();
               }
             }}
-            placeholder="Escrever um comentário…"
+            placeholder={onAdicionarImagens ? "Escrever um comentário… (Ctrl+V cola imagem)" : "Escrever um comentário…"}
             className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none"
           />
           <div className="flex items-center gap-2">
+            {onAdicionarImagens && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => arquivoRef.current?.click()}
+                  aria-label="Inserir imagem no comentário"
+                  title="Inserir imagem no comentário"
+                  className="rounded-lg border border-gray-300 px-2.5 py-2 text-gray-500 hover:border-marca-primary hover:text-marca-primary"
+                >
+                  <ImagePlus className="size-4" />
+                </button>
+                <input ref={arquivoRef} type="file" accept="image/*" multiple className="hidden"
+                  onChange={(e) => { const l = Array.from(e.target.files ?? []); e.target.value = ""; if (l.length) onAdicionarImagens(l); }} />
+              </>
+            )}
             {setAtribuirA && (
               <div className="w-44" title="Atribuir: o comentário vira pendência da pessoa até ser resolvido">
                 <UsuarioCombobox
@@ -205,15 +256,17 @@ export default function ComentariosTarefa({
             <button
               type="button"
               onClick={onEnviar}
-              disabled={!novoComentario.trim() || enviando}
+              disabled={!podeEnviar || enviando}
               aria-label="Enviar comentário"
               className="rounded-lg bg-marca-primary px-3 py-2 text-white disabled:opacity-50"
             >
-              <Send className="size-4" />
+              {enviando ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
             </button>
           </div>
         </div>
+        </div>
       )}
+      <ImagemAmpliada imagem={ampliada} onClose={() => setAmpliada(null)} />
     </div>
   );
 }

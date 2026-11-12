@@ -1381,8 +1381,12 @@ export type GatilhoAutomacao =
   | "agendado" | "tarefa_parada" | "data_inicio_chega" | "dependencia_liberada"
   // v300 (Pacote C): só quando alguém clica no ⚡ (tarefa ou ações em massa)
   | "manual"
-  // v301 (Pacote D): eventos do SST — criam uma tarefa do modelo no quadro da regra
-  | "sst_inspecao_concluida" | "sst_documento_concluido" | "sst_vencimento";
+  // v314 (Pacote D): eventos do SST — criam uma tarefa do modelo no quadro da regra
+  | "sst_inspecao_concluida" | "sst_documento_concluido" | "sst_vencimento"
+  // 11/11: gatilhos da subtarefa (Tarefa, Pessoas e Datas, disparando pela subtarefa)
+  | "subtarefa_criada" | "subtarefa_reaberta" | "subtarefa_etapa_muda" | "subtarefa_renomeada"
+  | "subtarefa_responsavel_adicionado" | "subtarefa_responsavel_removido"
+  | "subtarefa_entrega_proxima" | "subtarefa_entrega_vencida" | "subtarefa_inicio_chega";
 
 /** Uma cláusula do construtor E/OU. Campos aceitos pelo motor (gestao_automacao_cond_teste):
  *  status, status_de, status_para, prioridade, quadro, etiqueta, campo:<id>. Ops: '=' '!=' 'in' 'contains'. */
@@ -1684,6 +1688,40 @@ export function useSubtarefasDoQuadro(idQuadro: string | null | undefined, enabl
         linhas: (linhas.data ?? []) as unknown as SubtarefaDoQuadro[],
         filhas: (filhas.data ?? []) as unknown as GestaoTarefa[],
       };
+    },
+  });
+}
+
+/** "Minhas" do quadro (12/11/2026): as subtarefas ABERTAS de um quadro em que estou alocado(a) — responsável ou
+ *  entre os alocados do Runrun (v357; o responsável é só o 1º deles). Devolve as próprias subtarefas e, para os
+ *  cartões, a tarefa-mãe e a janela da subtarefa (filha), quando já existe. Só lê quando `enabled`. */
+export function useMinhasSubtarefasDoQuadro(idQuadro: string | null | undefined, email: string | null | undefined, enabled: boolean) {
+  const eu = (email ?? "").trim().toLowerCase();
+  return useQuery({
+    queryKey: ["gestao-subtarefas-quadro", idQuadro, "minhas", eu],
+    enabled: !!idQuadro && !!eu && enabled,
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const base = () =>
+        sb.from("gestao_subtarefas")
+          .select("id,id_tarefa,id_tarefa_filha,mae:gestao_tarefas!gestao_subtarefas_id_tarefa_fkey!inner(id_quadro)")
+          .eq("mae.id_quadro", idQuadro!)
+          .eq("feito", false);
+      const [resp, aloc] = await Promise.all([
+        base().eq("responsavel_email", eu),
+        base().contains("alocados", [{ email: eu, feito: false }]),
+      ]);
+      if (resp.error) throw resp.error;
+      if (aloc.error) throw aloc.error;
+      const subtarefas = new Set<string>();
+      const tarefas = new Set<string>();
+      for (const s of [...(resp.data ?? []), ...(aloc.data ?? [])] as unknown as { id: string; id_tarefa: string; id_tarefa_filha: string | null }[]) {
+        subtarefas.add(s.id);
+        tarefas.add(s.id_tarefa);
+        if (s.id_tarefa_filha) tarefas.add(s.id_tarefa_filha);
+      }
+      return { subtarefas, tarefas };
     },
   });
 }

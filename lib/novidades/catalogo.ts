@@ -41,6 +41,151 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-subtarefa-data-nao-derruba",
+    data: "2026-11-12",
+    tipo: "correcao",
+    titulo: "Mudar a data da subtarefa na lista não derruba mais a tela",
+    texto:
+      "Na janela do cartão, trocar a data de uma subtarefa direto na lista fazia a tela inteira dar erro. Agora a data " +
+      "muda e a coluna Alocados continua mostrando as pessoas.",
+    onde: "Gestão › cartão › Subtarefas",
+    versoes: ["0.3.284"],
+  },
+  {
+    id: "gestao-minhas-criei-alocado-sigo",
+    data: "2026-11-12",
+    tipo: "correcao",
+    titulo: "\"Minhas\" mostra o que você criou, onde está alocado e o que segue",
+    texto:
+      "O botão Minhas da lista passa a mostrar as tarefas que você criou, aquelas em que você é responsável ou está " +
+      "alocado (inclusive numa subtarefa aberta) e as que você segue. Antes ele só olhava o responsável, e as " +
+      "tarefas do Runrun em que você não era o primeiro alocado ficavam de fora.",
+    onde: "Gestão › qualquer lista › botão Minhas",
+    versoes: ["0.3.284"],
+  },
+  {
+    id: "gestao-sem-sino",
+    data: "2026-11-12",
+    tipo: "melhoria",
+    titulo: "Gestão: notificações só na sua foto",
+    texto:
+      "O sininho saiu da barra das listas e do Meu Espaço. As notificações continuam na sua foto, no canto de cima: " +
+      "a bolinha vermelha mostra quantas não foram lidas e o item Notificações abre a Caixa de entrada.",
+    onde: "Gestão › foto no canto superior direito › Notificações",
+    impacto: "Só mudou o lugar; nenhuma notificação se perde.",
+    versoes: ["0.3.284"],
+  },
+  {
+    id: "gestao-imagens-no-cartao-e-comentarios",
+    data: "2026-11-12",
+    tipo: "novidade",
+    titulo: "Gestão: cole e insira imagens nos cartões e nos comentários",
+    texto:
+      "Com o cartão aberto, aperte Ctrl+V com uma imagem copiada (um print, por exemplo) em qualquer lugar da janela: " +
+      "ela aparece em miniatura logo abaixo da descrição. Também há os botões Inserir imagem e Colar imagem copiada. " +
+      "Clique na miniatura para ampliar. Funciona na Nova tarefa e na subtarefa (as imagens vão junto ao criar). Nos " +
+      "comentários, cole a imagem na caixa de escrever ou use o botão de imagem: ela aparece junto do comentário.",
+    onde: "Gestão › cartão › Descrição e Comentários",
+    impacto:
+      "Colar texto num campo de texto continua colando texto. As imagens também ficam na aba Anexos (até 25 MB cada).",
+    versoes: ["0.3.284"],
+  },
+  {
+    id: "formularios-colar-imagem",
+    data: "2026-11-12",
+    tipo: "novidade",
+    titulo: "Formulários aceitam imagens, inclusive coladas com Ctrl+V",
+    texto:
+      "Nos formulários da Gestão, os campos de anexo (Anexos, Foto do atestado, Foto do EPI, Anexar a CAT…) agora " +
+      "recebem arquivos, como já acontecia na Ordem de Serviço. Em todos eles, inclusive na OS, dá para colar um print " +
+      "ou uma imagem copiada com Ctrl+V, ou pelo botão Colar imagem copiada. A imagem aparece em miniatura antes " +
+      "de enviar e vai para os anexos do cartão.",
+    onde: "Formulários da Gestão (link do formulário e Cadastrar empresa)",
+    impacto: "Esses campos deixam de ser texto: links ou observações vão nos outros campos do formulário.",
+    versoes: ["0.3.284"],
+  },
+  {
+    id: "gestao-subtarefa-alocar-na-lista",
+    data: "2026-11-12",
+    tipo: "melhoria",
+    titulo: "Gestão: alocar e tirar pessoas da subtarefa direto na lista",
+    texto:
+      "Na lista de subtarefas, a coluna Alocados ganhou \"+ Adicionar\" para acrescentar outra pessoa sem abrir a " +
+      "subtarefa, e um × em cada pessoa para tirar. Vale para as subtarefas criadas na Gestão; as que vêm do Runrun " +
+      "continuam como estão.",
+    onde: "Gestão › tarefa › Subtarefas › Alocados",
+    impacto: "Mesma regra da janela da subtarefa: quem não tem nível Completo na lista só consegue se alocar (ou se tirar).",
+    versoes: ["0.3.284"],
+  },
+  {
+    id: "gestao-subtarefa-todos-alocados",
+    data: "2026-11-12",
+    tipo: "melhoria",
+    titulo: "Gestão: subtarefa mostra todos os alocados, e as linhas ficaram mais altas",
+    texto:
+      "Na lista de subtarefas da tarefa, a coluna Alocados mostra todas as pessoas, cada uma com foto e nome — os " +
+      "responsáveis escolhidos na janela da subtarefa, o da linha e os que vêm do Runrun, sem repetir. As linhas da " +
+      "lista ficaram mais altas.",
+    onde: "Gestão › tarefa › Subtarefas",
+    impacto: "Só exibição.",
+    versoes: ["0.3.284"],
+  },
+  {
+    id: "gestao-automacoes-pagina-e-subtarefa",
+    data: "2026-11-12",
+    tipo: "novidade",
+    titulo: "Gestão: automações explicadas, em ordem, e com gatilhos de subtarefa",
+    texto:
+      "A janela de Automações mostra cada regra recolhida, com número (a ordem em que roda), nome e um resumo em português; " +
+      "ao abrir, os blocos aparecem como 1. Quando, 2. Se e 3. Então, e cada ação diz o que faz. As setas mudam a ordem. " +
+      "No destino de \"criar tarefa em outro quadro\", a etapa aparece pelo nome (ex.: Empresas Novas de Guapimirim). " +
+      "O \"Quando\" ganhou gatilhos de subtarefa: criada, concluída, reaberta, etapa muda, renomeada, responsável colocado ou " +
+      "retirado, entrega desejada se aproximando ou vencida e início desejado chegando. A equipe de T.I ganhou a página " +
+      "Automações, com todas as regras de todos os quadros, para consultar, editar e criar.",
+    onde: "Gestão › lista › ⚡ Automações · Gestão › Automações (T.I)",
+    impacto: "Nenhuma automação mudou de comportamento. A ordem só muda quando alguém usa as setas.",
+    versoes: ["0.3.284"],
+  },
+  {
+    id: "gestao-subtarefa-volta-ao-original",
+    data: "2026-11-12",
+    tipo: "melhoria",
+    titulo: "Subtarefa: o nome da tarefa no topo leva ao cartão original",
+    texto:
+      "Na janela de uma subtarefa, o nome em \"Subtarefa de …\" agora é um link. Clique nele para ir ao cartão original: " +
+      "se a subtarefa foi aberta de dentro da tarefa, a janela da subtarefa fecha e a tarefa aparece; se foi aberta pelo " +
+      "cartão, pela Agenda ou por um aviso, a janela passa a mostrar a tarefa.",
+    onde: "Gestão › subtarefa › topo da janela",
+    impacto: "O que ainda não foi salvo na subtarefa não vai junto: salve antes de clicar.",
+    versoes: ["0.3.284"],
+  },
+  {
+    id: "gestao-mover-colunas-arrastando",
+    data: "2026-11-12",
+    tipo: "melhoria",
+    titulo: "Gestão: mude as colunas de lugar arrastando",
+    texto:
+      "No Quadro, segure o título de uma coluna e arraste para a esquerda ou para a direita: uma faixa verde mostra onde " +
+      "ela vai entrar. Vale em todas as listas, para quem pode editar a lista.",
+    onde: "Gestão › lista › Quadro (agrupado por Status)",
+    impacto:
+      "A ordem das colunas é da lista: muda para todos que usam a lista, como já acontecia em Configurar › Status.",
+    versoes: ["0.3.284"],
+  },
+  {
+    id: "gestao-nivel-por-membro",
+    data: "2026-11-12",
+    tipo: "melhoria",
+    titulo: "Gestão: o nível de acesso agora é de cada funcionário na equipe",
+    texto:
+      "Em Membros e acessos › Equipes, o nível (Ver, Comentar, Editar, Completo…) saiu dos Acessos da equipe e foi " +
+      "para cada pessoa da lista de Membros. A equipe diz onde as pessoas entram (espaços, pastas, listas) e cada " +
+      "funcionário tem o seu nível, que vale para todos esses acessos. Mudar o nível pede motivo e fica no histórico.",
+    onde: "Gestão › Membros e acessos › Equipes › Membros",
+    impacto: "Ninguém ganhou nem perdeu acesso: todos começam em Completo, como as equipes estavam. Acessos dados direto a uma pessoa não mudaram.",
+    versoes: ["0.3.284"],
+  },
+  {
     id: "gestao-texto-do-cartao-no-google",
     data: "2026-11-12",
     tipo: "melhoria",

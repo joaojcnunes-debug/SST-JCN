@@ -14,7 +14,8 @@ export type Passo =
   | { op: "pessoa"; email: string; tipo: TipoRecurso; id: string; nivel: GestaoNivel | null }
   | { op: "equipe"; id_equipe: string; tipo: TipoRecurso; id: string; nivel: GestaoNivel | null }
   | { op: "entrar_equipe"; id_equipe: string; email: string; papel: "membro" | "supervisor" }
-  | { op: "sair_equipe"; id_equipe: string; email: string };
+  | { op: "sair_equipe"; id_equipe: string; email: string }
+  | { op: "nivel_membro"; id_equipe: string; email: string; nivel: GestaoNivel };
 
 /**
  * Executa uma lista de passos de acesso pelas mesmas RPCs logadas de sempre
@@ -46,7 +47,10 @@ export function useGravarAcessos() {
                 ? await sb.rpc("gestao_equipe_alterar_acesso", { p_id_equipe: p.id_equipe, p_recurso_tipo: p.tipo, p_recurso_id: p.id, p_nivel: p.nivel, p_motivo: motivo })
                 : p.op === "entrar_equipe"
                   ? await sb.rpc("gestao_equipe_definir_membro", { p_id_equipe: p.id_equipe, p_email: p.email, p_papel: p.papel, p_ativo: true })
-                  : await sb.rpc("gestao_equipe_definir_membro", { p_id_equipe: p.id_equipe, p_email: p.email, p_papel: "membro", p_ativo: false });
+                  : p.op === "nivel_membro"
+                    // v366: o nível agora é de cada funcionário na equipe
+                    ? await sb.rpc("gestao_equipe_definir_nivel", { p_id_equipe: p.id_equipe, p_email: p.email, p_nivel: p.nivel, p_motivo: motivo })
+                    : await sb.rpc("gestao_equipe_definir_membro", { p_id_equipe: p.id_equipe, p_email: p.email, p_papel: "membro", p_ativo: false });
         if (r.error) erros.push(r.error.message);
       }
     } finally {

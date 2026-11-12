@@ -2,9 +2,9 @@
 
 import Dica from "@/components/ui/Dica";
 import { DICAS_GESTAO_AUTOMACAO } from "@/lib/dicas/gestao";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { AlertTriangle, ArrowDown, ArrowUp, BookOpen, Filter, History, Plus, Trash2, UserCog, Workflow, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, BookOpen, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Filter, History, Plus, Trash2, UserCog, Workflow, X } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { confirmar } from "@/components/ui/confirm";
 import AutomacaoCondicaoBuilder from "@/components/gestao/AutomacaoCondicaoBuilder";
@@ -15,6 +15,8 @@ import { AgendaEditor, ModeloTarefaEditor, ParadaEditor } from "@/components/ges
 import { acoesDaRegra, regraCompleta, GATILHOS_SST } from "@/lib/gestao/automacao-completa";
 import { useUnidades } from "@/lib/hooks/useUnidades";
 import { receitasDoQuadro } from "@/lib/gestao/receitas-automacao";
+import { GATILHOS, GRUPOS_GATILHO, DIAS_PADRAO, descreverAcao, descreverRegra, ehGatilhoSubtarefa } from "@/lib/gestao/automacao-descricao";
+import { nomesDoQuadro, useNomesAutomacao, useReordenarAutomacoes } from "@/lib/hooks/useAutomacoesTodas";
 import {
   useAutomacoes, useSalvarAutomacao, useExcluirAutomacao, useUsuariosLista, useUsuarios,
   useModelos, useQuadros, useEtiquetasQuadro,
@@ -26,34 +28,8 @@ import {
 // cada ação pode ter a sua condição ("só se…") — é o se/senão. Gatilhos e condições novos e a aba
 // Histórico, que mostra cada execução (rodou, pulou, falhou e por quê).
 
-const GATILHOS: { value: GatilhoAutomacao; label: string; grupo: string }[] = [
-  { value: "tarefa_criada", label: "Quando a tarefa é criada", grupo: "Tarefa" },
-  { value: "status_muda", label: "Quando o status muda", grupo: "Tarefa" },
-  { value: "prioridade_muda", label: "Quando a prioridade muda", grupo: "Tarefa" },
-  { value: "campo_muda", label: "Quando um campo muda", grupo: "Tarefa" },
-  { value: "etiqueta_adicionada", label: "Quando uma etiqueta é adicionada", grupo: "Tarefa" },
-  { value: "tarefa_movida_quadro", label: "Quando a tarefa muda de quadro", grupo: "Tarefa" },
-  { value: "subtarefa_concluida", label: "Quando uma subtarefa é concluída", grupo: "Tarefa" },
-  { value: "responsavel_adicionado", label: "Quando um responsável é adicionado", grupo: "Pessoas" },
-  { value: "comentario_adicionado", label: "Quando alguém comenta", grupo: "Pessoas" },
-  { value: "tarefa_aprovada", label: "Quando a tarefa é aprovada", grupo: "Pessoas" },
-  { value: "tarefa_rejeitada", label: "Quando a aprovação é recusada", grupo: "Pessoas" },
-  { value: "prazo_proximo", label: "Quando o prazo se aproxima", grupo: "Datas" },
-  { value: "prazo_vencido", label: "Quando o prazo vence (atrasada)", grupo: "Datas" },
-  // v299 (Pacote B) — rodam no relógio, a cada 10 min
-  { value: "data_inicio_chega", label: "Quando a data de início chega", grupo: "Datas" },
-  { value: "agendado", label: "Em um horário (agenda)", grupo: "Tempo e cobrança" },
-  { value: "tarefa_parada", label: "Quando a tarefa fica parada (SLA)", grupo: "Tempo e cobrança" },
-  { value: "dependencia_liberada", label: "Quando as tarefas que bloqueiam são concluídas", grupo: "Tempo e cobrança" },
-  // v300 (Pacote C)
-  { value: "manual", label: "Quando alguém clica no botão ⚡ (manual)", grupo: "Botão" },
-  // v301 (Pacote D) — criam uma tarefa do modelo neste quadro
-  { value: "sst_inspecao_concluida", label: "Quando uma inspeção é concluída (1ª vez)", grupo: "SST" },
-  { value: "sst_documento_concluido", label: "Quando um documento é concluído (1ª vez)", grupo: "SST" },
-  { value: "sst_vencimento", label: "Quando um documento ou extintor vai vencer", grupo: "SST" },
-];
-const NO_RELOGIO = new Set<GatilhoAutomacao>(["agendado", "tarefa_parada", "data_inicio_chega"]);
-const GRUPOS_GATILHO = [...new Set(GATILHOS.map((g) => g.grupo))];
+const NO_RELOGIO = new Set<string>(["agendado", "tarefa_parada", "data_inicio_chega", "subtarefa_inicio_chega"]);
+const NAS_7H = new Set<string>(["prazo_proximo", "prazo_vencido", "subtarefa_entrega_proxima", "subtarefa_entrega_vencida"]);
 
 /** Variáveis aceitas nos textos (comentário, e-mail, aviso, título, valor de campo). */
 const VARIAVEIS: Partial<Record<GatilhoAutomacao | "sempre", string[]>> = {
@@ -68,6 +44,8 @@ const VARIAVEIS: Partial<Record<GatilhoAutomacao | "sempre", string[]>> = {
   sst_documento_concluido: ["{empresa}", "{unidade}", "{tecnico}", "{responsavel_elaboracao}", "{id_inspecao}"],
   sst_vencimento: ["{empresa}", "{unidade}", "{item}", "{validade}", "{dias_para_vencer}", "{id_inspecao}"],
 };
+/** 11/11: nos gatilhos de subtarefa, os textos aceitam também a subtarefa que disparou. */
+const VARIAVEIS_SUBTAREFA = ["{subtarefa}", "{subtarefa_antes}", "{responsavel_subtarefa}", "{entrega_subtarefa}", "{inicio_subtarefa}"];
 
 const sel = "rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none";
 const EMPTY_USUARIOS: { nome: string; email: string }[] = [];
@@ -75,7 +53,7 @@ const EMPTY_USUARIOS: { nome: string; email: string }[] = [];
 const novoId = () => crypto.randomUUID().slice(0, 8);
 
 export default function AutomacoesManagerModal({
-  open, onClose, idQuadro, statuses, campos, podeEditar,
+  open, onClose, idQuadro, statuses, campos, podeEditar, focoId = null,
 }: {
   open: boolean;
   onClose: () => void;
@@ -83,6 +61,8 @@ export default function AutomacoesManagerModal({
   statuses: GestaoStatus[];
   campos: GestaoCampo[];
   podeEditar: boolean;
+  /** 11/11: abre já com esta regra aberta e rolada até ela (botão "Editar" da página Automações). */
+  focoId?: string | null;
 }) {
   const [aba, setAba] = useState<"regras" | "produtos" | "historico">("regras");
   const { data: automacoes = [] } = useAutomacoes(idQuadro);
@@ -98,8 +78,47 @@ export default function AutomacoesManagerModal({
   const [condAberta, setCondAberta] = useState<string | null>(null);
   const [receitasAbertas, setReceitasAbertas] = useState(false);
   const receitas = receitasDoQuadro(statuses);
+  // 11/11: cada regra recolhida mostra só número, nome e resumo; abre ao clicar.
+  const [abertas, setAbertas] = useState<Set<string>>(() => new Set(focoId ? [focoId] : []));
+  const alternar = (id: string) => setAbertas((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const [abrirNova, setAbrirNova] = useState(false);
+  const { data: nomesBase } = useNomesAutomacao(open);
+  const reordenar = useReordenarAutomacoes();
+  const refFoco = useRef<HTMLDivElement | null>(null);
 
   const outrosQuadros = quadros.filter((q) => q.id_quadro !== idQuadro);
+  // Ordem em que o motor roda: `ordem` (empate: nome, para o número não pular de lugar).
+  const ordenadas = useMemo(() => [...automacoes].sort((x, y) => (x.ordem - y.ordem) || x.nome.localeCompare(y.nome, "pt-BR")), [automacoes]);
+  const nomes = useMemo(() => nomesDoQuadro(
+    idQuadro, nomesBase,
+    Object.fromEntries(quadros.map((q) => [q.id_quadro, q.nome])),
+    Object.fromEntries(usuariosFull.map((u) => [u.email.toLowerCase(), u.nome])),
+  ), [idQuadro, nomesBase, quadros, usuariosFull]);
+  // nova automação: abre a que acabou de nascer (a de maior ordem)
+  const qtdAntes = useRef(automacoes.length);
+  useEffect(() => {
+    if (abrirNova && automacoes.length > qtdAntes.current) {
+      const nova = [...automacoes].sort((x, y) => y.ordem - x.ordem)[0];
+      if (nova) setAbertas((s) => new Set(s).add(nova.id));
+      setAbrirNova(false);
+    }
+    qtdAntes.current = automacoes.length;
+  }, [automacoes, abrirNova]);
+  useEffect(() => {
+    if (!open || !focoId) return;
+    setAbertas((s) => new Set(s).add(focoId));
+    const t = setTimeout(() => refFoco.current?.scrollIntoView({ block: "start", behavior: "smooth" }), 200);
+    return () => clearTimeout(t);
+  }, [open, focoId]);
+  // Sobe/desce a regra inteira: regrava 10, 20, 30… só nas que mudaram (empates viram ordens distintas).
+  const moverRegra = (i: number, d: -1 | 1) => {
+    const j = i + d;
+    if (j < 0 || j >= ordenadas.length) return;
+    const nova = [...ordenadas];
+    [nova[i], nova[j]] = [nova[j], nova[i]];
+    const mudou = nova.map((r, k) => ({ id: r.id, ordem: (k + 1) * 10 })).filter((x, k) => nova[k].ordem !== x.ordem);
+    reordenar.mutate(mudou, { onError: (e) => toast.error(String((e as Error)?.message ?? e)) });
+  };
 
   // v315: o banco pausa a regra ATIVA que fica incompleta e a religa quando ela completa de novo.
   // Aqui só avisa na hora, para ninguém fechar a janela sem perceber.
@@ -153,6 +172,15 @@ export default function AutomacoesManagerModal({
         <ProdutoResponsaveisAba idQuadro={idQuadro} automacoes={automacoes} usuarios={usuariosFull} podeEditar={podeEditar} />
       ) : (
       <div className="space-y-3">
+        {ordenadas.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+            <span>{ordenadas.length} automações · o número é a ordem em que elas rodam (a 1 primeiro)</span>
+            <span className="flex gap-1">
+              <button type="button" onClick={() => setAbertas(new Set(ordenadas.map((r) => r.id)))} className="inline-flex items-center gap-1 rounded px-2 py-1 hover:bg-gray-100"><ChevronsUpDown className="size-3.5" /> Expandir todas</button>
+              <button type="button" onClick={() => setAbertas(new Set())} className="inline-flex items-center gap-1 rounded px-2 py-1 hover:bg-gray-100"><ChevronsDownUp className="size-3.5" /> Recolher todas</button>
+            </span>
+          </div>
+        )}
         {pausadas.length > 0 && (
           <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
@@ -165,13 +193,13 @@ export default function AutomacoesManagerModal({
             </div>
           </div>
         )}
-        {automacoes.map((a) => {
+        {ordenadas.map((a, idx) => {
           const usaEou = !!(a.condicao?.all || a.condicao?.any);
           const acoes = acoesDaRegra(a);
           const completa = regraCompleta(a.gatilho, a.condicao, acoes);
           const ehSst = (GATILHOS_SST as readonly string[]).includes(a.gatilho);
           const criaTarefa = ehSst || (a.gatilho === "agendado" && a.condicao?.modo === "criar_tarefa");
-          const variaveis = [...(VARIAVEIS.sempre ?? []), ...(VARIAVEIS[a.gatilho] ?? [])];
+          const variaveis = [...(VARIAVEIS.sempre ?? []), ...(VARIAVEIS[a.gatilho] ?? []), ...(ehGatilhoSubtarefa(a.gatilho) ? VARIAVEIS_SUBTAREFA : [])];
           const trocarAcao = (i: number, patch: Partial<AcaoAutomacao> | null, substituir = false) => {
             const nova = acoes.map((x, j) => (j === i ? (substituir ? { id: x.id ?? novoId(), ...patch } : { ...x, ...patch }) : x));
             setAcoes(a, nova);
@@ -183,8 +211,37 @@ export default function AutomacoesManagerModal({
             [nova[i], nova[j]] = [nova[j], nova[i]];
             setAcoes(a, nova);
           };
+          const aberta = abertas.has(a.id);
+          const resumo = descreverRegra({ gatilho: a.gatilho, condicao: a.condicao as never, acoes: acoes as never }, nomes);
+          const cabecalho = (
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 px-1.5 text-xs font-bold text-gray-600" title="Ordem em que roda">{idx + 1}</span>
+              <button type="button" onClick={() => alternar(a.id)} className="min-w-0 flex-1 text-left">
+                <span className="flex items-center gap-1 text-sm font-semibold text-gray-800">
+                  {aberta ? <ChevronDown className="size-4 shrink-0 text-gray-400" /> : <ChevronRight className="size-4 shrink-0 text-gray-400" />}
+                  <span className="truncate">{a.nome}</span>
+                  {!completa && <AlertTriangle className="size-3.5 shrink-0 text-amber-600" />}
+                </span>
+                {!aberta && <span className="mt-0.5 line-clamp-2 pl-5 text-xs text-gray-500">{resumo}</span>}
+              </button>
+              <span className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${a.ativo && completa ? "bg-marca-light text-marca-primary" : "bg-gray-100 text-gray-500"}`}>{a.ativo && completa ? "Ativa" : "Desligada"}</span>
+              {podeEditar && (
+                <span className="flex shrink-0 items-center">
+                  <button type="button" title="Rodar antes" disabled={idx === 0 || reordenar.isPending} onClick={() => moverRegra(idx, -1)} className="rounded p-1 text-gray-300 hover:text-gray-600 disabled:opacity-30"><ArrowUp className="size-3.5" /></button>
+                  <button type="button" title="Rodar depois" disabled={idx === ordenadas.length - 1 || reordenar.isPending} onClick={() => moverRegra(idx, 1)} className="rounded p-1 text-gray-300 hover:text-gray-600 disabled:opacity-30"><ArrowDown className="size-3.5" /></button>
+                </span>
+              )}
+            </div>
+          );
+          if (!aberta) {
+            return (
+              <div key={a.id} ref={a.id === focoId ? refFoco : undefined} className={`rounded-lg border p-2.5 ${completa ? "border-gray-200" : "border-amber-300 bg-amber-50/40"}`}>{cabecalho}</div>
+            );
+          }
           return (
-          <div key={a.id} className={`space-y-2 rounded-lg border p-3 ${completa ? "border-gray-200" : "border-amber-300 bg-amber-50/40"}`}>
+          <div key={a.id} ref={a.id === focoId ? refFoco : undefined} className={`space-y-3 rounded-lg border p-3 ${completa ? "border-gray-200" : "border-amber-300 bg-amber-50/40"}`}>
+            {cabecalho}
+            <p className="rounded-md bg-gray-50 px-2.5 py-1.5 text-xs text-gray-600"><span className="font-semibold text-gray-700">Em resumo: </span>{resumo}</p>
             {!completa && (a.pausada_em ? (
               <p className="flex items-center gap-1 text-xs font-semibold text-amber-800">
                 <AlertTriangle className="size-3.5" /> Pausada desde {dia(a.pausada_em)} {hora(a.pausada_em)} porque ficou incompleta. Complete as ações e ela volta a rodar sozinha.
@@ -202,8 +259,8 @@ export default function AutomacoesManagerModal({
             </div>
 
             {/* QUANDO — gatilho */}
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">1. Quando <span className="font-normal normal-case tracking-normal text-gray-400">— o que faz a automação começar</span></p>
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-xs font-semibold uppercase text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.quando}>Quando</Dica></span>
               <select value={a.gatilho} disabled={!podeEditar} onChange={(e) => setCampo(a, { gatilho: e.target.value as GatilhoAutomacao })} className={sel}>
                 {GRUPOS_GATILHO.map((g) => (
                   <optgroup key={g} label={g}>
@@ -256,6 +313,13 @@ export default function AutomacoesManagerModal({
                   <span className="text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.dias_antes_prazo}>dia(s) antes do prazo</Dica></span>
                 </>
               )}
+              {(a.gatilho === "subtarefa_entrega_proxima" || a.gatilho === "subtarefa_inicio_chega") && (
+                <>
+                  <input type="number" min={0} max={90} value={a.condicao?.dias_antes ?? DIAS_PADRAO[a.gatilho]} disabled={!podeEditar}
+                    onChange={(e) => setCond(a, { dias_antes: e.target.value || undefined })} className={`${sel} w-16`} />
+                  <span className="text-gray-400">{a.gatilho === "subtarefa_entrega_proxima" ? "dia(s) antes da entrega desejada" : "dia(s) antes do início desejado (0 = no dia)"}</span>
+                </>
+              )}
             </div>
 
             {ehSst && (
@@ -275,6 +339,7 @@ export default function AutomacoesManagerModal({
 
             {/* SE — condição E/OU da regra (todos os gatilhos) */}
             {(!criaTarefa || ehSst) && <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">2. Se <span className="font-normal normal-case tracking-normal text-gray-400">— só roda quando estas condições baterem (opcional)</span></p>
               <label className="inline-flex items-center gap-1.5 text-xs text-gray-500">
                 <input type="checkbox" disabled={!podeEditar} checked={usaEou}
                   onChange={(e) => setCondFull(a, e.target.checked ? { all: [] } : {})} className="size-3.5 rounded accent-marca-primary" />
@@ -288,7 +353,7 @@ export default function AutomacoesManagerModal({
 
             {/* ENTÃO — ações, em ordem */}
             <div className="space-y-2">
-              <span className="text-xs font-semibold uppercase text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.acoes}>{criaTarefa ? "Depois, na tarefa criada (opcional)" : "Então, em ordem"}</Dica></span>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">3. Então <span className="font-normal normal-case tracking-normal text-gray-400">— {criaTarefa ? "depois, na tarefa criada (opcional)" : "o que ela faz, nesta ordem"}</span></p>
               {acoes.map((x, i) => {
                 const chave = `${a.id}:${x.id ?? i}`;
                 const temCond = !!(x.condicao?.all || x.condicao?.any);
@@ -297,6 +362,7 @@ export default function AutomacoesManagerModal({
                     <div className="flex items-start gap-2">
                       <span className="mt-1 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-marca-light text-[11px] font-bold text-marca-primary">{i + 1}</span>
                       <div className="min-w-0 flex-1">
+                        <p className="mb-1.5 text-xs font-medium text-gray-700">{descreverAcao(x as never, nomes)}</p>
                         <AutomacaoAcaoEditor
                           acao={x}
                           onChange={(patch) => trocarAcao(i, patch)}
@@ -339,7 +405,7 @@ export default function AutomacoesManagerModal({
 
             <p className="text-[11px] text-gray-400">
               Variáveis nos textos: {variaveis.join(" ")}
-              {(a.gatilho === "prazo_proximo" || a.gatilho === "prazo_vencido") && " · Verificada todo dia às 7h pelo servidor."}
+              {NAS_7H.has(a.gatilho) && " · Verificada todo dia às 7h pelo servidor."}
               {NO_RELOGIO.has(a.gatilho) && " · Verificada pelo servidor a cada 10 minutos (não precisa estar com o quadro aberto)."}
               {a.gatilho === "manual" && " · Aparece no ⚡ da tarefa e das ações em massa (quando ativa)."}
               {ehSst && " · Cria a tarefa neste quadro uma vez por evento (reabrir e concluir de novo não repete)."}
@@ -349,7 +415,7 @@ export default function AutomacoesManagerModal({
         );})}
         {podeEditar && (
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => salvar.mutate({ id_quadro: idQuadro, nome: "Nova automação", gatilho: "status_muda", ordem: automacoes.length, ativo: false, acoes: [{ id: novoId() }] })} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-marca-primary ring-1 ring-dashed ring-marca-primary/40 hover:bg-marca-light/40">
+            <button type="button" onClick={() => { setAbrirNova(true); salvar.mutate({ id_quadro: idQuadro, nome: "Nova automação", gatilho: "status_muda", ordem: Math.max(0, ...automacoes.map((r) => r.ordem)) + 10, ativo: false, acoes: [{ id: novoId() }] }); }} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-marca-primary ring-1 ring-dashed ring-marca-primary/40 hover:bg-marca-light/40">
               <Plus className="size-4" /> Nova automação
             </button>
             <button type="button" onClick={() => setReceitasAbertas((v) => !v)} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50">
@@ -364,7 +430,8 @@ export default function AutomacoesManagerModal({
                 <button type="button"
                   onClick={() => {
                     // nasce desligada: a pessoa revisa e liga (a que precisa de pessoas não liga sem elas)
-                    salvar.mutate({ id_quadro: idQuadro, nome: r.titulo, gatilho: r.gatilho, condicao: r.condicao, acoes: r.acoes, ordem: automacoes.length, ativo: false });
+                    setAbrirNova(true);
+                    salvar.mutate({ id_quadro: idQuadro, nome: r.titulo, gatilho: r.gatilho, condicao: r.condicao, acoes: r.acoes, ordem: Math.max(0, ...automacoes.map((x) => x.ordem)) + 10, ativo: false });
                     setReceitasAbertas(false);
                   }}
                   className="h-full w-full rounded-lg border border-gray-200 bg-white p-2.5 text-left hover:border-marca-primary/50 hover:bg-marca-light/20">

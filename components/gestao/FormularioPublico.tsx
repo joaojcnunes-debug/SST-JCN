@@ -3,7 +3,7 @@
 import Dica from "@/components/ui/Dica";
 import { DICAS_GESTAO_FORM_PUBLICO } from "@/lib/dicas/gestao";
 import { useEffect, useRef, useState } from "react";
-import { Loader2, CheckCircle2, Send, Paperclip, Upload, X, ChevronDown, Check } from "lucide-react";
+import { Loader2, CheckCircle2, Send, Paperclip, Upload, X, ChevronDown, Check, ClipboardPaste } from "lucide-react";
 import { normalizarTexto } from "@/lib/busca/texto";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { faltando, perguntaVisivel, ordemExibicao, preencherComUsuario, preenchidaPeloLogin, type PerguntaBase, type UsuarioForm } from "@/lib/gestao/formularios";
@@ -46,12 +46,45 @@ function fmtBytes(n: number): string {
   return `${(n / 1048576).toFixed(1)} MB`;
 }
 
-/** Área "solte aqui os arquivos" da pergunta tipo anexo. */
+/**
+ * Imagem colada (print, "Copiar imagem") chega como "image.png": ganha um nome que diz o que é e não repete
+ * entre colagens. Arquivo copiado do Explorer mantém o nome dele.
+ */
+function nomearColado(f: File, ordem: number): File {
+  if (f.name && !/^image\.\w+$/i.test(f.name)) return f;
+  const ext = (f.type.split("/")[1] || "png").replace("jpeg", "jpg").replace(/[^a-z0-9]/gi, "") || "png";
+  const d = new Date();
+  const dois = (n: number) => String(n).padStart(2, "0");
+  const carimbo = `${d.getFullYear()}${dois(d.getMonth() + 1)}${dois(d.getDate())}-${dois(d.getHours())}${dois(d.getMinutes())}${dois(d.getSeconds())}`;
+  return new File([f], `imagem-colada-${carimbo}-${ordem}.${ext}`, { type: f.type || "image/png" });
+}
+
+/** Miniatura de imagem na lista de arquivos (mostra o que foi colado); outros formatos ficam com o clipe. */
+function Miniatura({ arquivo }: { arquivo: File }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!arquivo.type.startsWith("image/")) { setUrl(null); return; }
+    const u = URL.createObjectURL(arquivo);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [arquivo]);
+  // eslint-disable-next-line @next/next/no-img-element
+  return url ? <img src={url} alt="" className="size-9 shrink-0 rounded border border-gray-200 object-cover" /> : <Paperclip className="size-3.5 shrink-0 text-gray-400" />;
+}
+
+/**
+ * Área "solte aqui os arquivos" da pergunta tipo anexo.
+ * 11/11/2026 (pedido: "a opção de colar uma imagem tanto nas OS quanto nos formulários"): Ctrl+V em qualquer
+ * ponto do formulário cola a imagem aqui (com mais de uma pergunta de anexo, vai para a que tem o foco, senão
+ * para a primeira). Colando TEXTO num campo de texto, o texto entra normal — Word/Excel também mandam uma
+ * imagem junto, e ela não deve virar anexo. O botão "Colar imagem copiada" lê a área de transferência (celular).
+ */
 function CampoAnexo({ arquivos, onChange }: { arquivos: File[]; onChange: (f: File[]) => void }) {
   const ref = useRef<HTMLInputElement>(null);
+  const caixa = useRef<HTMLDivElement>(null);
   const [arrastando, setArrastando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
-  function adicionar(lista: FileList | null) {
+  function adicionar(lista: FileList | File[] | null) {
     if (!lista?.length) return;
     const todos = Array.from(lista);
     const grandes = todos.filter((f) => f.size > MAX_ANEXO);
@@ -64,8 +97,46 @@ function CampoAnexo({ arquivos, onChange }: { arquivos: File[]; onChange: (f: Fi
     onChange(novos);
     if (ref.current) ref.current.value = "";
   }
+  const colados = (lista: File[]) => lista.map((f, k) => nomearColado(f, arquivos.length + k + 1));
+
+  // Sem lista de dependências de propósito: re-registra a cada render para enxergar a lista atual de arquivos.
+  useEffect(() => {
+    function aoColar(e: ClipboardEvent) {
+      const lista = Array.from(e.clipboardData?.files ?? []);
+      const meu = caixa.current;
+      if (!lista.length || !meu) return;
+      const alvo = e.target instanceof Element ? e.target : null;
+      const dono = alvo?.closest("[data-campo-anexo]") ?? document.querySelector("[data-campo-anexo]");
+      if (dono !== meu) return;
+      const emTexto = alvo instanceof HTMLTextAreaElement || (alvo instanceof HTMLInputElement && alvo.type !== "file")
+        || (alvo instanceof HTMLElement && alvo.isContentEditable);
+      if (emTexto && (e.clipboardData?.getData("text/plain") ?? "").trim()) return;
+      e.preventDefault();
+      adicionar(colados(lista));
+      if (!alvo || !meu.contains(alvo)) meu.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    document.addEventListener("paste", aoColar);
+    return () => document.removeEventListener("paste", aoColar);
+  });
+
+  async function colarDoBotao() {
+    try {
+      if (!navigator.clipboard?.read) throw new Error("sem clipboard.read");
+      const itens = await navigator.clipboard.read();
+      const lista: File[] = [];
+      for (const it of itens) {
+        const tipo = it.types.find((t) => t.startsWith("image/"));
+        if (tipo) lista.push(new File([await it.getType(tipo)], `image.${tipo.split("/")[1] ?? "png"}`, { type: tipo }));
+      }
+      if (!lista.length) { setAviso("Não há imagem copiada. Copie uma imagem ou tire um print (Windows + Shift + S) e tente de novo."); return; }
+      adicionar(colados(lista));
+    } catch {
+      setAviso("O navegador não deixou ler a imagem copiada. Clique na área acima e aperte Ctrl+V.");
+    }
+  }
+
   return (
-    <div>
+    <div ref={caixa} data-campo-anexo="">
       <div
         role="button"
         tabIndex={0}
@@ -78,17 +149,20 @@ function CampoAnexo({ arquivos, onChange }: { arquivos: File[]; onChange: (f: Fi
       >
         <Upload className="size-5 text-gray-400" />
         <p className="text-sm font-medium text-gray-600">Solte aqui os arquivos</p>
-        <p className="text-xs text-gray-400">Insira arquivos clicando aqui ou arraste e solte eles nesta área</p>
+        <p className="text-xs text-gray-400">Clique para escolher, arraste e solte, ou cole uma imagem com Ctrl+V</p>
         <p className="text-[11px] text-gray-400">Fotos, imagens, vídeos e documentos de qualquer formato · até {MAX_ARQUIVOS} arquivos de 50 MB</p>
         {/* image/* e video/* fazem o celular oferecer câmera e galeria; o "*\/*" mantém qualquer outro formato. */}
         <input ref={ref} type="file" multiple accept="image/*,video/*,*/*" className="hidden" onChange={(e) => adicionar(e.target.files)} />
       </div>
+      <button type="button" onClick={colarDoBotao} className="mt-1.5 inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:border-[#006B54] hover:text-[#006B54]">
+        <ClipboardPaste className="size-3.5" /> Colar imagem copiada
+      </button>
       {aviso && <p className="mt-1 text-[11px] text-amber-700">{aviso}</p>}
       {arquivos.length > 0 && (
         <ul className="mt-2 space-y-1">
           {arquivos.map((f, k) => (
-            <li key={k} className="flex items-center gap-2 rounded-md bg-gray-50 px-2 py-1 text-xs text-gray-700">
-              <Paperclip className="size-3.5 shrink-0 text-gray-400" />
+            <li key={`${k}-${f.name}`} className="flex items-center gap-2 rounded-md bg-gray-50 px-2 py-1 text-xs text-gray-700">
+              <Miniatura arquivo={f} />
               <span className="flex-1 truncate">{f.name}</span>
               <span className="text-gray-400">{fmtBytes(f.size)}</span>
               <button type="button" onClick={() => onChange(arquivos.filter((_, j) => j !== k))} className="text-gray-400 hover:text-red-600" title="Remover"><X className="size-3.5" /></button>
@@ -283,7 +357,10 @@ export default function FormularioPublico({ token, embutido = false, onEnviado }
       const falhas: string[] = [];
       const base = { token, id_tarefa: j.id_tarefa, ticket: j.ticket_anexo ?? "" };
       const sb = createSupabaseBrowserClient();
-      for (const lista of Object.values(arquivos)) {
+      for (const [idx, lista] of Object.entries(arquivos)) {
+        // 0.3.285 (= Painel 0.3.952): pergunta de anexo escondida por condição não manda arquivo.
+        const perg = def?.perguntas[Number(idx)];
+        if (!perg || !perguntaVisivel(perg, def!.perguntas, respostas)) continue;
         for (const arq of lista) {
           try {
             const rp = await fetch(`${ENDPOINT}/anexo`, {
