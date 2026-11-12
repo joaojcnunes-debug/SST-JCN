@@ -224,7 +224,12 @@ function CampoCaixas({ opcoes, valor, onChange }: { opcoes: string[]; valor: str
   );
 }
 
-export default function FormularioPublico({ token }: { token: string }) {
+/**
+ * `embutido` (11/11/2026): o formulário dentro de uma janela do painel (ex.: "Cadastrar empresa" no Comercial), sem a
+ * página em volta (logo, fundo verde, rodapé) e sem o título — quem abre a janela põe o título nela. Continua claro
+ * (force-light), como na página. `onEnviado` avisa quem abriu que a solicitação foi registrada.
+ */
+export default function FormularioPublico({ token, embutido = false, onEnviado }: { token: string; embutido?: boolean; onEnviado?: () => void }) {
   const [def, setDef] = useState<FormDef | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erroCarga, setErroCarga] = useState<string | null>(null);
@@ -301,6 +306,7 @@ export default function FormularioPublico({ token }: { token: string }) {
       }
       setAvisoEnvio(falhas.length ? `A solicitação foi registrada, mas não conseguimos enviar: ${falhas.join(", ")}. Avise a equipe ou anexe pelo card da tarefa.` : null);
       setEnviado(true);
+      onEnviado?.();
     } catch {
       setErro("Falha de conexão. Tente novamente.");
     } finally {
@@ -308,18 +314,8 @@ export default function FormularioPublico({ token }: { token: string }) {
     }
   }
 
-  return (
-    // Formulário aberto a gente de fora, como o login e o portal do cliente:
-    // continua claro sempre. O tema é preferência de quem usa o painel interno.
-    <div className="force-light min-h-screen bg-[#f0f7f0] px-4 py-10">
-      {/* 0.3.252 (do Painel): era max-w-lg (512 px) e as caixas de múltipla escolha ficavam espremidas. */}
-      <div className="mx-auto max-w-3xl">
-        <div className="mb-5 text-center">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#0b1e33] to-[#0ea5e9] text-2xl">🛡️</div>
-          <p className="mt-2 text-sm font-semibold text-[#00432F]">JCN Consultoria · Gestão</p>
-        </div>
-
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+  const conteudo = (
+    <>
           {carregando ? (
             <p className="flex items-center justify-center gap-2 py-8 text-sm text-gray-400"><Loader2 className="size-4 animate-spin" /> Carregando…</p>
           ) : erroCarga ? (
@@ -337,7 +333,7 @@ export default function FormularioPublico({ token }: { token: string }) {
           ) : def ? (
             <form onSubmit={enviar} className="space-y-4">
               <div>
-                <h1 className="text-xl font-bold text-gray-900">{def.titulo}</h1>
+                {!embutido && <h1 className="text-xl font-bold text-gray-900">{def.titulo}</h1>}
                 {def.descricao && <p className="mt-1 whitespace-pre-line text-sm text-gray-500">{def.descricao}</p>}
                 <p className="mt-2 text-xs text-red-600">* Pergunta obrigatória</p>
               </div>
@@ -429,6 +425,26 @@ export default function FormularioPublico({ token }: { token: string }) {
               </button>
             </form>
           ) : null}
+    </>
+  );
+
+  if (embutido) {
+    return <div className="force-light bg-white px-6 py-5 text-gray-900">{conteudo}</div>;
+  }
+
+  return (
+    // Formulário aberto a gente de fora, como o login e o portal do cliente:
+    // continua claro sempre. O tema é preferência de quem usa o painel interno.
+    <div className="force-light min-h-screen bg-[#f0f7f0] px-4 py-10">
+      {/* 0.3.252 (do Painel): era max-w-lg (512 px) e as caixas de múltipla escolha ficavam espremidas. */}
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-5 text-center">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#0b1e33] to-[#0ea5e9] text-2xl">🛡️</div>
+          <p className="mt-2 text-sm font-semibold text-[#00432F]">JCN Consultoria · Gestão</p>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+          {conteudo}
         </div>
         <p className="mt-4 text-center text-xs text-gray-400">Painel SST · JCN Consultoria</p>
       </div>

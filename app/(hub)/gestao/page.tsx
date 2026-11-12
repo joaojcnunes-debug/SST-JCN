@@ -32,6 +32,7 @@ import { OPCOES_ORDEM, campoTemValor, ordenarTarefas, proximaOrdem, type CampoOr
 /** 10/11/2026 (pedido do usuário): sem escolha da pessoa, cada coluna vem do mais recente para o mais antigo. */
 const ORDEM_PADRAO_COLUNA: OrdemColuna = { campo: "criada", dir: "desc" };
 import NotificacoesSino from "@/components/gestao/NotificacoesSino";
+import BotaoCadastroEmpresa, { ID_QUADRO_COMERCIAL } from "@/components/comercial/BotaoCadastroEmpresa";
 import TarefaModal from "@/components/gestao/TarefaModal";
 import NovaTarefaRapida from "@/components/gestao/NovaTarefaRapida";
 import SlaConfigModal from "@/components/gestao/SlaConfigModal";
@@ -943,6 +944,8 @@ export default function GestaoChabraPage() {
               <Plus className="size-4" /> Nova tarefa
             </button>
           )}
+          {/* 0.3.276 (= Painel 0.3.926): na lista Comercial, o mesmo botão do módulo Comercial. */}
+          {quadro?.id_quadro === ID_QUADRO_COMERCIAL && <BotaoCadastroEmpresa variante="barra" />}
           <NotificacoesSino onAbrir={abrirNotif} />
           <div className="relative w-full sm:w-64">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
