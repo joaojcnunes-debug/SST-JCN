@@ -8,6 +8,7 @@ import { gerarId } from "@/lib/utils";
 import { mensagemErro } from "@/lib/errors";
 import { useUserStore } from "@/lib/store";
 import type { AlocadoSubtarefa } from "@/lib/gestao/subtarefa-colunas";
+import type { ResumoIa } from "@/lib/gestao/ia-resumo";
 import { comPadrao, type FiltrosGestao } from "@/lib/gestao/filtros";
 import type { SlaTarefa } from "@/lib/gestao/sla";
 
@@ -2187,14 +2188,57 @@ export async function urlAssinadaAnexo(path: string): Promise<string | null> {
   return data?.signedUrl ?? null;
 }
 
-/** Chama a Edge Function de IA (Groq). Lança em caso de erro. */
-export async function gerarIaGestao(body: { acao: "subtarefas" | "descricao"; titulo: string; descricao?: string }) {
+/** Chama a Edge Function de IA (Groq). Lança em caso de erro. v0.3.925: "checklist" (não repete os existentes). */
+/**
+ * 0.3.275: com status de erro, o functions.invoke só diz "non-2xx". A Edge Function gestao-ia manda a recusa escrita
+ * para a pessoa no corpo ({ error, codigo: "mensagem_usuario" }); aqui ela vira um erro que o mensagemErro mostra como está.
+ */
+async function erroDaFuncaoIa(error: unknown): Promise<unknown> {
+  const ctx = (error as { context?: { json?: () => Promise<unknown> } } | null)?.context;
+  if (!ctx?.json) return error;
+  const corpo = (await ctx.json().catch(() => null)) as { error?: string; codigo?: string } | null;
+  if (!corpo?.error) return error;
+  return Object.assign(new Error(corpo.error), { code: corpo.codigo });
+}
+
+export async function gerarIaGestao(body: { acao: "subtarefas" | "descricao" | "checklist"; titulo: string; descricao?: string; existentes?: string[] }) {
   const sb = createSupabaseBrowserClient();
   const { data, error } = await sb.functions.invoke("gestao-ia", { body });
-  if (error) throw error;
-  const d = data as { error?: string; data?: { subtarefas?: string[]; descricao?: string } };
+  if (error) throw await erroDaFuncaoIa(error);
+  const d = data as { error?: string; data?: { subtarefas?: string[]; descricao?: string; checklist?: string[] } };
   if (d?.error) throw new Error(d.error);
   return d?.data ?? {};
+}
+
+/** 0.3.275 (= Painel 0.3.925): resumo dos comentários pela IA. A Edge Function lê os comentários com o login da pessoa. */
+export async function resumirComentariosIa(idTarefa: string) {
+  const sb = createSupabaseBrowserClient();
+  const { data, error } = await sb.functions.invoke("gestao-ia", { body: { acao: "resumo", id_tarefa: idTarefa } });
+  if (error) throw await erroDaFuncaoIa(error);
+  const d = data as { error?: string; data?: { resumo: ResumoIa; usados: number; total: number } };
+  if (d?.error) throw new Error(d.error);
+  if (!d?.data?.resumo) throw new Error("A IA não devolveu o resumo.");
+  return d.data;
+}
+
+export interface ResponsavelSugerido { email: string; nome: string; tarefas: number }
+
+/** v356: quem costuma ser responsável por tarefas de título parecido neste quadro (histórico, sem IA externa). */
+export function useResponsaveisSugeridos(idQuadro: string | null | undefined, texto: string, ativo: boolean) {
+  const t = texto.trim();
+  return useQuery({
+    queryKey: ["gestao-resp-sugeridos", idQuadro, t],
+    enabled: !!idQuadro && ativo && t.length >= 6,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await (sb as unknown as {
+        rpc: (fn: string, a: Record<string, unknown>) => Promise<{ data: ResponsavelSugerido[] | null; error: { message: string } | null }>;
+      }).rpc("gestao_sugerir_responsaveis", { p_id_quadro: idQuadro, p_texto: t });
+      if (error) return [] as ResponsavelSugerido[]; // sugestão é ajuda: sem ela a tela segue igual
+      return data ?? [];
+    },
+  });
 }
 
 // ---- Formulários de entrada (captação por link público) ----
