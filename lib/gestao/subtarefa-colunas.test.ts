@@ -1,6 +1,9 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { fmtHorasTrabalhadas, progressoExibir, fmtDataDesejada, entregaAtrasada, corTextoSobre, etapaExibir, alocadosExibir } from "./subtarefa-colunas";
+import {
+  fmtHorasTrabalhadas, progressoExibir, fmtDataDesejada, entregaAtrasada, corTextoSobre, etapaExibir, alocadosExibir,
+  vemDoRunrun, etapaDaLinha, erroDatasSubtarefa,
+} from "./subtarefa-colunas";
 import type { GestaoStatus } from "@/lib/hooks/useGestao";
 
 describe("fmtHorasTrabalhadas", () => {
@@ -84,5 +87,50 @@ describe("alocadosExibir", () => {
   test("sem alocados do Runrun: o responsável; sem responsável: ninguém", () => {
     assert.deepEqual(alocadosExibir({ alocados: [], responsavel_email: "y@chabra.com.br", feito: false }, nomeDe), [{ email: "y@chabra.com.br", nome: "y@chabra.com.br", feito: false }]);
     assert.deepEqual(alocadosExibir({ alocados: null, responsavel_email: null, feito: false }, nomeDe), []);
+  });
+});
+
+describe("vemDoRunrun", () => {
+  test("só a linha do importador (SRR-) é do Runrun", () => {
+    assert.equal(vemDoRunrun("SRR-123456"), true);
+    assert.equal(vemDoRunrun("SUB-AB12CD34"), false);
+    assert.equal(vemDoRunrun(undefined), false);
+    assert.equal(vemDoRunrun(""), false);
+  });
+});
+
+describe("etapaDaLinha", () => {
+  const st = [
+    { slug: "FEITO", tipo: "concluido" as const, ordem: 3 },
+    { slug: "FAZENDO", tipo: "ativo" as const, ordem: 2 },
+    { slug: "A_FAZER", tipo: "nao_iniciado" as const, ordem: 1 },
+  ];
+  test("a etapa da janela vale quando existe no quadro", () => {
+    assert.equal(etapaDaLinha(false, "FAZENDO", st), "FAZENDO");
+    assert.equal(etapaDaLinha(true, "FAZENDO", st), "FAZENDO");
+  });
+  test("sem janela (ou etapa de outro quadro): pelo feito, como o banco faria ao abrir", () => {
+    assert.equal(etapaDaLinha(false, null, st), "A_FAZER");
+    assert.equal(etapaDaLinha(true, null, st), "FEITO");
+    assert.equal(etapaDaLinha(false, "OUTRO", st), "A_FAZER");
+  });
+  test("quadro sem 'não iniciado': a 1ª não concluída; sem etapas: nada", () => {
+    assert.equal(etapaDaLinha(false, null, st.filter((s) => s.tipo !== "nao_iniciado")), "FAZENDO");
+    assert.equal(etapaDaLinha(false, null, []), null);
+  });
+});
+
+describe("erroDatasSubtarefa", () => {
+  const vazio = { data_inicio: null, hora_inicio: null, prazo: null, hora_fim: null };
+  test("sem datas ou datas em ordem: pode gravar", () => {
+    assert.equal(erroDatasSubtarefa(vazio), null);
+    assert.equal(erroDatasSubtarefa({ ...vazio, data_inicio: "2026-11-12", prazo: "2026-11-14" }), null);
+    assert.equal(erroDatasSubtarefa({ data_inicio: "2026-11-12", hora_inicio: "08:00", prazo: "2026-11-12", hora_fim: "10:00" }), null);
+  });
+  test("hora sem data, início depois da entrega e hora fim antes do início no mesmo dia", () => {
+    assert.match(erroDatasSubtarefa({ ...vazio, hora_inicio: "08:00" }) ?? "", /data do início/);
+    assert.match(erroDatasSubtarefa({ ...vazio, hora_fim: "08:00" }) ?? "", /data da entrega/);
+    assert.match(erroDatasSubtarefa({ ...vazio, data_inicio: "2026-11-15", prazo: "2026-11-14" }) ?? "", /depois da entrega/);
+    assert.match(erroDatasSubtarefa({ data_inicio: "2026-11-12", hora_inicio: "10:00", prazo: "2026-11-12", hora_fim: "09:00" }) ?? "", /mesmo dia/);
   });
 });
