@@ -6,6 +6,7 @@ import {
   documentosDoGrupo,
   empresasDoSetorConciliado,
   itensDoFechamentoGrupo,
+  padronizacaoDoGrupo,
   resumirGrupo,
   rotuloEmpresa,
 } from "./conciliacao-grupo";
@@ -135,4 +136,33 @@ test("alertasRevisaoGrupo: documento antigo com a empresa, datas distantes e fec
     rotulo: (e) => e,
   });
   assert.deepEqual(emDia, []);
+});
+
+test("grupo segue a Consolidação: setor padronizado (só confirmado) junta nomes diferentes; fator ignorado sai", () => {
+  const pad = padronizacaoDoGrupo(
+    [{ id_setor_canonico: "SC1", nome: "Atendimento" }],
+    [
+      { id_empresa: "E1", origem: "AEP", setor_original: "SAC", id_setor_canonico: "SC1", confirmado_em: "2026-11-01" },
+      { id_empresa: "E2", origem: "QPS", setor_original: "Central de Atendimento", id_setor_canonico: "SC1", confirmado_em: "2026-11-01" },
+      { id_empresa: "E2", origem: "QPS", setor_original: "Loja", id_setor_canonico: "SC1", confirmado_em: null },
+    ],
+  );
+  assert.equal(pad.confirmados, 2);
+  assert.equal(pad.setorDe("E2", "QPS", "Loja"), null, "sem confirmação vale a sugestão");
+  const base = {
+    pendencias: [], fatores: FATORES, depara: DEPARA, documentos: new Set(["AEP-1", "QPS-2"]),
+    setoresAep: [{ idDocumento: "AEP-1", idEmpresa: "E1", setorOriginal: "SAC" }],
+    linhas: [
+      aep({ setorOriginal: "SAC", nivelAiha: "Alto" }),
+      aep({ setorOriginal: "SAC", fatorOriginal: "sobrecarga", nivelAiha: "Alto" }),
+      linha({ idEmpresa: "E2", origem: "QPS", idDocumento: "QPS-2", setorOriginal: "Central de Atendimento", nivel: "Alto" }),
+    ],
+  };
+  const sem = conciliarEmpresa(base);
+  assert.equal(sem.setoresEmComum, 0, "sem a padronização, SAC e Central de Atendimento não se encontram");
+  const com = conciliarEmpresa({ ...base, setorPadronizado: pad.setorDe, fatoresIgnorados: ["sobrecarga"] });
+  assert.deepEqual(com.setores.map((s) => s.setor), ["Atendimento"]);
+  assert.equal(com.setoresEmComum, 1);
+  assert.deepEqual(com.celulas.map((c) => c.idFator), ["assedio"], "o fator ignorado no grupo não entra");
+  assert.equal(com.celulas[0].classe.QPS, "Convergente");
 });

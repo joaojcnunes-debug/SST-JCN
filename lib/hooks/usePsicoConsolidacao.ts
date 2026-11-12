@@ -6,6 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 import { gerarId } from "@/lib/utils";
 import { carregarFontesDoGrupo } from "@/lib/psico-consolidacao/carregar-grupo";
 import { carregarFontesConciliacao } from "@/lib/psico-consolidacao/carregar-conciliacao";
@@ -87,6 +88,25 @@ export function useSetoresDoGrupo(idGrupo: string | null) {
   });
 }
 
+/**
+ * A padronização de setores de TODOS os grupos (aba Setores da Consolidação), para a lista da Conciliação por grupo
+ * (v0.3.286). A chave-base é a mesma de `useSetoresDoGrupo`: confirmar setores recarrega as duas.
+ */
+export function useSetoresDosGrupos(opcoes?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ["psico-setores", "todos"],
+    enabled: opcoes?.enabled ?? true,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const [c, d] = await Promise.all([
+        fetchAllRows<PsicoSetorCanonico>((de, ate) => sb().from("psico_setor_canonico" as never).select("*").order("id_setor_canonico").range(de, ate)),
+        fetchAllRows<PsicoSetorDepara>((de, ate) => sb().from("psico_setor_depara" as never).select("*").order("id_depara").range(de, ate)),
+      ]);
+      return { canonicos: c, depara: d };
+    },
+  });
+}
+
 export interface SetorParaConfirmar {
   id_empresa: string;
   origem: OrigemFonte;
@@ -149,7 +169,7 @@ export function useConfirmarSetores(idGrupo: string | null) {
       return linhas.length;
     },
     onSuccess: (n) => {
-      qc.invalidateQueries({ queryKey: ["psico-setores", idGrupo] });
+      qc.invalidateQueries({ queryKey: ["psico-setores"] });
       if (n) toast.success(`${n} setor(es) confirmado(s).`);
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),

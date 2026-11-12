@@ -8,6 +8,9 @@
 // Parecer, ligação de setores, fechamento, reabertura e PDF são do grupo (tabelas psico_conciliacao_grupo_*).
 // O parecer Confirmar/AET cria a ação 5W2H em cada empresa do grupo que tem o setor.
 //
+// v0.3.286: a padronização de setores (aba Setores) e os fatores ignorados da Consolidação do grupo valem aqui
+// também, para o relatório do grupo e o que vai ao Comercial baterem. "Ligar à mão" fica para o que faltar.
+//
 // Ainda sem a etapa do Comercial (intervenções e liberar): vem numa próxima versão.
 
 import { useMemo, useState } from "react";
@@ -22,7 +25,7 @@ import LigacaoSetores from "@/components/psico-consolidacao/LigacaoSetores";
 import FechamentosConciliacao, { type FotoFechamento } from "@/components/psico-consolidacao/FechamentosConciliacao";
 import { CelulaAep, CelulasQuestionario, Colunas } from "@/components/psico-consolidacao/CelulasConciliacao";
 import { TituloEtapa } from "@/components/psico-consolidacao/LiberarParaComercial";
-import { useFontesConciliacao, usePsicoCatalogo } from "@/lib/hooks/usePsicoConsolidacao";
+import { useFontesConciliacao, usePsicoCatalogo, useSetoresDoGrupo } from "@/lib/hooks/usePsicoConsolidacao";
 import { useRegistrosConciliacaoGrupo } from "@/lib/hooks/useConciliacaoParecer";
 import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
@@ -46,6 +49,7 @@ import {
   documentosDoGrupo,
   empresasDoSetorConciliado,
   itensDoFechamentoGrupo,
+  padronizacaoDoGrupo,
   rotuloEmpresa,
 } from "@/lib/psico-consolidacao/conciliacao-grupo";
 import { hojeSP } from "@/lib/inspecoes/prioridade";
@@ -70,6 +74,7 @@ export default function ConciliacaoGrupoPage() {
   const fontes = useFontesConciliacao(ids, { enabled: ids.length > 0 && !foraDoAcesso });
   const catalogo = usePsicoCatalogo();
   const registros = useRegistrosConciliacaoGrupo(idGrupo);
+  const setoresGrupo = useSetoresDoGrupo(idGrupo);
   const podeEditar = useCanEdit();
 
   const [classes, setClasses] = useState<Set<ClasseConciliacao>>(() => new Set(DIVERGENCIAS));
@@ -84,9 +89,14 @@ export default function ConciliacaoGrupoPage() {
   const docs = useMemo(() => documentosDoGrupo(fontes.data?.documentos ?? [], ids), [fontes.data, ids]);
   const usados = useMemo(() => new Set(docs.map((d) => d.id)), [docs]);
   const ligacoes = useMemo(() => registros.data?.ligacoes ?? [], [registros.data]);
+  const padronizacao = useMemo(
+    () => padronizacaoDoGrupo(setoresGrupo.data?.canonicos ?? [], setoresGrupo.data?.depara ?? []),
+    [setoresGrupo.data],
+  );
+  const ignorados = useMemo(() => grupo?.psico_fatores_ignorados ?? [], [grupo]);
 
   const resultado = useMemo(() => {
-    if (!fontes.data || !catalogo.data) return null;
+    if (!fontes.data || !catalogo.data || !setoresGrupo.data) return null;
     const doGrupo = new Set(ids);
     return conciliarEmpresa({
       linhas: fontes.data.linhas.filter((l) => doGrupo.has(l.idEmpresa)),
@@ -96,8 +106,10 @@ export default function ConciliacaoGrupoPage() {
       fatores: catalogo.data.fatores,
       depara: catalogo.data.depara,
       deparaSetores: ligacoes,
+      setorPadronizado: padronizacao.setorDe,
+      fatoresIgnorados: ignorados,
     });
-  }, [fontes.data, catalogo.data, ids, usados, ligacoes]);
+  }, [fontes.data, catalogo.data, setoresGrupo.data, ids, usados, ligacoes, padronizacao, ignorados]);
 
   const ultimoFechamento = registros.data?.fechamentos[0] ?? null;
   const fechada = !!ultimoFechamento && !ultimoFechamento.reabertura;
@@ -172,8 +184,8 @@ export default function ConciliacaoGrupoPage() {
     grupo: { nome: grupo?.nome ?? idGrupo, empresas: membros.map((m) => ({ id_empresa: m.id_empresa, nome: m.nome_empresa, cnpj: m.cnpj })) },
   });
 
-  if (carregandoGrupos || (ids.length > 0 && !foraDoAcesso && fontes.isLoading) || catalogo.isLoading || registros.isLoading) return <LoadingSkeleton />;
-  const erro = erroGrupos ?? fontes.error ?? catalogo.error ?? registros.error;
+  if (carregandoGrupos || (ids.length > 0 && !foraDoAcesso && fontes.isLoading) || catalogo.isLoading || registros.isLoading || setoresGrupo.isLoading) return <LoadingSkeleton />;
+  const erro = erroGrupos ?? fontes.error ?? catalogo.error ?? registros.error ?? setoresGrupo.error;
   if (erro) {
     return <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">Não foi possível carregar: {(erro as Error).message}</p>;
   }
@@ -286,6 +298,12 @@ export default function ConciliacaoGrupoPage() {
         <p className="border-t border-gray-100 px-4 py-2 text-[11px] text-gray-500">
           Entra o documento concluído (DRPS/QPS: concluído ou enviado ao cliente) mais recente de cada empresa. Para comparar uma empresa sozinha,
           ou escolher outro documento, abra a empresa.
+        </p>
+        <p className="border-t border-gray-100 px-4 py-2 text-[11px] text-gray-500">
+          Igual à Consolidação do grupo (
+          <Link href="/consolidacao-grupo" className="text-indigo-700 hover:underline">Grupos de empresas</Link>
+          ): {padronizacao.confirmados > 0 ? `${padronizacao.confirmados} nome(s) de setor padronizado(s) na aba Setores` : "nenhum setor padronizado na aba Setores ainda"}
+          {ignorados.length > 0 ? ` e ${ignorados.length} fator(es) deixado(s) de fora` : ""}. O que mudar lá muda aqui.
         </p>
       </div>
 
@@ -457,7 +475,8 @@ export default function ConciliacaoGrupoPage() {
           </p>
           <p>
             <b>No grupo</b> entram juntos a AEP mais recente de cada empresa e o DRPS/QPS mais recente de cada empresa. Os setores
-            se juntam pelo nome sugerido (e pelas ligações feitas aqui). Se o mesmo setor e fator aparecem em mais de uma empresa,
+            se juntam pela padronização da aba Setores da Consolidação do grupo (o que foi confirmado lá), pelo nome sugerido no
+            resto e pelas ligações feitas aqui; os fatores deixados de fora na Consolidação também ficam fora aqui. Se o mesmo setor e fator aparecem em mais de uma empresa,
             vale o <b>pior nível</b> de cada fonte, e a tabela mostra de qual empresa ele veio. Os expostos do setor são a soma das
             AEPs; os respondentes, o maior número entre os questionários.
           </p>

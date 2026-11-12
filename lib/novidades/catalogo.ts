@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "conciliacao-grupo-igual-consolidacao",
+    data: "2026-11-12",
+    tipo: "melhoria",
+    titulo: "Conciliação por grupo usa os setores padronizados do grupo",
+    texto:
+      "A Conciliação por grupo passa a seguir a Consolidação do mesmo grupo (Grupos de empresas): os setores " +
+      "padronizados na aba Setores e os fatores deixados de fora valem também na conciliação. Assim o relatório do " +
+      "grupo e o que vai para parecer e para o Comercial falam dos mesmos setores e fatores.",
+    onde: "Consolidação › Conciliação por grupo",
+    impacto: "O que você mudar na aba Setores ou nos fatores do grupo muda também a conciliação dele.",
+    versoes: ["0.3.286"],
+  },
+  {
     id: "conciliacao-por-grupo",
     data: "2026-11-12",
     tipo: "novidade",
