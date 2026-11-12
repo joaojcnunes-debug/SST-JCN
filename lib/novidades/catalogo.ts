@@ -41,6 +41,32 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "usuarios-para-supervisores",
+    data: "2026-11-11",
+    tipo: "novidade",
+    titulo: "Supervisores agora gerenciam usuários",
+    texto:
+      "Quem tem nível de supervisão passa a abrir Sistema › Usuários: cria contas, ativa e desativa, libera módulos, " +
+      "unidades e empresas, e troca senha e e-mail.",
+    onde: "Sistema › Usuários (atalho Sistema em Módulos e no Início)",
+    impacto:
+      "Contas de administradores e de outros supervisores ficam com um administrador, assim como perfil Admin, nível de " +
+      "supervisão, envio ao SGG, assinatura, certificado e excluir usuário.",
+    versoes: ["0.3.274"],
+  },
+  {
+    id: "usuarios-senha-minima-8",
+    data: "2026-11-11",
+    tipo: "correcao",
+    titulo: "Usuários: a senha precisa ter pelo menos 8 caracteres",
+    texto:
+      "Ao criar um usuário ou trocar a senha, o sistema avisa na hora, em português, que a senha precisa ter pelo menos " +
+      "8 caracteres.",
+    onde: "Sistema › Usuários",
+    impacto: "Nenhuma senha atual muda. Só vale para a próxima troca ou para usuário novo.",
+    versoes: ["0.3.274"],
+  },
+  {
     id: "gestao-subtarefas-colunas-runrun",
     data: "2026-11-11",
     tipo: "melhoria",

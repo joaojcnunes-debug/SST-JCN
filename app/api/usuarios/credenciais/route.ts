@@ -5,11 +5,13 @@ import {
   createSupabaseServiceClient,
 } from "@/lib/supabase/client";
 import { temServiceRole } from "../service-role";
+import { ehAdminTotal, podeEditarConta, podeGerirUsuarios } from "@/lib/usuarios/gestao-supervisor";
+import { erroSenha, traduzirErroSenha } from "@/lib/usuarios/senha";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Troca de e-mail e/ou senha de um usuário (admin).
+ * Troca de e-mail e/ou senha de um usuário (Admin; desde a 0.3.274 também supervisor, só em conta comum).
  *
  * VERSÃO DO JCN. A do painel-sst ficou de fora da equalização de propósito:
  * ela fala com um GoTrue self-hosted por `lib/supabase/auth-admin`, que aqui
@@ -42,12 +44,14 @@ async function handler(req: NextRequest) {
   }
   const { data: callerRow } = await supabase
     .from("usuarios")
-    .select("perfil")
+    .select("perfil, nivel, ativo_sistema")
     .eq("email", caller.email.toLowerCase())
     .single();
-  if ((callerRow as { perfil?: string } | null)?.perfil !== "Admin") {
+  const quem = callerRow as { perfil?: string | null; nivel?: string | null; ativo_sistema?: boolean } | null;
+  // 0.3.274 (= Painel 0.3.924, v355): supervisor (nível Aprovação/Admin) também, mas só em conta comum — conferido abaixo.
+  if (!quem?.ativo_sistema || !podeGerirUsuarios(quem)) {
     return NextResponse.json(
-      { ok: false, error: "Apenas administradores podem alterar credenciais" },
+      { ok: false, error: "Apenas administradores e supervisores podem alterar credenciais" },
       { status: 403 }
     );
   }
@@ -62,11 +66,32 @@ async function handler(req: NextRequest) {
   if (!email_atual) {
     return NextResponse.json({ ok: false, error: "email_atual é obrigatório" }, { status: 400 });
   }
-  if (nova_senha && nova_senha.length < 6) {
-    return NextResponse.json(
-      { ok: false, error: "A nova senha deve ter ao menos 6 caracteres" },
-      { status: 400 }
-    );
+  // 0.3.274 (= Painel 0.3.932): mínimo de 8 caracteres, a mesma regra da tela (lib/usuarios/senha.ts).
+  const erroNovaSenha = nova_senha ? erroSenha(nova_senha, true) : null;
+  if (erroNovaSenha) {
+    return NextResponse.json({ ok: false, error: erroNovaSenha }, { status: 400 });
+  }
+
+  // Supervisor: a conta-alvo precisa existir no cadastro e não ser Admin nem supervisor (nem a própria).
+  if (!ehAdminTotal(quem)) {
+    const { data: alvo } = await supabase
+      .from("usuarios")
+      .select("perfil, nivel")
+      .eq("email", email_atual.toLowerCase())
+      .maybeSingle();
+    if (!alvo || !podeEditarConta(quem, alvo as { perfil?: string | null; nivel?: string | null })) {
+      return NextResponse.json(
+        { ok: false, error: "Senha e e-mail de administradores e supervisores só um administrador troca" },
+        { status: 403 }
+      );
+    }
+    // As funções de reserva do banco (sem a chave de service role) continuam só para Admin.
+    if (!temServiceRole()) {
+      return NextResponse.json(
+        { ok: false, error: "Sem a chave de service role no servidor, só um administrador troca senha e e-mail" },
+        { status: 403 }
+      );
+    }
   }
 
   // Sem a chave de service role: funções do banco (só Admin ativo). A senha
@@ -78,7 +103,7 @@ async function handler(req: NextRequest) {
         p_email: email_atual.toLowerCase(),
         p_nova_senha: nova_senha,
       } as never);
-      if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+      if (error) return NextResponse.json({ ok: false, error: traduzirErroSenha(error.message) }, { status: 400 });
     }
     if (email_novo && email_novo.toLowerCase() !== email_atual.toLowerCase()) {
       const { error } = await supabase.rpc("atualizar_email_admin" as never, {
@@ -120,7 +145,7 @@ async function handler(req: NextRequest) {
       if (m.includes("already") && m.includes("registered")) {
         return NextResponse.json({ ok: false, error: "E-mail já cadastrado" }, { status: 400 });
       }
-      return NextResponse.json({ ok: false, error: upErr.message }, { status: 500 });
+      return NextResponse.json({ ok: false, error: traduzirErroSenha(upErr.message) }, { status: 500 });
     }
   }
 

@@ -47,6 +47,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { ModuloPermitido } from "@/lib/supabase/types";
 import { cartaoBloqueado } from "@/lib/acesso/telas-modulo";
+import { podeGerirUsuarios } from "@/lib/usuarios/gestao-supervisor";
 
 type Categoria = "seguranca" | "psicossocial" | "interno";
 
@@ -491,7 +492,8 @@ function InicioContent() {
               )}
             />
           )}
-          {isAdmin && (
+          {/* 0.3.274 (= Painel 0.3.924, v355): o supervisor também entra no Sistema (só em Usuários). */}
+          {podeGerirUsuarios(user) && (
             <Link
               href="/usuarios"
               className="flex items-center gap-2 rounded-md bg-white/10 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20"
