@@ -210,7 +210,9 @@ export function useDefinirUnidades() {
 // ── Equipes, Meu Quadro e Colaboradores (v235 / GESTAO-EQUIPES-01) ─────────────
 export type PapelEquipe = "membro" | "supervisor";
 export interface GestaoEquipe { id: string; nome: string; descricao: string | null; ativo: boolean; created_by: string | null; created_at: string }
-export interface GestaoEquipeMembro { id: string; id_equipe: string; usuario_email: string; papel: PapelEquipe; created_at: string }
+export interface GestaoEquipeMembro { id: string; id_equipe: string; usuario_email: string; papel: PapelEquipe; created_at: string;
+  /** v366: o que este membro pode fazer nos acessos da equipe (antes de 11/11 o nível era do acesso da equipe). */
+  nivel?: GestaoNivel | null }
 export interface Colaborador { usuario_email: string; nome: string | null; id_quadro: string | null; equipes: string[]; papel_gestao: string | null }
 
 /** Equipes (RLS: qualquer membro do módulo lê). */

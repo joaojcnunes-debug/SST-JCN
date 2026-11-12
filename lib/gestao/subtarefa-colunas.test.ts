@@ -88,6 +88,18 @@ describe("alocadosExibir", () => {
     assert.deepEqual(alocadosExibir({ alocados: [], responsavel_email: "y@chabra.com.br", feito: false }, nomeDe), [{ email: "y@chabra.com.br", nome: "y@chabra.com.br", feito: false }]);
     assert.deepEqual(alocadosExibir({ alocados: null, responsavel_email: null, feito: false }, nomeDe), []);
   });
+  test("todos os responsáveis da janela, sem repetir o da linha (11/11/2026)", () => {
+    const r = alocadosExibir({
+      alocados: [], responsavel_email: "Ana@chabra.com.br", feito: false,
+      responsaveis: ["ana@chabra.com.br", "isaac.melo@chabra.com.br", "bia@chabra.com.br"],
+    }, nomeDe);
+    assert.deepEqual(r.map((a) => a.nome), ["Ana@chabra.com.br", "Isaac Melo (Gestão)", "bia@chabra.com.br"]);
+    const rr = alocadosExibir({
+      alocados: [{ email: "x@chabra.com.br", nome: "Xis", feito: true }], responsavel_email: null, feito: false,
+      responsaveis: ["x@chabra.com.br", "y@chabra.com.br"],
+    }, nomeDe);
+    assert.deepEqual(rr.map((a) => [a.nome, a.feito]), [["Xis", true], ["y@chabra.com.br", false]]);
+  });
 });
 
 describe("vemDoRunrun", () => {

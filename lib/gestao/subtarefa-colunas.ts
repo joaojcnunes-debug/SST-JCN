@@ -75,13 +75,23 @@ export function etapaExibir(
 
 /** Quem aparece em Alocados: as pessoas do Runrun; sem elas, o responsável da Gestão. */
 export function alocadosExibir(
-  s: { alocados?: AlocadoSubtarefa[] | null; responsavel_email: string | null; feito: boolean },
+  s: { alocados?: AlocadoSubtarefa[] | null; responsavel_email: string | null; feito: boolean; responsaveis?: readonly string[] | null },
   nomeDe: (email: string) => string | null,
 ): AlocadoSubtarefa[] {
-  const lista = (s.alocados ?? []).filter((a) => a && (a.email || a.nome));
-  if (lista.length) return lista.map((a) => ({ ...a, nome: (a.email && nomeDe(a.email)) || a.nome || a.email || "" }));
-  if (!s.responsavel_email) return [];
-  return [{ email: s.responsavel_email, nome: nomeDe(s.responsavel_email) ?? s.responsavel_email, feito: false }];
+  // 11/11/2026 (pedido do usuário: "se alocar mais de 1 funcionário apareça todos"): junta os alocados do Runrun, o
+  // responsável da linha e os responsáveis da janela da subtarefa (tarefa filha), sem repetir a mesma pessoa.
+  const out: AlocadoSubtarefa[] = [];
+  const vistos = new Set<string>();
+  const por = (a: AlocadoSubtarefa) => {
+    const chave = (a.email ?? `nome:${a.nome}`).trim().toLowerCase();
+    if (!chave || vistos.has(chave)) return;
+    vistos.add(chave);
+    out.push({ ...a, nome: (a.email && nomeDe(a.email)) || a.nome || a.email || "" });
+  };
+  for (const a of s.alocados ?? []) if (a && (a.email || a.nome)) por(a);
+  if (s.responsavel_email) por({ email: s.responsavel_email, nome: s.responsavel_email, feito: false });
+  for (const e of s.responsaveis ?? []) if (e) por({ email: e, nome: e, feito: false });
+  return out;
 }
 
 // ── Edição na própria lista (11/11/2026) ─────────────────────────────────────────────────────────────────────────

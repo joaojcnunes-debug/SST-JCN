@@ -4,6 +4,7 @@ import Dica from "@/components/ui/Dica";
 import { DICAS_GESTAO_AUTOMACAO } from "@/lib/dicas/gestao";
 import { X } from "lucide-react";
 import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
+import { rotuloPrimeiraEtapa } from "@/lib/gestao/automacao-descricao";
 import {
   PRIORIDADES, useStatusQuadro,
   type AcaoAutomacao, type GestaoCampo, type GestaoEtiqueta, type GestaoQuadro, type GestaoStatus,
@@ -42,14 +43,20 @@ export const QUADRO_DA_UNIDADE = "@unidade";
 const sel = "rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none";
 
 /** Etapa no quadro destino. Os quadros de unidade têm as mesmas etapas: '@unidade' lista as do primeiro. */
-function EtapaDestino({ idQuadro, value, onChange, disabled }: {
+function EtapaDestino({ idQuadro, value, onChange, disabled, nomeQuadro, daUnidade = false }: {
   idQuadro: string | undefined; value: string | undefined; onChange: (slug: string | undefined) => void; disabled: boolean;
+  /** 11/11: a opção "sem etapa escolhida" mostra a etapa de verdade ("Empresas Novas de Guapimirim"), não "1ª etapa". */
+  nomeQuadro?: string; daUnidade?: boolean;
 }) {
   const { data: etapas = [] } = useStatusQuadro(idQuadro);
   if (!idQuadro) return null;
+  const primeira = [...etapas].sort((a, b) => a.ordem - b.ordem)[0]?.nome;
+  const rotulo = daUnidade
+    ? rotuloPrimeiraEtapa("@unidade", primeira, {})
+    : rotuloPrimeiraEtapa(idQuadro, primeira, { quadros: nomeQuadro ? { [idQuadro]: nomeQuadro } : {} });
   return (
     <select value={value ?? ""} disabled={disabled} onChange={(e) => onChange(e.target.value || undefined)} className={sel}>
-      <option value="">1ª etapa</option>
+      <option value="">{rotulo}</option>
       {etapas.map((s) => <option key={s.slug} value={s.slug}>{s.nome}</option>)}
     </select>
   );
@@ -222,6 +229,8 @@ export default function AutomacaoAcaoEditor({
             </select>
             <EtapaDestino
               idQuadro={acao.id_quadro_destino === QUADRO_DA_UNIDADE ? quadroDeUnidade : acao.id_quadro_destino}
+              daUnidade={acao.id_quadro_destino === QUADRO_DA_UNIDADE}
+              nomeQuadro={quadros.find((q) => q.id_quadro === acao.id_quadro_destino)?.nome}
               value={acao.status_destino}
               onChange={(slug) => onChange({ status_destino: slug })}
               disabled={disabled}

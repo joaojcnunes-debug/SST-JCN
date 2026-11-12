@@ -21,11 +21,12 @@ import { useUserStore } from "@/lib/store";
 import {
   useSalvarTarefa, useExcluirTarefa, DIAS_LIXEIRA,
   useVinculados, useSalvarVinculados,
-  useSubtarefas, useSalvarSubtarefas, useAbrirSubtarefa, useTarefaMae, useComentariosDasSubtarefas,
+  useSubtarefas, useSalvarSubtarefas, useAbrirSubtarefa, useTarefaMae, useComentariosDasSubtarefas, buscarTarefa,
   useAddComentario, useExcluirComentario,
   useDependencias, useAddDependencia, useExcluirDependencia,
   useUsuarios, gerarIaGestao, useRegistrarAtividade, useCamposDeOrigem, useProdutosCatalogo, useQuadros, useChecklist, useAddChecklist,
   PRIORIDADES, useEmpresaSugerida, useNomesEmpresas,
+  useAnexos, useExcluirAnexo,
   useResolverComentario, useMoverForcandoRequisito, ehErroRequisito, useSlaTarefas, useTempoTarefa, totalSegundos, formatarDuracao,
   type GestaoTempo,
   useModelos, useResponsaveisSugeridos,
@@ -49,6 +50,9 @@ import { BotaoTempo, RegistroTempo } from "@/components/gestao/TempoTracker";
 import AnexosTarefa from "@/components/gestao/AnexosTarefa";
 import HistoricoTarefa from "@/components/gestao/HistoricoTarefa";
 import ComentariosTarefa from "@/components/gestao/ComentariosTarefa";
+import ImagensCartao from "@/components/gestao/ImagensCartao";
+import { useColarImagens, useComentarComImagens, useEnviarImagens } from "@/lib/hooks/useImagensCartao";
+import { nomearColada, separarImagens } from "@/lib/gestao/imagens-cartao";
 import { useTarefaHistorico } from "@/lib/hooks/useTarefaHistorico";
 import { confirmar } from "@/components/ui/confirm";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
@@ -58,7 +62,7 @@ import {
 } from "@/lib/gestao/subtarefa-colunas";
 import {
   useAtualizarSubtarefa, useAdicionarSubtarefas, useExcluirSubtarefa, useCriarSubtarefaComJanela, useAtualizarJanelaSubtarefa,
-  useJanelasDasSubtarefas, type JanelaSubtarefa, type PatchJanela,
+  useJanelasDasSubtarefas, useResponsaveisDasJanelas, useAlocarNaSubtarefa, type JanelaSubtarefa, type PatchJanela,
 } from "@/lib/hooks/useSubtarefasAoVivo";
 import { DataSubtarefa, PrioridadeSubtarefa, StatusSubtarefa, TituloSubtarefa } from "@/components/gestao/SubtarefaCelulas";
 import { proximaGeracao } from "@/lib/gestao/recorrencia";
@@ -166,7 +170,7 @@ export default function TarefaModal({
   open,
   onClose,
   idQuadro,
-  tarefa,
+  tarefa: tarefaRecebida,
   statusInicial = "A_FAZER",
   statuses,
   campos,
@@ -176,6 +180,7 @@ export default function TarefaModal({
   etiquetasSugeridas = [],
   inicial = null,
   novaSubDe = null,
+  onVoltarAoOriginal,
 }: {
   open: boolean;
   onClose: () => void;
@@ -193,7 +198,16 @@ export default function TarefaModal({
   inicial?: { prazo: string; hora?: string } | null;
   /** Janela "Nova subtarefa" (11/11/2026): a tarefa-mãe. Com `tarefa` null, cria a subtarefa já com a janela completa. */
   novaSubDe?: GestaoTarefa | null;
+  /** Janela de subtarefa aberta de DENTRO da tarefa-mãe (11/11/2026): o nome da mãe no topo só fecha esta janela e a mãe,
+   *  que está embaixo, volta. Sem isto (subtarefa aberta pelo cartão, Agenda, link…), o nome troca a janela para a mãe. */
+  onVoltarAoOriginal?: () => void;
 }) {
+  // 11/11/2026: "Subtarefa de <nome>" no topo é clicável e leva ao cartão original. Aberta sozinha, a janela passa a
+  // mostrar a tarefa-mãe no lugar da subtarefa (mesmo quadro, mesmos status e campos). Fechar ou abrir outra volta ao normal.
+  const [original, setOriginal] = useState<GestaoTarefa | null>(null);
+  const [abrindoOriginal, setAbrindoOriginal] = useState(false);
+  useEffect(() => { setOriginal(null); }, [open, tarefaRecebida?.id_tarefa]);
+  const tarefa = original ?? tarefaRecebida;
   const salvar = useSalvarTarefa();
   const excluir = useExcluirTarefa();
   const salvarVinc = useSalvarVinculados();
@@ -213,6 +227,9 @@ export default function TarefaModal({
     [subtarefasTabela],
   );
   const { data: janelas } = useJanelasDasSubtarefas(filhasComJanela);
+  // 11/11/2026: todos os responsáveis da janela de cada subtarefa (a linha guarda um só).
+  const { data: respJanelas } = useResponsaveisDasJanelas(filhasComJanela);
+  const alocarNaSub = useAlocarNaSubtarefa();
   // Balão na lista de subtarefas: comentários da janela (tarefa filha) de cada uma.
   const filhaDaSub = useMemo(
     () => new Map(subtarefasTabela.filter((s) => s.id_tarefa_filha).map((s) => [s.id, s.id_tarefa_filha as string])),
@@ -304,6 +321,14 @@ export default function TarefaModal({
   const [criarOutra, setCriarOutra] = useState(false);
   // v351: checklist. Na Nova tarefa os itens ficam aqui até "Criar tarefa"; na existente gravam na hora.
   const [rascunhoChecklist, setRascunhoChecklist] = useState<string[]>([]);
+  // 12/11/2026: imagens no cartão (abaixo da descrição) e no comentário. Na Nova tarefa/subtarefa ficam aqui até criar;
+  // na existente gravam na hora. Ctrl+V em qualquer lugar desta janela cola no cartão; na caixa do comentário, nele.
+  const [rascunhoImagens, setRascunhoImagens] = useState<File[]>([]);
+  const [imagensComentario, setImagensComentario] = useState<File[]>([]);
+  const enviarImagens = useEnviarImagens();
+  const comentarComImagens = useComentarComImagens();
+  const excluirAnexo = useExcluirAnexo();
+  const colunaRef = useRef<HTMLDivElement>(null);
   const { data: checklist = EMPTY_CHECKLIST } = useChecklist(tarefa?.id_tarefa);
   const addChecklist = useAddChecklist();
   // v353: tempo estimado (horas + minutos, gravado em minutos no Salvar), comentário atribuído, requisito forçado
@@ -348,6 +373,8 @@ export default function TarefaModal({
     setAba("detalhes");
     setCamposAbertos(new Set());
     setRascunhoChecklist([]);
+    setRascunhoImagens([]);
+    setImagensComentario([]);
     setAtribuirA("");
     setModeloUsado(null);
     setEstH(tarefa?.tempo_estimado_min != null ? String(Math.floor(tarefa.tempo_estimado_min / 60)) : "");
@@ -469,6 +496,23 @@ export default function TarefaModal({
     } catch (e) { toast.error(mensagemErro(e, "IA indisponível no momento.")); } finally { setIaLoad(null); }
   }
 
+  /** O nome da tarefa-mãe no topo da subtarefa: volta à mãe (fecha esta janela, se ela está por cima da mãe; senão, a
+   *  janela passa a mostrar a mãe). Quem não vê a mãe recebe o aviso e fica onde está. */
+  async function voltarAoOriginal() {
+    if (onVoltarAoOriginal) { onVoltarAoOriginal(); return; }
+    if (!idPai || abrindoOriginal) return;
+    setAbrindoOriginal(true);
+    try {
+      const mae = (novaSubDe?.id_tarefa === idPai ? novaSubDe : null) ?? (await buscarTarefa(idPai));
+      if (mae) setOriginal(mae);
+      else toast.error("Você não tem acesso ao cartão original.");
+    } catch (e) {
+      toast.error(mensagemErro(e, "Não foi possível abrir o cartão original."));
+    } finally {
+      setAbrindoOriginal(false);
+    }
+  }
+
   function abrirSub(s: Subtarefa & { id?: string }) {
     if (!tarefa || !s.id) {
       toast("Salve a tarefa para abrir esta subtarefa.");
@@ -480,6 +524,7 @@ export default function TarefaModal({
     setSubAberta(null);
     // O que mudou na janela da subtarefa volta para a linha pelo banco (v292) — recarrega a lista.
     if (tarefa) qc.invalidateQueries({ queryKey: ["gestao-subtarefas", tarefa.id_tarefa] });
+    qc.invalidateQueries({ queryKey: ["gestao-subtarefas-janelas"] }); // responsáveis e datas da janela
     qc.invalidateQueries({ queryKey: ["gestao-comentarios-subtarefas"] });
   }
 
@@ -682,6 +727,10 @@ export default function TarefaModal({
     if (!tarefa && rascunhoChecklist.length) {
       try { await addChecklist.mutateAsync({ id_tarefa: idSalvo, textos: rascunhoChecklist, ordemInicial: 0 }); } catch { /* avisado */ }
     }
+    // Imagens coladas na Nova tarefa/subtarefa. Se falhar, a tarefa já existe (o aviso sai do hook) e segue o fluxo.
+    if (!tarefa && rascunhoImagens.length) {
+      try { await enviarImagens.mutateAsync({ id_tarefa: idSalvo, files: rascunhoImagens }); } catch { /* avisado */ }
+    }
 
     // Vínculos: N responsáveis + N seguidores (por e-mail). O espelho reflete os responsáveis.
     await salvarVinc.mutateAsync({
@@ -721,6 +770,7 @@ export default function TarefaModal({
       setSubtarefas([]);
       setNovaSub("");
       setRascunhoChecklist([]);
+      setRascunhoImagens([]);
       setModeloUsado(null);
       setAba("detalhes");
       requestAnimationFrame(() => tituloRef.current?.focus());
@@ -764,10 +814,40 @@ export default function TarefaModal({
     excluir.mutate(tarefa.id_tarefa, { onSuccess: () => { toast.success(ehSub ? "Subtarefa enviada para a Lixeira" : "Tarefa enviada para a Lixeira"); onClose(); } });
   }
 
+  /** Imagens para o cartão (Ctrl+V, "Inserir imagem", "Colar imagem copiada"): grava na hora ou guarda até criar. */
+  function adicionarImagensCartao(imagens: File[]) {
+    if (!podeComentar) { toast.error("Você só pode ver este cartão."); return; }
+    const nomeadas = imagens.map((f, k) => nomearColada(f, rascunhoImagens.length + k + 1));
+    if (tarefa) {
+      enviarImagens.mutate(
+        { id_tarefa: tarefa.id_tarefa, files: nomeadas },
+        { onSuccess: (n) => { if (n) toast.success(n > 1 ? `${n} imagens adicionadas ao cartão` : "Imagem adicionada ao cartão"); } },
+      );
+    } else {
+      setRascunhoImagens((r) => [...r, ...nomeadas]);
+    }
+    setAba("detalhes");   // colou em outra aba: mostra onde a imagem foi parar
+  }
+  useColarImagens(open && podeComentarEf, colunaRef, adicionarImagensCartao, { ignorarDentro: "[data-colar-comentario]" });
+  const { data: anexosTarefa = [] } = useAnexos(tarefa?.id_tarefa);
+
   function enviarComentario() {
-    if (!tarefa || !novoComentario.trim()) return;
+    if (!tarefa || (!novoComentario.trim() && imagensComentario.length === 0)) return;
     const t = tarefa;
     const texto = novoComentario.trim();
+    if (imagensComentario.length) {
+      // Com imagem: o comentário nasce com id próprio e as imagens vão na pasta dele.
+      comentarComImagens.mutate(
+        { id_tarefa: t.id_tarefa, texto, autor: userNome, atribuido_a: atribuirA || null, files: imagensComentario },
+        { onSuccess: () => {
+          setNovoComentario("");
+          setAtribuirA("");
+          setImagensComentario([]);
+          invalidarTimeline();
+        } },
+      );
+      return;
+    }
     addComentario.mutate(
       { id_tarefa: t.id_tarefa, texto, autor: userNome, atribuido_a: atribuirA || null },
       { onSuccess: () => {
@@ -931,12 +1011,22 @@ export default function TarefaModal({
       }
     >
       {/* Coluna da esquerda: título, número/autoria e as abas. */}
-      <div className="flex min-w-0 flex-1 flex-col lg:min-h-0" onKeyDown={atalhoSalvar}>
+      <div ref={colunaRef} className="flex min-w-0 flex-1 flex-col lg:min-h-0" onKeyDown={atalhoSalvar}>
         <div className="px-6 pt-5">
           {ehSub && (
             <p className="mb-1 flex items-center gap-1.5 text-xs text-gray-500">
               <CornerDownRight className="size-3.5 shrink-0" />
-              Subtarefa de <span className="truncate font-medium text-gray-700">{tituloPai ?? "…"}</span>
+              Subtarefa de{" "}
+              <button
+                type="button"
+                onClick={() => void voltarAoOriginal()}
+                disabled={abrindoOriginal}
+                title="Abrir o cartão original"
+                className="inline-flex min-w-0 items-center gap-1 truncate rounded font-medium text-marca-primary hover:underline disabled:opacity-60"
+              >
+                <span className="truncate">{tituloPai ?? "…"}</span>
+                {abrindoOriginal && <Loader2 className="size-3 shrink-0 animate-spin" />}
+              </button>
             </p>
           )}
           <input
@@ -1049,6 +1139,15 @@ export default function TarefaModal({
             ) : (
               <textarea id={idDescricao} value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={descricaoMae ? 5 : 12} className={`${inputCls} resize-y`} />
             )}
+            <ImagensCartao
+              idTarefa={tarefa?.id_tarefa ?? null}
+              podeAnexar={podeComentarEf}
+              podeEditar={podeEditar}
+              rascunho={rascunhoImagens}
+              onAdicionar={adicionarImagensCartao}
+              onTirarRascunho={(i) => setRascunhoImagens((r) => r.filter((_, j) => j !== i))}
+              enviando={enviarImagens.isPending}
+            />
           </div>
         )}
 
@@ -1085,7 +1184,7 @@ export default function TarefaModal({
                 da subtarefa (o "Status" e a "Prioridade" dela); Etapa fica só com a etapa que vem do Runrun. */}
             {subtarefas.length > 0 && (
               <div className="overflow-x-auto rounded-md border border-gray-200">
-                <table className="w-full min-w-[1320px] text-sm">
+                <table className="w-full min-w-[1400px] text-sm">
                   <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
                     <tr>
                       <th className="w-8 px-2 py-1.5"><span className="sr-only">Concluída</span></th>
@@ -1093,7 +1192,7 @@ export default function TarefaModal({
                       <th className="px-2 py-1.5">Prioridade</th>
                       <th className="px-2 py-1.5">Etapa</th>
                       <th className="px-2 py-1.5">Status</th>
-                      <th className="px-2 py-1.5">Alocados</th>
+                      <th className="min-w-[290px] px-2 py-1.5">Alocados</th>
                       <th className="whitespace-nowrap px-2 py-1.5">Horas trabalhadas</th>
                       <th className="px-2 py-1.5">Progresso</th>
                       <th className="whitespace-nowrap px-2 py-1.5">Início desejado</th>
@@ -1101,11 +1200,15 @@ export default function TarefaModal({
                       <th className="w-20 px-2 py-1.5"><span className="sr-only">Ações</span></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  {/* divide-gray-100 não tem par no escuro (linha branca): a borda vai em cada linha. */}
+                  <tbody>
                     {subtarefas.map((s, i) => {
                       const db = s.id ? subPorId.get(s.id) : undefined;
                       const etapa = db ? etapaExibir({ ...db, feito: s.feito }, statuses) : null;
-                      const alocados = alocadosExibir({ alocados: db?.alocados, responsavel_email: s.responsavel_email, feito: s.feito }, nomeDe);
+                      const alocados = alocadosExibir({
+                        alocados: db?.alocados, responsavel_email: s.responsavel_email, feito: s.feito,
+                        responsaveis: db?.id_tarefa_filha ? respJanelas?.[db.id_tarefa_filha] : null,
+                      }, nomeDe);
                       const prog = progressoExibir(db?.progresso);
                       const inicio = fmtDataDesejada(db?.inicio_desejado);
                       const entrega = fmtDataDesejada(db?.entrega_desejada);
@@ -1118,7 +1221,7 @@ export default function TarefaModal({
                         || (naLinha && !!janela?.prazo && janela.prazo < isoLocal(new Date()) && !s.feito);
                       const n = (s.id && comentariosSub?.[filhaDaSub.get(s.id) ?? ""]) || 0;
                       return (
-                        <tr key={i} className={atrasada ? "bg-red-50" : s.feito ? "bg-gray-50/70" : ""} onDoubleClick={() => abrirSub(s)} title="Duplo clique abre a subtarefa">
+                        <tr key={i} className={`h-14 border-t border-gray-100 first:border-t-0 [&>td]:py-2.5 ${atrasada ? "bg-red-50" : s.feito ? "bg-gray-50/70" : ""}`} onDoubleClick={() => abrirSub(s)} title="Duplo clique abre a subtarefa">
                           <td className="px-2 py-1">
                             <button type="button" disabled={ro} onClick={() => mudarLinha(i, { feito: !s.feito })} aria-label={s.feito ? `Reabrir ${s.texto}` : `Concluir ${s.texto}`} className="align-middle text-gray-400 hover:text-marca-primary">
                               {s.feito ? <CheckSquare className="size-4 text-marca-primary" /> : <Square className="size-4" />}
@@ -1163,19 +1266,50 @@ export default function TarefaModal({
                             ) : <span className="text-gray-300">—</span>}
                           </td>
                           <td className="px-2 py-1">
-                            <div className="flex items-center gap-1.5">
-                              {alocados.length > 0 && (
-                                <div className="flex shrink-0 -space-x-1">
-                                  {alocados.map((a, k) => (
-                                    <span key={`${a.email ?? a.nome}-${k}`} className="relative inline-flex rounded-full ring-2 ring-white" title={a.feito ? `${a.nome} (entregou)` : a.nome}>
-                                      <AvatarPessoa nome={a.nome} email={a.email ?? undefined} className="size-5 text-[9px]" />
-                                      {a.feito && <CheckCircle2 aria-hidden className="absolute -bottom-1 -right-1 size-3 rounded-full bg-white text-sky-600" />}
-                                    </span>
-                                  ))}
+                            <div className="flex min-w-[280px] flex-wrap items-center gap-1.5">
+                              {/* 11/11/2026: com 2+ alocados (ou só leitura), todos aparecem, cada um com foto e nome (antes: fotos
+                                  sobrepostas e, na subtarefa da Gestão, só o responsável da linha). Com 1 ou nenhum, a linha
+                                  continua com a foto + o campo de trocar o responsável; vários se ajustam na janela da subtarefa. */}
+                              {(ro || alocados.length >= 2 || naLinha) && alocados.map((a, k) => (
+                                <span key={`${a.email ?? a.nome}-${k}`} className="inline-flex max-w-[11rem] items-center gap-1 rounded-full border border-gray-200 bg-white py-0.5 pl-0.5 pr-2" title={a.feito ? `${a.nome} (entregou)` : a.nome}>
+                                  <span className="relative inline-flex shrink-0">
+                                    <AvatarPessoa nome={a.nome} email={a.email ?? undefined} className="size-5 text-[9px]" />
+                                    {a.feito && <CheckCircle2 aria-hidden className="absolute -bottom-1 -right-1 size-3 rounded-full bg-white text-sky-600" />}
+                                  </span>
+                                  <span className="truncate text-xs text-gray-700">{a.nome.split(/\s+/).slice(0, 2).join(" ")}</span>
+                                  {/* 11/11/2026: tirar a pessoa pela própria lista (subtarefa da Gestão, tarefa salva) */}
+                                  {naLinha && !ro && a.email && (
+                                    <button type="button" disabled={alocarNaSub.isPending} aria-label={`Tirar ${a.nome} de ${s.texto}`} title={`Tirar ${a.nome}`}
+                                      onClick={() => alocarNaSub.mutate({ idTarefa: tarefa!.id_tarefa, idSubtarefa: s.id!, idFilha: db?.id_tarefa_filha ?? null, responsavelLinha: s.responsavel_email ?? null, email: a.email!, tirar: true })}
+                                      className="-mr-1 shrink-0 rounded-full p-0.5 text-gray-400 hover:bg-gray-100 hover:text-red-600 disabled:opacity-40">
+                                      <X className="size-3" />
+                                    </button>
+                                  )}
+                                </span>
+                              ))}
+                              {/* 11/11/2026: acrescentar alguém sem abrir a subtarefa */}
+                              {naLinha && !ro && (
+                                <div className="w-36 shrink-0">
+                                  <UsuarioCombobox
+                                    usuarios={usuariosFull.filter((u) => !alocados.some((a) => a.email && a.email.toLowerCase() === u.email.toLowerCase()))}
+                                    value=""
+                                    onChange={(em) => { if (em) alocarNaSub.mutate({ idTarefa: tarefa!.id_tarefa, idSubtarefa: s.id!, idFilha: db?.id_tarefa_filha ?? null, responsavelLinha: s.responsavel_email ?? null, email: em }); }}
+                                    placeholder="+ Adicionar"
+                                    className="w-full rounded border border-dashed border-gray-300 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none"
+                                  />
                                 </div>
                               )}
-                              {!ro ? (
-                                <div className="w-28 shrink-0">
+                              {!ro && !naLinha && alocados.length >= 2 && (
+                                <span className="w-full text-[10px] text-gray-400">Para mudar, abra a subtarefa (duplo clique)</span>
+                              )}
+                              {!ro && !naLinha && alocados.length === 1 && (
+                                <span className="relative inline-flex shrink-0" title={alocados[0].feito ? `${alocados[0].nome} (entregou)` : alocados[0].nome}>
+                                  <AvatarPessoa nome={alocados[0].nome} email={alocados[0].email ?? undefined} className="size-5 text-[9px]" />
+                                  {alocados[0].feito && <CheckCircle2 aria-hidden className="absolute -bottom-1 -right-1 size-3 rounded-full bg-white text-sky-600" />}
+                                </span>
+                              )}
+                              {!ro && !naLinha && alocados.length <= 1 ? (
+                                <div className="w-36 shrink-0">
                                   <UsuarioCombobox
                                     usuarios={usuariosFull}
                                     value={s.responsavel_email ?? ""}
@@ -1186,7 +1320,7 @@ export default function TarefaModal({
                                     className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none"
                                   />
                                 </div>
-                              ) : alocados.length === 0 && <span className="text-gray-300">—</span>}
+                              ) : ro && alocados.length === 0 && <span className="text-gray-300">—</span>}
                             </div>
                           </td>
                           <td className="whitespace-nowrap px-2 py-1 text-xs tabular-nums text-gray-700">{fmtHorasTrabalhadas(db?.tempo_trabalhado_seg)}</td>
@@ -1308,11 +1442,20 @@ export default function TarefaModal({
             novoComentario={novoComentario}
             setNovoComentario={setNovoComentario}
             onEnviar={enviarComentario}
-            enviando={addComentario.isPending}
+            enviando={addComentario.isPending || comentarComImagens.isPending}
+            imagensRascunho={imagensComentario}
+            onAdicionarImagens={(imgs) => setImagensComentario((r) => [...r, ...imgs.map((f, k) => nomearColada(f, r.length + k + 1))])}
+            onTirarImagem={(i) => setImagensComentario((r) => r.filter((_, j) => j !== i))}
             onExcluirComentario={(id) =>
               excluirComentario.mutate(
                 { id_comentario: id, id_tarefa: tarefa.id_tarefa },
-                { onSuccess: invalidarTimeline },
+                { onSuccess: () => {
+                  invalidarTimeline();
+                  // As imagens do comentário saem com ele (do storage e da aba Anexos).
+                  for (const a of separarImagens(anexosTarefa).porComentario.get(id) ?? []) {
+                    excluirAnexo.mutate({ id: a.id, storage_path: a.storage_path });
+                  }
+                } },
               )
             }
           />
@@ -1665,6 +1808,7 @@ export default function TarefaModal({
         <TarefaModal
           open
           onClose={() => setNovaSubAberta(false)}
+          onVoltarAoOriginal={() => setNovaSubAberta(false)}
           idQuadro={tarefa.id_quadro}
           tarefa={null}
           novaSubDe={tarefa}
@@ -1680,6 +1824,7 @@ export default function TarefaModal({
         <TarefaModal
           open
           onClose={fecharSub}
+          onVoltarAoOriginal={fecharSub}
           idQuadro={subAberta.id_quadro}
           tarefa={subAberta}
           statuses={statuses}

@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Folder, List, Layers, Lock, UserSquare, Users, CalendarDays, ShieldCheck, Search, X, Package, Settings2 } from "lucide-react";
+import Link from "next/link";
+import { useUserStore } from "@/lib/store";
+import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Folder, List, Layers, Lock, UserSquare, Users, CalendarDays, ShieldCheck, Search, X, Package, Settings2, Workflow } from "lucide-react";
 import {
   useSalvarEspaco, useExcluirEspaco, useSalvarPasta, useExcluirPasta,
   useCriarQuadro, useRenomearQuadro, useExcluirQuadro, DIAS_LIXEIRA,
@@ -53,6 +55,9 @@ export default function GestaoSidebar({
   /** "Produtos" (v363): só gestor — criar, renomear e excluir os produtos da Gestão. */
   onProdutos?: () => void;
 }) {
+  // 11/11: página Automações — só a função T.I.
+  // JCN: além da função TI (do Painel), o perfil Admin também vê o atalho Automações.
+  const ehTi = useUserStore((st) => (st.user?.funcao ?? "") === "TI" || st.user?.perfil === "Admin");
   const salvarEspaco = useSalvarEspaco();
   const excluirEspaco = useExcluirEspaco();
   const salvarPasta = useSalvarPasta();
@@ -106,6 +111,11 @@ export default function GestaoSidebar({
           {agendaAtiva && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-marca-accent" />}
           <CalendarDays className="size-4" /> Agenda
         </button>
+      )}
+      {ehTi && (
+        <Link href="/gestao/automacoes" className="relative mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-marca-accent">
+          <Workflow className="size-4" /> Automações
+        </Link>
       )}
       <div className="mb-1 border-t border-white/[0.07]" />
       {mostrarColab && onColab && (

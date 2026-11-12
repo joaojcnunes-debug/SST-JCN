@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
-import { ArrowLeft, KanbanSquare, Menu as MenuIcon, Plus, Search, X, LayoutList, CalendarDays, GanttChartSquare, SlidersHorizontal, Tags, Tag, Zap, Settings, ChevronDown, Clock, CheckSquare, CheckCheck, BarChart3, FileText, Bell, Trash2, Users, UserSquare, Sun, Moon, Share2, MoreHorizontal, BellOff, ArrowDownUp, Check, Keyboard, LayoutTemplate } from "lucide-react";
+import { ArrowLeft, KanbanSquare, Menu as MenuIcon, Plus, Search, X, LayoutList, CalendarDays, GanttChartSquare, SlidersHorizontal, Tags, Tag, Zap, Settings, ChevronDown, Clock, CheckSquare, CheckCheck, BarChart3, FileText, Bell, Trash2, Users, UserSquare, Sun, Moon, Share2, MoreHorizontal, BellOff, ArrowDownUp, Check, Keyboard, LayoutTemplate, GripVertical } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUserStore, useTema } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import {
-  useQuadros, useTarefas, useSubtarefasDoQuadro, useAbrirSubtarefa, useUsuarios, useReordenar, useUsuariosLista, useSalvarTarefa, useAcaoMassa,
+  useQuadros, useTarefas, useSubtarefasDoQuadro, useMinhasSubtarefasDoQuadro, useAbrirSubtarefa, useUsuarios, useReordenar, useUsuariosLista, useSalvarTarefa, useAcaoMassa,
   useSalvarVinculados, useRegistrarAtividade, DIAS_LIXEIRA,
   useMinhasTarefas, useMinhasTarefasAgenda, useTarefasDeResponsaveis, useNomesEmpresas, useVinculadosQuadro, buscarTarefa, useTodosStatus, useNotificacoes, useMarcarLida, useLimparNotificacoes,
   usePreferenciaVisao, useSalvarPreferenciaVisao,
@@ -18,7 +18,7 @@ import {
   useEtapasAvisadas, useAlternarAvisoEtapa, useSlaTarefas,
   corAvatar, formatarDuracao,
   PRIORIDADES, FILTRO_VAZIO, contarFiltros,
-  type GestaoTarefa, type StatusTarefa, type VistaGestao, type AgruparPor, type GestaoStatus, type GestaoNotificacao, type PrioridadeTarefa, type FiltrosGestao,
+  type GestaoTarefa, type StatusTarefa, type VistaGestao, type AgruparPor, type GestaoStatus, type PrioridadeTarefa, type FiltrosGestao,
 } from "@/lib/hooks/useGestao";
 import GestaoSidebar from "@/components/gestao/GestaoSidebar";
 import SidebarAlca from "@/components/layout/SidebarAlca";
@@ -27,11 +27,13 @@ import SelectVerde from "@/components/gestao/SelectVerde";
 import { useQueryClient } from "@tanstack/react-query";
 import { montarSubtarefas, itensMostrar, type MostrarItens } from "@/lib/gestao/subtarefas-vista";
 import { itensDaContagem } from "@/lib/gestao/contagem-concluidas";
+import { ehMinha, type CtxMinhas } from "@/lib/gestao/minhas";
 import { OPCOES_ORDEM, campoTemValor, ordenarTarefas, proximaOrdem, type CampoOrdem, type OrdemColuna } from "@/lib/gestao/ordenar-coluna";
+import { moverColuna } from "@/lib/gestao/ordem-colunas";
+import { useMoverColunas } from "@/lib/hooks/useOrdemColunas";
 
 /** 10/11/2026 (pedido do usuário): sem escolha da pessoa, cada coluna vem do mais recente para o mais antigo. */
 const ORDEM_PADRAO_COLUNA: OrdemColuna = { campo: "criada", dir: "desc" };
-import NotificacoesSino from "@/components/gestao/NotificacoesSino";
 import LixeiraModal from "@/components/gestao/LixeiraModal";
 import ProdutosModal from "@/components/gestao/ProdutosModal";
 import BotaoCadastroEmpresa, { ID_QUADRO_COMERCIAL } from "@/components/comercial/BotaoCadastroEmpresa";
@@ -103,6 +105,7 @@ const VISTAS: { value: VistaGestao; label: string; icon: typeof KanbanSquare }[]
 ];
 
 const LIMITE_COL = 100;
+const SEM_IDS: ReadonlySet<string> = new Set();
 // Agrupar/Mostrar: SelectVerde no tamanho dos botões Quadro/Lista/Calendário (text-sm).
 const SELECT_FILTRO = "w-auto min-w-[9rem]";
 const ITEM_RODAPE = "flex w-full items-center gap-2.5 rounded-lg px-3 py-[7px] text-sm font-medium text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white/90";
@@ -184,6 +187,11 @@ export default function GestaoChabraPage() {
   const [agruparPor, setAgruparPor] = useState<AgruparPor | null>(null);
   const [soMinhas, setSoMinhas] = useState(false);
   const [dropAlvo, setDropAlvo] = useState<{ col: StatusTarefa; beforeId: string | null } | null>(null);
+  // 11/11/2026: arrastar a COLUNA pelo título muda a ordem das colunas do quadro (a mesma de Configurar › Status, para
+  // todos da lista). colAlvo = sobre qual coluna está e de que lado vai entrar.
+  const [colArrastando, setColArrastando] = useState<string | null>(null);
+  const [colAlvo, setColAlvo] = useState<{ slug: string; depois: boolean } | null>(null);
+  const moverColunas = useMoverColunas();
   const { data: dependencias = [] } = useTodasDependencias(vista === "timeline");
 
   const [managerOpen, setManagerOpen] = useState(false);
@@ -461,8 +469,18 @@ export default function GestaoChabraPage() {
     seguidoresDe: (id) => (vincQuadro?.get(id) ?? []).filter((v) => v.tipo === "seguidor").map((v) => v.usuario_email),
     chaveCriador,
   };
+  // "Minhas" (12/11/2026): criei, sou responsável, sigo ou estou alocado(a) numa subtarefa aberta — ver lib/gestao/minhas.ts.
+  const { data: minhasSubs } = useMinhasSubtarefasDoQuadro(quadro?.id_quadro, user?.email, soMinhas);
+  const ctxMinhas: CtxMinhas = {
+    email: user?.email ?? null,
+    nome: user?.nome ?? null,
+    vinculadosDe: (id) => vincQuadro?.get(id) ?? [],
+    chaveCriador: (t) => criadorDe(t, nomePorEmail, apelidosRunrun)?.chave ?? null,
+    tarefasPorSubtarefa: minhasSubs?.tarefas ?? SEM_IDS,
+    subtarefasMinhas: minhasSubs?.subtarefas ?? SEM_IDS,
+  };
   const passaFiltro = (t: GestaoTarefa) => {
-    if (soMinhas && !temResponsavel(t.responsavel, user?.nome)) return false;
+    if (soMinhas && !ehMinha(t, ctxMinhas)) return false;
     if (!passaFiltros(t, filtros, ctxFiltro)) return false;
     if (idsDaBusca && !idsDaBusca.has(t.id_tarefa)) return false;
     return true;
@@ -496,6 +514,10 @@ export default function GestaoChabraPage() {
       ...extras.map((slug, i) => ({ id: slug, id_quadro: quadro?.id_quadro ?? "", slug, nome: slug, cor: "#cbd5e1", ordem: 9990 + i, tipo: "ativo" as const })),
     ];
   }, [statuses, items, quadro]);
+  // Só as colunas gravadas no banco mudam de lugar (não as de status órfão nem as padrão enquanto carrega), e só no
+  // quadro agrupado por status, para quem pode editar a lista.
+  const podeMoverColunas = podeEditar && quadroAgrupar === "status" && statusList.length > 0;
+  const colunaReal = (slug: string) => statusList.some((s) => s.slug === slug);
 
   // Grupos do Quadro: por status (default) ou por responsável/prioridade/etiqueta.
   const gruposQuadro = useMemo<{ slug: string; nome: string; cor: string }[]>(() => {
@@ -638,14 +660,6 @@ export default function GestaoChabraPage() {
     setModalOpen(true);
   }
 
-  function abrirNotif(n: GestaoNotificacao) {
-    if (n.id_quadro) setQuadroId(n.id_quadro);
-    if (n.id_tarefa) {
-      const t = items.find((x) => x.id_tarefa === n.id_tarefa);
-      if (t) { setEditando(t); setModalOpen(true); }
-    }
-  }
-
   // v348: responsáveis de cada cartão (vínculos) e nome para os avisos do limite da coluna (WIP).
   const responsaveisDe = (id: string) => (vincQuadro?.get(id) ?? []).filter((v) => v.tipo === "responsavel").map((v) => v.usuario_email);
   const nomeDoEmail = (e: string) => usuariosEmail.find((u) => u.email.toLowerCase() === e.toLowerCase())?.nome ?? e;
@@ -694,6 +708,19 @@ export default function GestaoChabraPage() {
       setItems((arr) => arr.map((t) => (t.id_tarefa === dragged.id_tarefa ? { ...t, responsavel: novo } : t)));
       salvar.mutate({ ...base, responsavel: novo });
     }
+  }
+
+  /** Soltar uma coluna arrastada pelo título: grava a nova ordem das colunas do quadro. */
+  function soltarColuna(alvo: string) {
+    const de = colArrastando;
+    const depois = colAlvo?.slug === alvo ? colAlvo.depois : false;
+    setColArrastando(null);
+    setColAlvo(null);
+    if (!de || !quadro || !podeMoverColunas) return;
+    const atual = statusList.map((s) => s.slug);
+    const nova = moverColuna(atual, de, alvo, depois);
+    if (nova === atual) return;
+    moverColunas.mutate({ id_quadro: quadro.id_quadro, colunas: statusList, novaOrdem: nova });
   }
 
   // Ações em massa
@@ -926,10 +953,7 @@ export default function GestaoChabraPage() {
                 <h1 className="text-2xl font-bold text-gray-900">Meu Espaço</h1>
                 <p className="text-sm text-gray-500">Tarefas em que sou responsável ou seguidor — {minhas.length} em todos os quadros</p>
               </div>
-              {/* Sino com contador vermelho de não lidas; abre a lista e leva à tarefa. */}
-              <div className="ml-auto">
-                <NotificacoesSino onAbrir={(n) => { if (n.id_quadro) setQuadroId(n.id_quadro); setMeuEspacoView(false); const t = n.id_tarefa ? minhasTodas.find((x) => x.id_tarefa === n.id_tarefa) : undefined; if (t) { setEditando(t); setModalOpen(true); } }} />
-              </div>
+              {/* 12/11/2026: o sino saiu (pedido do usuário) — as notificações ficam na foto do topo (Notificações → Caixa de entrada). */}
             </div>
             {/* UX-C1: vista agregada. O container MeuEspaco reserva o ponto de extensão
                 para o quadro pessoal (UX-C2), sem construí-lo aqui. */}
@@ -963,7 +987,6 @@ export default function GestaoChabraPage() {
           )}
           {/* 0.3.276 (= Painel 0.3.926): na lista Comercial, o mesmo botão do módulo Comercial. */}
           {quadro?.id_quadro === ID_QUADRO_COMERCIAL && <BotaoCadastroEmpresa variante="barra" />}
-          <NotificacoesSino onAbrir={abrirNotif} />
           <div className="relative w-full sm:w-64">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
             <input ref={buscaRef} value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar tarefa…  /" aria-label="Buscar tarefa (atalho /)" className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-marca-primary focus:outline-none" />
@@ -977,8 +1000,8 @@ export default function GestaoChabraPage() {
             <FiltrosPanel filtros={filtros} onChange={setFiltros} idQuadro={quadro?.id_quadro ?? ""}
               opcoes={{ statuses, etiquetas: etiquetasCat, usuarios, pessoas: usuariosEmail, equipes: equipesVisiveis, criadores: criadoresOpcoes, produtos: produtosOpcoes }} />
           )}
-          {user?.nome && !calDeOutros && (
-            <button type="button" onClick={() => setSoMinhas((v) => !v)} className={`rounded-lg px-3 py-2 text-sm font-medium transition ${soMinhas ? "bg-marca-primary text-white" : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
+          {(user?.nome || user?.email) && !calDeOutros && (
+            <button type="button" onClick={() => setSoMinhas((v) => !v)} title="Tarefas que criei, em que estou alocado(a) (inclusive numa subtarefa aberta) e que sigo" className={`rounded-lg px-3 py-2 text-sm font-medium transition ${soMinhas ? "bg-marca-primary text-white" : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
               Minhas
             </button>
           )}
@@ -1097,18 +1120,52 @@ export default function GestaoChabraPage() {
               return (
                 <div
                   key={col.slug}
-                  onDragOver={(e) => { if (dragId) { e.preventDefault(); setColHover(col.slug); setDropAlvo({ col: col.slug, beforeId: null }); } }}
+                  data-coluna={col.slug}
+                  onDragOver={(e) => {
+                    if (colArrastando) {
+                      // Arrastando uma COLUNA: a metade em que o mouse está diz se ela entra antes ou depois desta.
+                      if (!podeMoverColunas || !colunaReal(col.slug)) return;
+                      e.preventDefault();
+                      const r = e.currentTarget.getBoundingClientRect();
+                      const depois = e.clientX > r.left + r.width / 2;
+                      setColAlvo((a) => (a?.slug === col.slug && a.depois === depois ? a : { slug: col.slug, depois }));
+                      return;
+                    }
+                    if (dragId) { e.preventDefault(); setColHover(col.slug); setDropAlvo({ col: col.slug, beforeId: null }); }
+                  }}
                   onDragLeave={(e) => { if (dragId && !e.currentTarget.contains(e.relatedTarget as Node)) setColHover((c) => (c === col.slug ? null : c)); }}
-                  onDrop={() => soltarGrupo(col.slug)}
+                  onDrop={(e) => {
+                    if (colArrastando) { e.preventDefault(); soltarColuna(col.slug); return; }
+                    soltarGrupo(col.slug);
+                  }}
                   /* Altura = o que sobra da tela (alturaColuna, medida no DOM) e a
                      lista de cards rola por dentro — o quadro cabe na tela e as
                      colunas param no rodapé. Sem a medida (1º paint), cai no
                      `min-h` e na altura da coluna mais alta, como antes. */
                   style={alturaColuna ? { height: alturaColuna } : undefined}
-                  className={`flex min-h-[220px] w-72 shrink-0 flex-col rounded-xl border bg-gray-50/60 p-2.5 transition ${colHover === col.slug ? "border-marca-primary ring-2 ring-marca-primary/20" : "border-gray-200"}`}
+                  className={`relative flex min-h-[220px] w-72 shrink-0 flex-col rounded-xl border bg-gray-50/60 p-2.5 transition ${colHover === col.slug ? "border-marca-primary ring-2 ring-marca-primary/20" : "border-gray-200"} ${colArrastando === col.slug ? "opacity-40" : ""}`}
                 >
-                  <div className="mb-2 flex items-center justify-between px-1">
+                  {colArrastando && colArrastando !== col.slug && colAlvo?.slug === col.slug && (
+                    <span aria-hidden className={`pointer-events-none absolute inset-y-1 w-1 rounded-full bg-marca-primary ${colAlvo.depois ? "-right-2" : "-left-2"}`} />
+                  )}
+                  <div
+                    className={`mb-2 flex items-center justify-between px-1 ${podeMoverColunas && colunaReal(col.slug) ? "cursor-grab active:cursor-grabbing" : ""}`}
+                    draggable={podeMoverColunas && colunaReal(col.slug)}
+                    onDragStart={(e) => {
+                      if (!podeMoverColunas || !colunaReal(col.slug)) return;
+                      e.stopPropagation();
+                      e.dataTransfer.effectAllowed = "move";
+                      // Tipo próprio (não text/plain): soltar fora do quadro, numa caixa de texto, não escreve o slug nela.
+                      e.dataTransfer.setData("application/x-gestao-coluna", col.slug);
+                      const coluna = e.currentTarget.closest<HTMLElement>("[data-coluna]");
+                      if (coluna) e.dataTransfer.setDragImage(coluna, 24, 16);
+                      setColArrastando(col.slug);
+                    }}
+                    onDragEnd={() => { setColArrastando(null); setColAlvo(null); }}
+                    title={podeMoverColunas && colunaReal(col.slug) ? "Arraste para mudar a coluna de lugar" : undefined}
+                  >
                     <div className="flex flex-wrap items-center gap-1.5">
+                      {podeMoverColunas && colunaReal(col.slug) && <GripVertical className="-ml-1 size-3.5 shrink-0 text-gray-300" aria-hidden />}
                       <span className="size-2.5 rounded-full" style={{ background: col.cor }} />
                       <p className="text-sm font-semibold text-gray-700">{col.nome}</p>
                       {quadroAgrupar === "status" && (statusMap.get(col.slug)?.requer_checklist || statusMap.get(col.slug)?.requer_anexo) && (
@@ -1199,7 +1256,7 @@ export default function GestaoChabraPage() {
                           onDragEnd={() => { setDragId(null); setColHover(null); setDropAlvo(null); }}
                           /* Coluna com "Ordenar por": a posição de soltar não vale (a ordem é a escolhida) — só troca de coluna. */
                           onDragOver={(e) => { if (dragId) { e.preventDefault(); e.stopPropagation(); setColHover(col.slug); setDropAlvo({ col: col.slug, beforeId: ordemCol ? null : t.id_tarefa }); } }}
-                          onDrop={(e) => { e.stopPropagation(); soltarGrupo(col.slug, ordemCol ? undefined : t.id_tarefa); }}
+                          onDrop={(e) => { if (colArrastando) return; e.stopPropagation(); soltarGrupo(col.slug, ordemCol ? undefined : t.id_tarefa); }}
                         />
                       </div>
                     ))}
@@ -1289,7 +1346,7 @@ export default function GestaoChabraPage() {
           <p className="mt-3 text-center text-xs text-gray-400">
             {quadroAgrupar === "etiqueta"
               ? "Agrupado por etiqueta — arraste desabilitado neste modo."
-              : `Arraste os cards entre as colunas para mudar ${quadroAgrupar === "responsavel" ? "o responsável" : quadroAgrupar === "prioridade" ? "a prioridade" : "o status"}.`}
+              : `Arraste os cards entre as colunas para mudar ${quadroAgrupar === "responsavel" ? "o responsável" : quadroAgrupar === "prioridade" ? "a prioridade" : "o status"}.${podeMoverColunas ? " Arraste o título de uma coluna para mudá-la de lugar." : ""}`}
           </p>
         )}
         </>
