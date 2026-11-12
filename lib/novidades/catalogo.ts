@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-texto-do-cartao-no-google",
+    data: "2026-11-12",
+    tipo: "melhoria",
+    titulo: "Gestão: o Google Agenda e a dica do calendário mostram o texto do cartão",
+    texto:
+      "O evento que vai para o Google Agenda passa a levar a descrição do cartão e o link para abrir no sistema; na " +
+      "subtarefa (visita), vai também a descrição do cartão original. No calendário, passar o mouse numa atividade mostra " +
+      "esse texto, sem precisar abrir.",
+    onde: "Google Agenda de quem conectou; Gestão › Calendário e Agenda",
+    impacto: "O cartão original só vai para quem pode vê-lo, e o texto de um evento que você criou na sua agenda não é trocado.",
+    versoes: ["0.3.283"],
+  },
+  {
     id: "gestao-tela-produtos",
     data: "2026-11-12",
     tipo: "novidade",
