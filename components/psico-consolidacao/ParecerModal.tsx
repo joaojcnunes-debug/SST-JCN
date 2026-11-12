@@ -3,6 +3,7 @@
 // Conciliação DRPS/QPS × AEP — parecer de UM cruzamento setor × fator × questionário
 // (v0.3.176, banco v310). Confirmar no inventário do PGR (NR-01), aprofundar com AET
 // (NR-17, 17.3.2) ou descartar com justificativa; Confirmar/AET podem criar a ação 5W2H.
+// v0.3.285 (banco v354): também no grupo — a ação nasce em cada empresa do grupo que tem o setor.
 
 import { useState } from "react";
 import Link from "next/link";
@@ -10,7 +11,7 @@ import { AlertTriangle, ExternalLink, Loader2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { confirmar } from "@/components/ui/confirm";
 import { SeloClasse } from "@/components/psico-consolidacao/ConciliacaoSelos";
-import { useExcluirParecer, useSalvarParecer } from "@/lib/hooks/useConciliacaoParecer";
+import { useExcluirParecer, useSalvarParecer, type AlvoConciliacao } from "@/lib/hooks/useConciliacaoParecer";
 import {
   ROTULO_DECISAO,
   ladoQuestionario,
@@ -29,7 +30,9 @@ const EXPLICACAO_DECISAO: Record<DecisaoParecer, string> = {
 };
 
 export interface ContextoParecer {
-  idEmpresa: string;
+  alvo: AlvoConciliacao;
+  /** Por grupo: as empresas que têm o setor (recebem a ação) e o rótulo de cada uma. */
+  grupo?: { nome: string; empresasAcao: string[]; rotulo: (idEmpresa: string) => string };
   celula: CelulaConciliacao;
   questionario: Questionario;
   fator: string;
@@ -37,7 +40,7 @@ export interface ContextoParecer {
   necessitaAet: boolean;
   /** A empresa só tem um lado: não há comparação (v0.3.239). */
   fonteUnica: boolean;
-  documentos: Partial<Record<OrigemFonte, string>>;
+  documentos: Partial<Record<OrigemFonte, string>> | string[];
   atual: ParecerConciliacao | undefined;
 }
 
@@ -62,11 +65,14 @@ export default function ParecerModal({
   const [decisao, setDecisao] = useState<DecisaoParecer>(atual?.decisao ?? decisaoSugerida(c, q));
   const [justificativa, setJustificativa] = useState(atual?.justificativa ?? "");
   const [gerarAcao, setGerarAcao] = useState(!atual?.id_acao);
+  const grupo = ctx.grupo;
+  const acoesFeitas = ctx.alvo.tipo === "grupo" ? atual?.id_acoes ?? [] : atual?.id_acao ? [atual.id_acao] : [];
+  const deOnde = (id?: string) => (grupo && id ? ` · empresa ${grupo.rotulo(id)}` : "");
   const salvar = useSalvarParecer();
   const excluir = useExcluirParecer();
 
-  const textoAep = c.aep ? c.aep.nivelAiha ?? "Sim (sem AIHA)" : c.aepNaoIdentificado ? "N/I" : "Não marcado";
-  const textoQ = lado ? `${lado.nivel}${lado.respondentes != null ? ` (${lado.respondentes} resp.)` : ""}` : "—";
+  const textoAep = c.aep ? (c.aep.nivelAiha ?? "Sim (sem AIHA)") + deOnde(c.aep.idEmpresa) : c.aepNaoIdentificado ? "N/I" : "Não marcado";
+  const textoQ = lado ? `${lado.nivel}${lado.respondentes != null ? ` (${lado.respondentes} resp.)` : ""}${deOnde(lado.idEmpresa)}` : "—";
   const precisaJustificativa = decisao === "DESCARTAR";
   const podeSalvar = podeEditar && (!precisaJustificativa || justificativa.trim() !== "");
 
@@ -74,7 +80,9 @@ export default function ParecerModal({
     salvar.mutate(
       {
         atual,
-        idEmpresa: ctx.idEmpresa,
+        alvo: ctx.alvo,
+        empresasAcao: grupo?.empresasAcao ?? [],
+        nomeGrupo: grupo?.nome,
         setorChave: c.chaveSetor,
         setorNome: c.setor,
         idFator: c.idFator,
@@ -84,7 +92,7 @@ export default function ParecerModal({
         classe,
         documentos: ctx.documentos,
         gerarAcao:
-          gerarAcao && decisao !== "DESCARTAR" && !atual?.id_acao
+          gerarAcao && decisao !== "DESCARTAR" && acoesFeitas.length === 0
             ? {
                 setor: c.setor,
                 fator: ctx.fator,
@@ -101,11 +109,11 @@ export default function ParecerModal({
     if (!atual) return;
     const ok = await confirmar({
       title: "Remover este parecer?",
-      description: atual.id_acao ? "A ação 5W2H já criada continua no Plano de Ação." : undefined,
+      description: acoesFeitas.length > 0 ? "As ações 5W2H já criadas continuam no Plano de Ação." : undefined,
       confirmLabel: "Remover",
       variant: "danger",
     });
-    if (ok) excluir.mutate(atual.id_parecer, { onSuccess: onClose });
+    if (ok) excluir.mutate({ alvo: ctx.alvo, idParecer: atual.id_parecer }, { onSuccess: onClose });
   };
 
   return (
@@ -216,9 +224,9 @@ export default function ParecerModal({
         </label>
 
         {decisao !== "DESCARTAR" &&
-          (atual?.id_acao ? (
+          (acoesFeitas.length > 0 ? (
             <p className="text-xs text-gray-600">
-              Ação já criada: <b>{atual.id_acao}</b> ·{" "}
+              {acoesFeitas.length > 1 ? "Ações já criadas" : "Ação já criada"}: <b>{acoesFeitas.join(", ")}</b> ·{" "}
               <Link href="/acoes" className="inline-flex items-center gap-0.5 text-indigo-700 hover:underline">
                 ver no Plano de Ação <ExternalLink className="size-3" />
               </Link>
@@ -226,7 +234,9 @@ export default function ParecerModal({
           ) : (
             <label className="flex items-center gap-2 text-sm text-gray-700">
               <input type="checkbox" checked={gerarAcao} disabled={!podeEditar} onChange={(e) => setGerarAcao(e.target.checked)} />
-              Criar a ação 5W2H no Plano de Ação (sem prazo e sem responsável, para completar lá)
+              {grupo
+                ? `Criar a ação 5W2H no Plano de Ação de cada empresa que tem o setor (${grupo.empresasAcao.map(grupo.rotulo).join(", ") || "nenhuma"}), sem prazo e sem responsável`
+                : "Criar a ação 5W2H no Plano de Ação (sem prazo e sem responsável, para completar lá)"}
             </label>
           ))}
 

@@ -65,6 +65,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ idEmpresa: 
             .map(([origem, d]) => ({ origem, titulo: d.titulo, data: d.data })),
           regua: f.regua ?? {},
           totais: f.resumo?.totais ?? {},
+          questionarios: f.resumo?.questionarios,
           pareceres: f.resumo?.pareceres ?? null,
           itens: f.itens ?? [],
         },

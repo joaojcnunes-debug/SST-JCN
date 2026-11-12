@@ -12,6 +12,7 @@ import { carregarRiscosPsicossociais } from "@/lib/riscos-psicossociais/carregar
 import type { AepRelatorio } from "@/lib/supabase/types";
 import type { EmpresaFonte, FontesDoGrupo } from "./carregar-grupo";
 import type { ItemFechamento, LigacaoSetor, ParecerConciliacao, SetorAvaliadoAep } from "./conciliacao";
+import type { DocumentoFechamentoGrupo, ItemFechamentoGrupo } from "./conciliacao-grupo";
 import {
   documentoDaAep,
   documentoDaAvaliacao,
@@ -33,15 +34,20 @@ type AepLida = Pick<
   "id_relatorio" | "id_empresa" | "status" | "setores" | "responsavel_elaboracao" | "data_elaboracao" | "updated_at"
 > & { concluido_em: string | null };
 
-/** @param idEmpresa uma empresa só (tela de detalhe); sem ela, todas. */
-export async function carregarFontesConciliacao(sb: Sb, idEmpresa?: string): Promise<FontesConciliacao> {
+/**
+ * @param idEmpresa uma empresa só (tela de detalhe), as empresas de um grupo (conciliação por grupo,
+ *                  v0.3.285) ou, sem ela, todas.
+ */
+export async function carregarFontesConciliacao(sb: Sb, idEmpresa?: string | string[]): Promise<FontesConciliacao> {
+  if (Array.isArray(idEmpresa) && idEmpresa.length === 0) return { empresas: [], documentos: [], linhas: [], pendencias: [], setoresAep: [] };
   const [aeps, riscos] = await Promise.all([
     fetchAllRows<AepLida>((de, ate) => {
       let q = sb
         .from("aep_relatorios")
         .select("id_relatorio, id_empresa, status, setores, responsavel_elaboracao, data_elaboracao, concluido_em, updated_at")
         .eq("status", "CONCLUIDO");
-      if (idEmpresa) q = q.eq("id_empresa", idEmpresa);
+      if (Array.isArray(idEmpresa)) q = q.in("id_empresa", idEmpresa);
+      else if (idEmpresa) q = q.eq("id_empresa", idEmpresa);
       return q.order("id_relatorio").range(de, ate);
     }),
     carregarRiscosPsicossociais(sb, idEmpresa),
@@ -66,6 +72,7 @@ export async function carregarFontesConciliacao(sb: Sb, idEmpresa?: string): Pro
       if (setor) {
         out.setoresAep.push({
           idDocumento: a.id_relatorio,
+          idEmpresa: a.id_empresa,
           setorOriginal: setor,
           expostos: Number(s.qtd_expostos) || null,
           necessitaAet: !!s.necessita_aet,
@@ -118,6 +125,8 @@ export interface FechamentoConciliacao {
     /** Empresa com um documento só: não houve comparação (v0.3.239). */
     fonte_unica?: boolean;
     totais?: Record<string, Record<string, number>>;
+    /** Os questionários comparados (colunas de parecer). */
+    questionarios?: string[];
     pareceres?: { pendentes: number; semAcao: number; desatualizados: number; comParecer: number };
   };
   itens: ItemFechamento[];
@@ -158,4 +167,63 @@ export async function carregarRegistrosConciliacao(sb: Sb, idEmpresa?: string): 
   for (const f of fechamentos) f.reabertura = porFechamento.get(f.id_fechamento) ?? null;
   fechamentos.sort((a, b) => b.fechado_em.localeCompare(a.fechado_em));
   return { ligacoes, pareceres, fechamentos };
+}
+
+// ── Por grupo (v0.3.285, banco v354) ─────────────────────────────────────────
+
+/** Conciliação de grupo fechada (psico_conciliacao_grupo_fechamentos). */
+export interface FechamentoGrupo {
+  id_fechamento: string;
+  id_grupo: string;
+  nome_grupo: string;
+  empresas: Array<{ id_empresa: string; nome: string; cnpj: string | null }>;
+  fechado_por: string;
+  fechado_em: string;
+  documentos: DocumentoFechamentoGrupo[];
+  regua: Record<string, unknown>;
+  resumo: FechamentoConciliacao["resumo"];
+  itens: ItemFechamentoGrupo[];
+  reabertura?: ReaberturaConciliacao | null;
+  observacao: string | null;
+}
+
+export interface RegistrosConciliacaoGrupo {
+  ligacoes: LigacaoSetor[];
+  pareceres: ParecerConciliacao[];
+  fechamentos: FechamentoGrupo[];
+}
+
+/**
+ * O que a equipe gravou na conciliação dos grupos (v354). O parecer do grupo guarda `id_acoes` (uma ação por
+ * empresa); `id_acao` recebe a primeira, para a régua de "sem ação" ser a mesma da empresa.
+ */
+export async function carregarRegistrosConciliacaoGrupo(sb: Sb, idGrupo?: string): Promise<RegistrosConciliacaoGrupo> {
+  const filtro = <T>(tabela: string, select: string, ordem: string) =>
+    fetchAllRows<T>((de, ate) => {
+      let q = sb.from(tabela).select(select);
+      if (idGrupo) q = q.eq("id_grupo", idGrupo);
+      return q.order(ordem).range(de, ate);
+    });
+  const [ligacoes, pareceres, fechamentos, reaberturas] = await Promise.all([
+    filtro<LigacaoSetor & { id_grupo: string }>("psico_conciliacao_grupo_setor_depara", "*", "id_depara"),
+    filtro<ParecerConciliacao & { id_grupo: string }>("psico_conciliacao_grupo_pareceres", "*", "id_parecer"),
+    filtro<FechamentoGrupo>(
+      "psico_conciliacao_grupo_fechamentos",
+      idGrupo ? "*" : "id_fechamento, id_grupo, nome_grupo, fechado_por, fechado_em, resumo, documentos",
+      "fechado_em",
+    ),
+    filtro<ReaberturaConciliacao & { id_grupo: string }>(
+      "psico_conciliacao_grupo_reaberturas",
+      "id_fechamento, id_grupo, motivo, reaberto_por, reaberto_em",
+      "id_reabertura",
+    ),
+  ]);
+  const porFechamento = new Map(reaberturas.map((r) => [r.id_fechamento, r]));
+  for (const f of fechamentos) f.reabertura = porFechamento.get(f.id_fechamento) ?? null;
+  fechamentos.sort((a, b) => b.fechado_em.localeCompare(a.fechado_em));
+  return {
+    ligacoes,
+    pareceres: pareceres.map((p) => ({ ...p, id_empresa: p.id_grupo, id_acoes: p.id_acoes ?? [], id_acao: p.id_acoes?.[0] ?? null })),
+    fechamentos,
+  };
 }

@@ -50,6 +50,8 @@ test("a rota é da tela de prefixo mais longo, respeitando os segmentos", () => 
   assert.equal(telaDaRota("/comercial")?.rotulo, "Oportunidades");
   assert.equal(telaDaRota("/consolidacao-grupo/vendas?empresa=E1")?.rotulo, "Vendas");
   assert.equal(telaDaRota("/consolidacao-grupo/G1")?.rotulo, "Grupos de empresas");
+  assert.equal(telaDaRota("/consolidacao-grupo/conciliacao-grupo/GRP-1")?.rotulo, "Conciliação por grupo");
+  assert.equal(telaDaRota("/consolidacao-grupo/conciliacao/E1")?.rotulo, "Conciliação DRPS/QPS × AEP");
   assert.equal(telaDaRota("/acoes/texto-padrao")?.rotulo, "Texto Padrão — Plano de Ação");
   assert.equal(telaDaRota("/empresas"), null);
   assert.equal(telaDaRota("/modulos"), null);

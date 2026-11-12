@@ -3,23 +3,24 @@
 // Conciliação DRPS/QPS × AEP — setores que aparecem numa fonte só, a sugestão "parece o
 // mesmo setor" e a ligação manual por empresa (v0.3.176, banco v310). Ligar junta os dois
 // na conciliação com o nome da AEP; nada muda nos documentos.
+// v0.3.285 (banco v354): serve também à conciliação por grupo (`alvo`).
 
 import { useState } from "react";
 import { Link2, Link2Off, Sparkles } from "lucide-react";
 import { confirmar } from "@/components/ui/confirm";
-import { useDesligarSetor, useLigarSetores } from "@/lib/hooks/useConciliacaoParecer";
+import { useDesligarSetor, useLigarSetores, type AlvoConciliacao } from "@/lib/hooks/useConciliacaoParecer";
 import { sugerirPares, type LigacaoSetor, type SetorConciliacao } from "@/lib/psico-consolidacao/conciliacao";
 
 const sel =
   "rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20";
 
 export default function LigacaoSetores({
-  idEmpresa,
+  alvo,
   setores,
   ligacoes,
   podeEditar,
 }: {
-  idEmpresa: string;
+  alvo: AlvoConciliacao;
   setores: SetorConciliacao[];
   ligacoes: LigacaoSetor[];
   podeEditar: boolean;
@@ -40,7 +41,7 @@ export default function LigacaoSetores({
   const juntar = async (aep: SetorConciliacao, q: SetorConciliacao) => {
     for (const k of q.chavesOriginais) {
       if (k === aep.chave) continue;
-      await ligar.mutateAsync({ idEmpresa, chaveDe: k, nomeDe: q.setor, chavePara: aep.chave, nomePara: aep.setor });
+      await ligar.mutateAsync({ alvo, chaveDe: k, nomeDe: q.setor, chavePara: aep.chave, nomePara: aep.setor });
     }
   };
 
@@ -52,7 +53,7 @@ export default function LigacaoSetores({
       confirmLabel: "Desfazer",
       variant: "danger",
     });
-    if (ok) desligar.mutate(l.id_depara);
+    if (ok) desligar.mutate({ alvo, idDepara: l.id_depara });
   };
 
   return (
@@ -144,7 +145,7 @@ export default function LigacaoSetores({
 
       {ligacoes.length > 0 && (
         <div>
-          <p className="mb-1 text-xs font-semibold text-gray-600">Setores ligados nesta empresa</p>
+          <p className="mb-1 text-xs font-semibold text-gray-600">Setores ligados {alvo.tipo === "grupo" ? "neste grupo" : "nesta empresa"}</p>
           <ul className="space-y-1 text-sm">
             {ligacoes.map((l) => (
               <li key={l.id_depara ?? l.chave_de} className="flex items-center gap-2 text-gray-700">

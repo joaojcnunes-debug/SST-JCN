@@ -4,18 +4,42 @@
 // PGR, NR-01) e as conciliações já fechadas da empresa (v0.3.176, banco v310).
 // v0.3.178: cada fechamento tem o seu PDF (/api/pdf/conciliacao/[idEmpresa]?fechamento=).
 // v0.3.237 (banco v324): reabrir a última, com motivo. A foto e o PDF não mudam.
+// v0.3.285 (banco v354): também no grupo (`alvo`); a foto do grupo lista os documentos de cada empresa.
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight, FileDown, Loader2, Lock, LockOpen } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { SeloClasse } from "@/components/psico-consolidacao/ConciliacaoSelos";
-import { useFecharConciliacao, useReabrirConciliacao } from "@/lib/hooks/useConciliacaoParecer";
+import { useFecharConciliacao, useReabrirConciliacao, type AlvoConciliacao } from "@/lib/hooks/useConciliacaoParecer";
 import { ROTULO_DECISAO, type ContagemPareceres, type ItemFechamento } from "@/lib/psico-consolidacao/conciliacao";
-import type { FechamentoConciliacao } from "@/lib/psico-consolidacao/carregar-conciliacao";
+import type { DocumentoFechamentoGrupo, ItemFechamentoGrupo } from "@/lib/psico-consolidacao/conciliacao-grupo";
+import type { FechamentoConciliacao, FechamentoGrupo } from "@/lib/psico-consolidacao/carregar-conciliacao";
+
+/** O que vai para a foto: por empresa, um documento por origem; por grupo, a lista e as empresas. */
+export interface FotoFechamento {
+  documentos: Record<string, { id: string; titulo: string; data: string | null }> | DocumentoFechamentoGrupo[];
+  resumo: Record<string, unknown>;
+  itens: ItemFechamento[] | ItemFechamentoGrupo[];
+  grupo?: { nome: string; empresas: Array<{ id_empresa: string; nome: string; cnpj: string | null }> };
+}
+
+const rotuloCnpj = (cnpj: string | null | undefined) => {
+  const d = (cnpj ?? "").replace(/\D/g, "");
+  return d.length === 14 ? `${d.slice(8, 12)}-${d.slice(12)}` : null;
+};
+
+/** Os documentos da foto, em texto (um por origem ou, no grupo, cada um com a empresa). */
+function textoDocumentos(f: FechamentoConciliacao | FechamentoGrupo): string {
+  if (Array.isArray(f.documentos)) {
+    const nomes = new Map(("empresas" in f ? f.empresas : []).map((e) => [e.id_empresa, rotuloCnpj(e.cnpj) ?? e.nome]));
+    return f.documentos.map((d) => `${d.origem} ${nomes.get(d.id_empresa) ?? d.id_empresa}${d.data ? ` (${fmtData(d.data)})` : ""}`).join(" · ") || "—";
+  }
+  return Object.entries(f.documentos ?? {}).map(([o, d]) => `${o} ${d.titulo}${d.data ? ` (${fmtData(d.data)})` : ""}`).join(" · ") || "—";
+}
 import { fmtData } from "@/lib/utils";
 
 export default function FechamentosConciliacao({
-  idEmpresa,
+  alvo,
   historico,
   contagem,
   podeEditar,
@@ -23,8 +47,8 @@ export default function FechamentosConciliacao({
   podeFechar,
   montar,
 }: {
-  idEmpresa: string;
-  historico: FechamentoConciliacao[];
+  alvo: AlvoConciliacao;
+  historico: Array<FechamentoConciliacao | FechamentoGrupo>;
   contagem: ContagemPareceres;
   /** Sessão aberta e ainda não liberada: pode fechar. */
   podeEditar: boolean;
@@ -33,7 +57,7 @@ export default function FechamentosConciliacao({
   /** Há o que fechar: AEP + questionário com setor em comum, ou um documento só. */
   podeFechar: boolean;
   /** Monta a foto na hora de fechar (documentos, totais, itens). */
-  montar: () => { documentos: Record<string, { id: string; titulo: string; data: string | null }>; resumo: Record<string, unknown>; itens: ItemFechamento[] };
+  montar: () => FotoFechamento;
 }) {
   const fechar = useFecharConciliacao();
   const reabrir = useReabrirConciliacao();
@@ -105,7 +129,7 @@ export default function FechamentosConciliacao({
                   {/* O PDF descreve uma comparação com a AEP: não vale para documento único. */}
                   {!fonteUnica && (
                     <a
-                      href={`/api/pdf/conciliacao/${encodeURIComponent(idEmpresa)}?fechamento=${encodeURIComponent(f.id_fechamento)}`}
+                      href={`/api/pdf/${alvo.tipo === "grupo" ? "conciliacao-grupo" : "conciliacao"}/${encodeURIComponent(alvo.id)}?fechamento=${encodeURIComponent(f.id_fechamento)}`}
                       target="_blank"
                       rel="noopener"
                       title="PDF desta conciliação fechada, para anexar ao PGR"
@@ -122,12 +146,7 @@ export default function FechamentosConciliacao({
                 )}
                 {aberta && (
                   <div className="mt-2 space-y-2 pl-6">
-                    <p className="text-xs text-gray-500">
-                      Documentos:{" "}
-                      {Object.entries(f.documentos ?? {})
-                        .map(([o, d]) => `${o} ${d.titulo}${d.data ? ` (${fmtData(d.data)})` : ""}`)
-                        .join(" · ") || "—"}
-                    </p>
+                    <p className="text-xs text-gray-500">Documentos: {textoDocumentos(f)}</p>
                     {f.observacao && <p className="text-xs text-gray-600">Observação: {f.observacao}</p>}
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs">
@@ -144,7 +163,12 @@ export default function FechamentosConciliacao({
                         <tbody>
                           {(f.itens ?? []).map((i) => (
                             <tr key={`${i.setor_chave}|${i.id_fator}|${i.questionario}`} className="border-t border-gray-50 align-top">
-                              <td className="py-1 pr-2">{i.setor}</td>
+                              <td className="py-1 pr-2">
+                                {i.setor}
+                                {"empresas" in i && i.empresas && i.empresas.length > 0 && (
+                                  <span className="block text-gray-400">{i.empresas.join(", ")}</span>
+                                )}
+                              </td>
                               <td className="py-1 pr-2">{i.fator}</td>
                               <td className="py-1 pr-2">{i.aep ?? (fonteUnica ? "—" : "Não")}</td>
                               <td className="py-1 pr-2">
@@ -185,7 +209,7 @@ export default function FechamentosConciliacao({
                 disabled={!motivo.trim() || reabrir.isPending}
                 onClick={() =>
                   reabrir.mutate(
-                    { idFechamento: ultima.id_fechamento, idEmpresa, motivo },
+                    { idFechamento: ultima.id_fechamento, alvo, motivo },
                     { onSuccess: () => { setReabrindo(false); setMotivo(""); } },
                   )
                 }
@@ -197,11 +221,18 @@ export default function FechamentosConciliacao({
           }
         >
           <div className="space-y-3 text-sm">
-            <p className="text-gray-600">
-              Para quando a análise muda. O fechamento de {fmtData(ultima.fechado_em)} e o PDF dele continuam guardados como estão. Se já
-              estava liberada, sai do Comercial: até fechar e liberar de novo, o vendedor não vê as intervenções, os riscos que pediram AET
-              e o parecer. Para só ajustar intervenção ou parecer, use Retirar do Comercial.
-            </p>
+            {alvo.tipo === "grupo" ? (
+              <p className="text-gray-600">
+                Para quando a análise muda. O fechamento de {fmtData(ultima.fechado_em)} e o PDF dele continuam guardados como estão.
+                Depois de ajustar, feche de novo: fica outra foto no histórico.
+              </p>
+            ) : (
+              <p className="text-gray-600">
+                Para quando a análise muda. O fechamento de {fmtData(ultima.fechado_em)} e o PDF dele continuam guardados como estão. Se já
+                estava liberada, sai do Comercial: até fechar e liberar de novo, o vendedor não vê as intervenções, os riscos que pediram AET
+                e o parecer. Para só ajustar intervenção ou parecer, use Retirar do Comercial.
+              </p>
+            )}
             <label className="block">
               <span className="text-xs font-semibold text-gray-600">
                 Motivo <span className="text-red-600">*</span>
@@ -231,7 +262,7 @@ export default function FechamentosConciliacao({
                 type="button"
                 disabled={faltam > 0 || fechar.isPending}
                 onClick={() =>
-                  fechar.mutate({ idEmpresa, ...montar(), observacao: obs }, { onSuccess: () => { setAberto(false); setObs(""); } })
+                  fechar.mutate({ alvo, ...montar(), observacao: obs }, { onSuccess: () => { setAberto(false); setObs(""); } })
                 }
                 className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
               >

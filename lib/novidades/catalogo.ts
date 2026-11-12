@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "conciliacao-por-grupo",
+    data: "2026-11-12",
+    tipo: "novidade",
+    titulo: "Conciliação DRPS/QPS × AEP por grupo de empresas",
+    texto:
+      "A conciliação agora pode ser feita com o grupo de empresas inteiro: entram a AEP e o DRPS/QPS mais recentes de " +
+      "cada empresa do grupo, e a AEP de um CNPJ é comparada com o questionário de outro. Cada nível mostra de qual " +
+      "empresa veio. Parecer, ligação de setores, fechamento, reabertura e PDF são do grupo; o parecer Confirmar ou AET " +
+      "cria a ação no Plano de Ação de cada empresa que tem o setor.",
+    onde: "Consolidação › Conciliação por grupo",
+    impacto: "A conciliação por empresa continua igual. A etapa do Comercial no grupo vem numa próxima versão.",
+    versoes: ["0.3.285"],
+  },
+  {
     id: "gestao-subtarefa-data-nao-derruba",
     data: "2026-11-12",
     tipo: "correcao",
