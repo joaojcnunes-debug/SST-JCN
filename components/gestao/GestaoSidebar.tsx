@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Folder, List, Layers, Lock, UserSquare, Users, CalendarDays, ShieldCheck, Search, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Folder, List, Layers, Lock, UserSquare, Users, CalendarDays, ShieldCheck, Search, X, Package, Settings2 } from "lucide-react";
 import {
   useSalvarEspaco, useExcluirEspaco, useSalvarPasta, useExcluirPasta,
   useCriarQuadro, useRenomearQuadro, useExcluirQuadro, DIAS_LIXEIRA,
@@ -29,6 +29,7 @@ export default function GestaoSidebar({
   mostrarColab = false,
   onAcessos,
   onLixeira,
+  onProdutos,
 }: {
   espacos: GestaoEspaco[];
   pastas: GestaoPasta[];
@@ -49,6 +50,8 @@ export default function GestaoSidebar({
   onAcessos?: () => void;
   /** "Lixeira" (v361): para todos — cada pessoa vê o que excluiu; gestores veem tudo. */
   onLixeira?: () => void;
+  /** "Produtos" (v363): só gestor — criar, renomear e excluir os produtos da Gestão. */
+  onProdutos?: () => void;
 }) {
   const salvarEspaco = useSalvarEspaco();
   const excluirEspaco = useExcluirEspaco();
@@ -59,6 +62,8 @@ export default function GestaoSidebar({
   const excluirQuadro = useExcluirQuadro();
 
   const [fechados, setFechados] = useState<Set<string>>(new Set());
+  // 11/11/2026: "Configuração" junta Lixeira e Produtos num menu (pedido do usuário).
+  const [configAberta, setConfigAberta] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
   const [busca, setBusca] = useState("");
 
@@ -116,11 +121,38 @@ export default function GestaoSidebar({
           <ShieldCheck className="size-4" /> Membros e acessos
         </button>
       )}
-      {/* 11/11/2026: logo abaixo de "Membros e acessos" (pedido do usuário). */}
-      {onLixeira && (
-        <button type="button" onClick={onLixeira} title={`Cartões e listas excluídos — restaure em até ${DIAS_LIXEIRA} dias`} className="mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-marca-accent">
-          <Trash2 className="size-4" /> Lixeira
-        </button>
+      {/* 11/11/2026: "Configuração" (abaixo de "Membros e acessos") abre um menu com Lixeira (todos) e Produtos (só
+          gestor); cada opção abre a mesma janela de antes. */}
+      {(onLixeira || onProdutos) && (
+        <div className="relative mb-1">
+          <button type="button" onClick={() => setConfigAberta((v) => !v)} aria-haspopup="menu" aria-expanded={configAberta}
+            className={`relative z-40 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-marca-accent ${configAberta ? "bg-white/[0.16] text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}>
+            <Settings2 className="size-4" /> Configuração
+            <ChevronDown className={`ml-auto size-3.5 text-white/50 transition-transform ${configAberta ? "rotate-180" : ""}`} />
+          </button>
+          {configAberta && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setConfigAberta(false)} aria-hidden />
+              <div role="menu" aria-label="Configuração da Gestão" onKeyDown={(e) => { if (e.key === "Escape") setConfigAberta(false); }}
+                className="absolute left-0 right-0 z-40 mt-1 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                {onLixeira && (
+                  <button type="button" role="menuitem" autoFocus onClick={() => { setConfigAberta(false); onLixeira(); }}
+                    title={`Cartões e listas excluídos — restaure em até ${DIAS_LIXEIRA} dias`}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-marca-primary">
+                    <Trash2 className="size-4 text-gray-400" /> Lixeira
+                  </button>
+                )}
+                {onProdutos && (
+                  <button type="button" role="menuitem" autoFocus={!onLixeira} onClick={() => { setConfigAberta(false); onProdutos(); }}
+                    title="Produtos da Gestão — criar, renomear e excluir"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-marca-primary">
+                    <Package className="size-4 text-gray-400" /> Produtos
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       )}
       <div className="relative mb-1">
         <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-white/40" />

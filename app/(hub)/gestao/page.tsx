@@ -33,6 +33,7 @@ import { OPCOES_ORDEM, campoTemValor, ordenarTarefas, proximaOrdem, type CampoOr
 const ORDEM_PADRAO_COLUNA: OrdemColuna = { campo: "criada", dir: "desc" };
 import NotificacoesSino from "@/components/gestao/NotificacoesSino";
 import LixeiraModal from "@/components/gestao/LixeiraModal";
+import ProdutosModal from "@/components/gestao/ProdutosModal";
 import BotaoCadastroEmpresa, { ID_QUADRO_COMERCIAL } from "@/components/comercial/BotaoCadastroEmpresa";
 import TarefaModal from "@/components/gestao/TarefaModal";
 import NovaTarefaRapida from "@/components/gestao/NovaTarefaRapida";
@@ -197,6 +198,8 @@ export default function GestaoChabraPage() {
   const [membrosOpen, setMembrosOpen] = useState(false);
   // v361: Lixeira (cartões e listas excluídos, 180 dias).
   const [lixeiraOpen, setLixeiraOpen] = useState(false);
+  // v363: Produtos (só gestor).
+  const [produtosOpen, setProdutosOpen] = useState(false);
   // "Compartilhar" abre o mesmo modal; desde a v0.3.910 na aba Equipes, com esta lista já marcada
   // (antes abria em "Por lista", que saiu)
   const [membrosFoco, setMembrosFoco] = useState<string | null>(null);
@@ -746,7 +749,7 @@ export default function GestaoChabraPage() {
       </Link>
       <div className="flex-1 overflow-y-auto px-2 py-2">
         <p className="mb-1 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">Espaços</p>
-        <GestaoSidebar espacos={espacos} pastas={pastas} quadros={quadros} quadroId={inboxView || meuEspacoView || colabView || agendaView ? null : (quadro?.id_quadro ?? null)} onSelect={(id) => { setQuadroId(id); setInboxView(false); setMeuEspacoView(false); setColabView(false); setAgendaView(false); aoNavegar(); }} podeEditar={souGestor} agendaAtiva={agendaView} onAgenda={() => { setAgendaView(true); setMeuEspacoView(false); setInboxView(false); setColabView(false); aoNavegar(); }} meuEspacoAtivo={meuEspacoView} onMeuEspaco={() => { setMeuEspacoView(true); setInboxView(false); setColabView(false); setAgendaView(false); aoNavegar(); }} mostrarColab={mostrarColab} colabAtivo={colabView} onColab={() => { setColabView(true); setInboxView(false); setMeuEspacoView(false); setAgendaView(false); aoNavegar(); }} onAcessos={souGestor ? () => { setMembrosFoco(null); setMembrosOpen(true); aoNavegar(); } : undefined} onLixeira={() => { setLixeiraOpen(true); aoNavegar(); }} />
+        <GestaoSidebar espacos={espacos} pastas={pastas} quadros={quadros} quadroId={inboxView || meuEspacoView || colabView || agendaView ? null : (quadro?.id_quadro ?? null)} onSelect={(id) => { setQuadroId(id); setInboxView(false); setMeuEspacoView(false); setColabView(false); setAgendaView(false); aoNavegar(); }} podeEditar={souGestor} agendaAtiva={agendaView} onAgenda={() => { setAgendaView(true); setMeuEspacoView(false); setInboxView(false); setColabView(false); aoNavegar(); }} meuEspacoAtivo={meuEspacoView} onMeuEspaco={() => { setMeuEspacoView(true); setInboxView(false); setColabView(false); setAgendaView(false); aoNavegar(); }} mostrarColab={mostrarColab} colabAtivo={colabView} onColab={() => { setColabView(true); setInboxView(false); setMeuEspacoView(false); setAgendaView(false); aoNavegar(); }} onAcessos={souGestor ? () => { setMembrosFoco(null); setMembrosOpen(true); aoNavegar(); } : undefined} onLixeira={() => { setLixeiraOpen(true); aoNavegar(); }} onProdutos={souGestor ? () => { setProdutosOpen(true); aoNavegar(); } : undefined} />
       </div>
       <div className="space-y-0.5 border-t border-white/[0.09] p-2">
         {user?.perfil === "Admin" && (
@@ -1411,6 +1414,7 @@ export default function GestaoChabraPage() {
       )}
 
       <MembrosModal open={membrosOpen} onClose={() => setMembrosOpen(false)} quadroFoco={membrosFoco} />
+      {souGestor && <ProdutosModal open={produtosOpen} onClose={() => setProdutosOpen(false)} />}
       <LixeiraModal open={lixeiraOpen} onClose={() => setLixeiraOpen(false)}
         onAbrirQuadro={(id) => { setQuadroId(id); setInboxView(false); setMeuEspacoView(false); setColabView(false); setAgendaView(false); }} />
 

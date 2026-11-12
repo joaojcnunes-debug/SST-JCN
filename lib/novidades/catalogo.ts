@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-tela-produtos",
+    data: "2026-11-12",
+    tipo: "novidade",
+    titulo: "Gestão: tela Produtos para criar, renomear e excluir",
+    texto:
+      "No menu Configuração da Gestão (abaixo de Membros e acessos), Produtos mostra a lista com quantos cartões e " +
+      "automações usam cada um. Renomear muda em tudo, inclusive nos cartões e nas automações; excluir tira da lista e " +
+      "os cartões que já tinham continuam com o produto.",
+    onde: "Gestão › Configuração › Produtos",
+    impacto: "Só gestores da Gestão veem a tela. A Lixeira também passou para o menu Configuração.",
+    versoes: ["0.3.282"],
+  },
+  {
     id: "gestao-subtarefas-edita-na-hora",
     data: "2026-11-11",
     tipo: "melhoria",
