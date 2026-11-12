@@ -8,7 +8,7 @@ import {
   Trash2, Loader2, Plus, Square, CheckSquare, X, ArrowRight, Sparkles, Maximize2, CornerDownRight, MessageSquare,
   Columns3, ArrowRightLeft, UserRound, Flag, Tag, CalendarDays, CalendarCheck, Repeat, Clock, Users, Gauge, List, Link2,
   PanelRightClose, PanelRightOpen, MapPin, Package, ListChecks, Timer, Hourglass, Building2, ExternalLink, LayoutTemplate,
-  type LucideIcon,
+  CheckCircle2, AlertCircle, type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
@@ -52,6 +52,7 @@ import ComentariosTarefa from "@/components/gestao/ComentariosTarefa";
 import { useTarefaHistorico } from "@/lib/hooks/useTarefaHistorico";
 import { confirmar } from "@/components/ui/confirm";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
+import { alocadosExibir, corTextoSobre, entregaAtrasada, etapaExibir, fmtDataDesejada, fmtHorasTrabalhadas, progressoExibir } from "@/lib/gestao/subtarefa-colunas";
 import { proximaGeracao } from "@/lib/gestao/recorrencia";
 import { horaDe, minutos, MIN_DIA } from "@/lib/gestao/calendario";
 import { useMeuQuadro } from "@/lib/hooks/useGestaoAcesso";
@@ -187,6 +188,8 @@ export default function TarefaModal({
   const salvarVinc = useSalvarVinculados();
   const salvarSub = useSalvarSubtarefas();
   const { data: subtarefasTabela = EMPTY_SUBTAREFAS } = useSubtarefas(tarefa?.id_tarefa);
+  // v357: colunas do Runrun (etapa, tipo, alocados, horas, progresso, início) de cada subtarefa salva, pelo id.
+  const subPorId = useMemo(() => new Map(subtarefasTabela.map((s) => [s.id, s])), [subtarefasTabela]);
   // Balão na lista de subtarefas: comentários da janela (tarefa filha) de cada uma.
   const filhaDaSub = useMemo(
     () => new Map(subtarefasTabela.filter((s) => s.id_tarefa_filha).map((s) => [s.id, s.id_tarefa_filha as string])),
@@ -935,67 +938,144 @@ export default function TarefaModal({
             )}
           </div>
           <div className="space-y-1.5">
-            {subtarefas.map((s, i) => (
-              <div key={i} className="flex items-center gap-2" onDoubleClick={() => abrirSub(s)} title="Duplo clique abre a subtarefa">
-                <button type="button" disabled={ro} onClick={() => setSubtarefas((arr) => arr.map((x, j) => j === i ? { ...x, feito: !x.feito } : x))} className="text-gray-400 hover:text-marca-primary">
-                  {s.feito ? <CheckSquare className="size-4 text-marca-primary" /> : <Square className="size-4" />}
-                </button>
-                <input
-                  value={s.texto}
-                  disabled={ro}
-                  onChange={(e) => setSubtarefas((arr) => arr.map((x, j) => j === i ? { ...x, texto: e.target.value } : x))}
-                  className={`flex-1 rounded border border-transparent px-1.5 py-1 text-sm hover:border-gray-200 focus:border-marca-primary focus:outline-none ${s.feito ? "text-gray-400 line-through" : "text-gray-700"}`}
-                />
-                {s.responsavel_email && (() => {
-                  const nome = nomeDe(s.responsavel_email) ?? s.responsavel_email;
-                  return (
-                    <AvatarPessoa nome={nome} email={s.responsavel_email} title={nome} className="size-5 text-[9px]" />
-                  );
-                })()}
-                <div className="w-32 shrink-0">
-                  <UsuarioCombobox
-                    usuarios={usuariosFull}
-                    value={s.responsavel_email ?? ""}
-                    onChange={(em) => setSubtarefas((arr) => arr.map((x, j) => j === i ? { ...x, responsavel_email: em || null } : x))}
-                    disabled={ro}
-                    incluirVazio
-                    vazioLabel="Sem responsável"
-                    placeholder="Responsável…"
-                    className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none disabled:bg-gray-50"
-                  />
-                </div>
-                {(() => {
-                  const n = (s.id && comentariosSub?.[filhaDaSub.get(s.id) ?? ""]) || 0;
-                  return n > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => abrirSub(s)}
-                      aria-label={`${n} comentário(s) na subtarefa ${s.texto}`}
-                      title={`${n} comentário(s): abrir a subtarefa`}
-                      className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 text-xs font-medium text-gray-500 hover:text-marca-primary"
-                    >
-                      <MessageSquare className="size-3.5" />
-                      {n}
-                    </button>
-                  ) : null;
-                })()}
-                <button
-                  type="button"
-                  onClick={() => abrirSub(s)}
-                  disabled={abrirSubtarefa.isPending}
-                  aria-label={`Abrir subtarefa ${s.texto}`}
-                  title="Abrir subtarefa"
-                  className="text-gray-300 hover:text-marca-primary disabled:opacity-50"
-                >
-                  {abrirSubtarefa.isPending && abrirSubtarefa.variables?.id_subtarefa === s.id ? <Loader2 className="size-4 animate-spin" /> : <Maximize2 className="size-4" />}
-                </button>
-                {!ro && (
-                  <button type="button" onClick={() => setSubtarefas((arr) => arr.filter((_, j) => j !== i))} className="text-gray-300 hover:text-red-600">
-                    <X className="size-4" />
-                  </button>
-                )}
+            {/* v357: colunas como a lista de subtarefas do Runrun (Etapa, Tipo, Alocados, Horas trabalhadas, Progresso,
+                Início desejado; v358 Entrega desejada, vermelha quando vence com a subtarefa aberta). Os valores vêm da
+                sincronização; subtarefa da Gestão mostra o que tem. Rola na horizontal. */}
+            {subtarefas.length > 0 && (
+              <div className="overflow-x-auto rounded-md border border-gray-200">
+                <table className="w-full min-w-[1170px] text-sm">
+                  <thead className="bg-gray-50 text-left text-xs font-medium text-gray-500">
+                    <tr>
+                      <th className="w-8 px-2 py-1.5"><span className="sr-only">Concluída</span></th>
+                      <th className="min-w-[220px] px-1.5 py-1.5">Título</th>
+                      <th className="px-2 py-1.5">Etapa</th>
+                      <th className="px-2 py-1.5">Tipo</th>
+                      <th className="px-2 py-1.5">Alocados</th>
+                      <th className="whitespace-nowrap px-2 py-1.5">Horas trabalhadas</th>
+                      <th className="px-2 py-1.5">Progresso</th>
+                      <th className="whitespace-nowrap px-2 py-1.5">Início desejado</th>
+                      <th className="whitespace-nowrap px-2 py-1.5">Entrega desejada</th>
+                      <th className="w-20 px-2 py-1.5"><span className="sr-only">Ações</span></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {subtarefas.map((s, i) => {
+                      const db = s.id ? subPorId.get(s.id) : undefined;
+                      const etapa = db ? etapaExibir({ ...db, feito: s.feito }, statuses) : null;
+                      const alocados = alocadosExibir({ alocados: db?.alocados, responsavel_email: s.responsavel_email, feito: s.feito }, nomeDe);
+                      const prog = progressoExibir(db?.progresso);
+                      const inicio = fmtDataDesejada(db?.inicio_desejado);
+                      const entrega = fmtDataDesejada(db?.entrega_desejada);
+                      const atrasada = entregaAtrasada(db?.entrega_desejada, s.feito);
+                      const n = (s.id && comentariosSub?.[filhaDaSub.get(s.id) ?? ""]) || 0;
+                      return (
+                        <tr key={i} className={atrasada ? "bg-red-50" : s.feito ? "bg-gray-50/70" : ""} onDoubleClick={() => abrirSub(s)} title="Duplo clique abre a subtarefa">
+                          <td className="px-2 py-1">
+                            <button type="button" disabled={ro} onClick={() => setSubtarefas((arr) => arr.map((x, j) => j === i ? { ...x, feito: !x.feito } : x))} aria-label={s.feito ? `Reabrir ${s.texto}` : `Concluir ${s.texto}`} className="align-middle text-gray-400 hover:text-marca-primary">
+                              {s.feito ? <CheckSquare className="size-4 text-marca-primary" /> : <Square className="size-4" />}
+                            </button>
+                          </td>
+                          <td className="px-1.5 py-1">
+                            <input
+                              value={s.texto}
+                              disabled={ro}
+                              onChange={(e) => setSubtarefas((arr) => arr.map((x, j) => j === i ? { ...x, texto: e.target.value } : x))}
+                              className={`w-full rounded border border-transparent bg-transparent px-1.5 py-1 text-sm hover:border-gray-200 focus:border-marca-primary focus:outline-none ${s.feito ? "text-gray-400 line-through" : "text-gray-700"}`}
+                            />
+                          </td>
+                          <td className="px-2 py-1">
+                            {etapa ? (
+                              <span className={`inline-block whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium ${etapa.concluida ? "bg-green-600 text-white" : "border border-gray-300 bg-gray-100 text-gray-700"}`}>{etapa.nome}</span>
+                            ) : <span className="text-gray-300">—</span>}
+                          </td>
+                          <td className="px-2 py-1">
+                            {db?.tipo ? (
+                              <span className="inline-block whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium" style={{ backgroundColor: db.tipo_cor ?? "#6b7280", color: corTextoSobre(db.tipo_cor ?? "#6b7280") }}>{db.tipo}</span>
+                            ) : <span className="text-gray-300">—</span>}
+                          </td>
+                          <td className="px-2 py-1">
+                            <div className="flex items-center gap-1.5">
+                              {alocados.length > 0 && (
+                                <div className="flex shrink-0 -space-x-1">
+                                  {alocados.map((a, k) => (
+                                    <span key={`${a.email ?? a.nome}-${k}`} className="relative inline-flex rounded-full ring-2 ring-white" title={a.feito ? `${a.nome} (entregou)` : a.nome}>
+                                      <AvatarPessoa nome={a.nome} email={a.email ?? undefined} className="size-5 text-[9px]" />
+                                      {a.feito && <CheckCircle2 aria-hidden className="absolute -bottom-1 -right-1 size-3 rounded-full bg-white text-sky-600" />}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              {!ro ? (
+                                <div className="w-28 shrink-0">
+                                  <UsuarioCombobox
+                                    usuarios={usuariosFull}
+                                    value={s.responsavel_email ?? ""}
+                                    onChange={(em) => setSubtarefas((arr) => arr.map((x, j) => j === i ? { ...x, responsavel_email: em || null } : x))}
+                                    incluirVazio
+                                    vazioLabel="Sem responsável"
+                                    placeholder="Responsável…"
+                                    className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none"
+                                  />
+                                </div>
+                              ) : alocados.length === 0 && <span className="text-gray-300">—</span>}
+                            </div>
+                          </td>
+                          <td className="whitespace-nowrap px-2 py-1 text-xs tabular-nums text-gray-700">{fmtHorasTrabalhadas(db?.tempo_trabalhado_seg)}</td>
+                          <td className="px-2 py-1">
+                            <div className="flex items-center gap-1.5" title={`Progresso: ${prog.texto}`}>
+                              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-gray-200">
+                                <div className="h-full rounded-full bg-marca-primary" style={{ width: `${prog.barra}%` }} />
+                              </div>
+                              <span className="text-xs tabular-nums text-gray-600">{prog.texto}</span>
+                            </div>
+                          </td>
+                          <td className="whitespace-nowrap px-2 py-1 text-xs tabular-nums text-gray-700">{inicio ?? <span className="text-gray-300">—</span>}</td>
+                          <td className={`whitespace-nowrap px-2 py-1 text-xs tabular-nums ${atrasada ? "font-medium text-red-700" : "text-gray-700"}`}>
+                            {entrega ? (
+                              <span className="inline-flex items-center gap-1" title={atrasada ? "Entrega desejada vencida" : undefined}>
+                                {entrega}
+                                {atrasada && <AlertCircle aria-label="Atrasada" className="size-3.5 text-red-600" />}
+                              </span>
+                            ) : <span className="text-gray-300">—</span>}
+                          </td>
+                          <td className="px-2 py-1">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {n > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => abrirSub(s)}
+                                  aria-label={`${n} comentário(s) na subtarefa ${s.texto}`}
+                                  title={`${n} comentário(s): abrir a subtarefa`}
+                                  className="inline-flex shrink-0 items-center gap-0.5 rounded px-1 text-xs font-medium text-gray-500 hover:text-marca-primary"
+                                >
+                                  <MessageSquare className="size-3.5" />
+                                  {n}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => abrirSub(s)}
+                                disabled={abrirSubtarefa.isPending}
+                                aria-label={`Abrir subtarefa ${s.texto}`}
+                                title="Abrir subtarefa"
+                                className="text-gray-300 hover:text-marca-primary disabled:opacity-50"
+                              >
+                                {abrirSubtarefa.isPending && abrirSubtarefa.variables?.id_subtarefa === s.id ? <Loader2 className="size-4 animate-spin" /> : <Maximize2 className="size-4" />}
+                              </button>
+                              {!ro && (
+                                <button type="button" onClick={() => setSubtarefas((arr) => arr.filter((_, j) => j !== i))} aria-label={`Remover subtarefa ${s.texto}`} className="text-gray-300 hover:text-red-600">
+                                  <X className="size-4" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            ))}
+            )}
             {!ro && (
               <div className="flex items-center gap-2">
                 <button type="button" onClick={addSub} disabled={!novaSub.trim()} aria-label="Adicionar subtarefa" className="text-gray-400 hover:text-marca-primary disabled:text-gray-300 disabled:hover:text-gray-300">
