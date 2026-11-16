@@ -108,6 +108,7 @@ test("itensDoFechamentoGrupo: cada item leva as empresas do setor", () => {
   assert.equal(itens.length, 1);
   assert.deepEqual(itens[0].empresas, ["0001-01", "0002-02"]);
   assert.deepEqual(itens[0].id_acoes, ["ACA-1", "ACA-2"]);
+  assert.deepEqual(itens[0].id_empresas, ["E1", "E2"]);
   assert.equal(itens[0].decisao, "CONFIRMAR");
 });
 

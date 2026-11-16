@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "conciliacao-grupo-comercial",
+    data: "2026-11-16",
+    tipo: "novidade",
+    titulo: "Conciliação por grupo: Intervenções e Liberar para o Comercial",
+    texto:
+      "A Conciliação por grupo ganha as etapas Intervenções e Liberar para o Comercial, com o tempo (Iniciar), como na " +
+      "conciliação por empresa. As intervenções são indicadas uma vez por risco do grupo e o parecer é um só. Ao liberar, " +
+      "o vendedor vê cada empresa do grupo em Oportunidades, com as intervenções dos setores dela e a marca \"Liberada " +
+      "pelo grupo\"; a venda continua por empresa. Se a empresa tinha liberação própria, a do grupo passa a valer no " +
+      "Comercial (a dela fica no histórico).",
+    onde: "Consolidação › Conciliação por grupo › um grupo",
+    impacto: "Dar parecer, fechar e indicar intervenções no grupo agora pede Iniciar, como na tela da empresa.",
+    versoes: ["0.3.290"],
     id: "gestao-lista-sem-laco-ao-carregar",
     data: "2026-11-16",
     tipo: "correcao",

@@ -19,11 +19,20 @@ export const CHAVE_SESSOES = "documento-sessoes";
  * De onde vêm as sessões: o documento da inspeção (v311) ou o atendimento de Consolidação ›
  * Liberar para o Comercial (v321, por empresa). As contas e a tela são as mesmas.
  */
-export type FonteSessao = "documento" | "comercial";
+export type FonteSessao = "documento" | "comercial" | "comercial-grupo";
 const RPC_SESSAO: Record<FonteSessao, { iniciar: string; pausar: string; atividade: string; param: string }> = {
   documento: { iniciar: "documento_sessao_iniciar", pausar: "documento_sessao_pausar", atividade: "documento_sessao_atividade", param: "p_id_inspecao" },
   comercial: { iniciar: "comercial_sessao_iniciar", pausar: "comercial_sessao_pausar", atividade: "comercial_sessao_atividade", param: "p_id_empresa" },
+  // v0.3.290 (banco v356): o atendimento da Conciliação por grupo.
+  "comercial-grupo": {
+    iniciar: "comercial_grupo_sessao_iniciar",
+    pausar: "comercial_grupo_sessao_pausar",
+    atividade: "comercial_grupo_sessao_atividade",
+    param: "p_id_grupo",
+  },
 };
+/** O atendimento do Comercial (da empresa ou do grupo): os textos falam da conciliação, não de documento. */
+export const ehFonteComercial = (f: FonteSessao) => f === "comercial" || f === "comercial-grupo";
 // `id_inspecao` é o nome do campo em SessaoDocumento; no atendimento ele guarda a empresa.
 const CAMPOS_COMERCIAL = "id_sessao, id_inspecao:id_empresa, id_usuario, nome, inicio, ultima_atividade, fim, motivo_fim, fechada_auto";
 
@@ -61,6 +70,24 @@ export function useSessoesComercial(idEmpresa: string) {
     refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await sb().from("comercial_sessoes").select(CAMPOS_COMERCIAL).eq("id_empresa", idEmpresa).order("inicio");
+      if (error) throw error;
+      return (data ?? []) as SessaoDocumento[];
+    },
+  });
+}
+
+/** Sessões do atendimento de um grupo na Conciliação por grupo (v356). */
+export function useSessoesComercialGrupo(idGrupo: string) {
+  return useQuery({
+    queryKey: [CHAVE_SESSOES, "comercial-grupo", idGrupo],
+    enabled: !!idGrupo,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await sb()
+        .from("comercial_sessoes_grupo")
+        .select("id_sessao, id_inspecao:id_grupo, id_usuario, nome, inicio, ultima_atividade, fim, motivo_fim, fechada_auto")
+        .eq("id_grupo", idGrupo)
+        .order("inicio");
       if (error) throw error;
       return (data ?? []) as SessaoDocumento[];
     },

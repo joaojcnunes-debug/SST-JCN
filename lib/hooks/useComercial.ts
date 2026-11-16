@@ -9,6 +9,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { AlvoConciliacao } from "@/lib/hooks/useConciliacaoParecer";
 import { mensagemErro } from "@/lib/errors";
 import { normalizarRelatorio } from "@/lib/hooks/useAep";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
@@ -22,6 +23,8 @@ import {
   type InspecaoComercial,
 } from "@/lib/comercial/oportunidades";
 import {
+  aplicarGrupos,
+  type AtendimentoGrupo,
   aplicarVendas,
   visaoDoVendedor,
   type AtendimentoComercial,
@@ -44,6 +47,8 @@ interface DadosComercial {
   atendimentos: AtendimentoComercial[];
   indicadas: IntervencaoIndicada[];
   vendas: VendaRegistrada[];
+  /** v356: atendimentos da Conciliação por grupo (o vendedor só recebe os liberados). */
+  grupos: AtendimentoGrupo[];
 }
 
 function useDadosComercial<T>(select: (d: DadosComercial) => T) {
@@ -61,6 +66,7 @@ function useDadosComercial<T>(select: (d: DadosComercial) => T) {
         atendimentos?: AtendimentoComercial[];
         intervencoes?: IntervencaoIndicada[];
         vendas?: VendaRegistrada[];
+        grupos?: AtendimentoGrupo[];
       };
       const aeps = (r.aeps ?? []).map((a) => {
         const x = a as { entregue_em?: string | null; enviado_por?: string | null };
@@ -73,17 +79,24 @@ function useDadosComercial<T>(select: (d: DadosComercial) => T) {
         atendimentos: r.atendimentos ?? [],
         indicadas: r.intervencoes ?? [],
         vendas: r.vendas ?? [],
+        grupos: r.grupos ?? [],
       };
     },
     select,
   });
 }
 
-/** O que o vendedor vê: inspeção e AEP liberadas, mais o que saiu de atendimento concluído. */
+/** O atendimento, as intervenções e as conciliações que valem para o vendedor: o grupo liberado substitui a empresa (v356). */
+function efetivos(d: DadosComercial) {
+  return aplicarGrupos(d.atendimentos, d.indicadas, d.conciliacoes, d.grupos);
+}
+
+/** O que o vendedor vê: inspeção e AEP liberadas, mais o que saiu de atendimento concluído (da empresa ou do grupo). */
 export function useComercial() {
-  return useDadosComercial<EmpresaComercial[]>((d) =>
-    aplicarVendas(visaoDoVendedor(d.lista, d.atendimentos, d.indicadas, d.conciliacoes), d.vendas),
-  );
+  return useDadosComercial<EmpresaComercial[]>((d) => {
+    const e = efetivos(d);
+    return aplicarVendas(visaoDoVendedor(d.lista, e.atendimentos, e.indicadas, e.conciliacoes), d.vendas);
+  });
 }
 
 /** O que foi vendido, para Consolidação › Vendas (0.3.245): o mesmo que o vendedor via na oportunidade. */
@@ -106,27 +119,38 @@ export type VendaComDetalhe = VendaRegistrada & { detalhe: DetalheVenda | null }
  */
 export function useVendasComercial() {
   return useDadosComercial<VendaComDetalhe[]>((d) => {
-    const visao = new Map(visaoDoVendedor(d.lista, d.atendimentos, d.indicadas, d.conciliacoes).map((c) => [c.empresa.idEmpresa, c]));
+    const e = efetivos(d);
+    const visao = new Map(visaoDoVendedor(d.lista, e.atendimentos, e.indicadas, e.conciliacoes).map((c) => [c.empresa.idEmpresa, c]));
     return [...d.vendas]
       .sort((a, b) => b.vendido_em.localeCompare(a.vendido_em))
       .map((v) => {
         const emp = visao.get(v.id_empresa);
         const op = emp?.oportunidades.find((o) => o.produto === v.produto);
-        if (!emp || !op) return { ...v, detalhe: null };
         const psico = v.produto === "Intervenção psicossocial";
         // 0.3.247: venda de uma intervenção só mostra essa intervenção.
         const intervencoes = psico
-          ? d.indicadas.filter((i) => i.id_empresa === v.id_empresa && (!v.id_item || i.id_item === v.id_item))
+          ? // Venda é histórico: a intervenção vendida é procurada nas da empresa E nas do grupo, mesmo quando o grupo
+            // substitui a empresa no Comercial (0.3.290) — senão a venda antiga da empresa perdia o detalhe.
+            [...d.indicadas, ...e.indicadas.filter((i) => i.id_item.startsWith("CGI-"))].filter(
+              (i) => i.id_empresa === v.id_empresa && (!v.id_item || i.id_item === v.id_item),
+            )
           : [];
         if (v.id_item && intervencoes.length === 0) return { ...v, detalhe: null };
+        // Intervenção vendida que ainda existe: tem detalhe mesmo sem a oportunidade na tela (o grupo pode ter substituído).
+        if (!op && !(psico && v.id_item)) return { ...v, detalhe: null };
         return {
           ...v,
           detalhe: {
-            detalhes: op.detalhes,
-            origens: op.origens,
-            setoresAet: op.setores.map((s) => ({ nome: s.nome, expostos: s.expostos })),
+            detalhes: op?.detalhes ?? [],
+            origens: op?.origens ?? ["Conciliação"],
+            setoresAet: (op?.setores ?? []).map((s) => ({ nome: s.nome, expostos: s.expostos })),
             intervencoes,
-            parecer: psico ? (emp.parecerEquipe ?? null) : null,
+            // Intervenção da liberação própria da empresa (não do grupo): o parecer é o dela.
+            parecer: psico
+              ? ((v.id_item && !v.id_item.startsWith("CGI-") ? d.atendimentos.find((a) => a.id_empresa === v.id_empresa)?.parecer : null) ??
+                emp?.parecerEquipe ??
+                null)
+              : null,
           },
         };
       });
@@ -152,12 +176,13 @@ export function useDesfazerVenda() {
   );
 }
 
-/** Tudo o que a liberação precisa: conciliações fechadas, atendimentos e intervenções. */
+/** Tudo o que a liberação precisa: conciliações fechadas, atendimentos e intervenções (da empresa e dos grupos). */
 export function useLiberacaoServicos() {
   return useDadosComercial((d) => ({
     conciliacoes: d.conciliacoes,
     atendimentos: d.atendimentos,
     indicadas: d.indicadas,
+    grupos: d.grupos,
   }));
 }
 
@@ -171,11 +196,11 @@ export function usePodeLiberarServicos(): boolean {
   return podeEditar && perfilEscreveNaRls(user?.perfil);
 }
 
-function useGravar<V>(rpc: string, params: (v: V) => object, sucesso: ((v: V) => string) | null, falha: string) {
+function useGravar<V>(rpc: string | ((v: V) => string), params: (v: V) => object, sucesso: ((v: V) => string) | null, falha: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (v: V) => {
-      const { error } = await sb().rpc(rpc, params(v));
+      const { error } = await sb().rpc(typeof rpc === "function" ? rpc(v) : rpc, params(v));
       if (error) throw error;
     },
     onSuccess: (_: unknown, v: V) => {
@@ -187,9 +212,18 @@ function useGravar<V>(rpc: string, params: (v: V) => object, sucesso: ((v: V) =>
   });
 }
 
+/**
+ * De quem é o atendimento (v0.3.290): a empresa (comercial_*) ou o grupo (comercial_grupo_*, banco v356). As funções do
+ * grupo têm os mesmos parâmetros, com p_id_grupo no lugar de p_id_empresa.
+ */
+const rpcDe = (alvo: AlvoConciliacao, empresa: string, grupo: string) => (alvo.tipo === "grupo" ? grupo : empresa);
+const chaveDe = (alvo: AlvoConciliacao) => (alvo.tipo === "grupo" ? { p_id_grupo: alvo.id } : { p_id_empresa: alvo.id });
+
 export interface LinhaIntervencao {
   idItem: string | null;
-  idEmpresa: string;
+  alvo: AlvoConciliacao;
+  /** Só no grupo: as empresas do setor (o vendedor vê a intervenção nelas). */
+  empresas?: string[];
   setorChave: string;
   setorNome: string;
   idFator: string;
@@ -204,10 +238,11 @@ export interface LinhaIntervencao {
 /** Grava uma linha da tabela a cada campo alterado, sem aviso: a linha já mostra o que foi salvo. */
 export function useSalvarIntervencaoIndicada() {
   return useGravar<LinhaIntervencao>(
-    "comercial_intervencao_salvar",
+    (d) => rpcDe(d.alvo, "comercial_intervencao_salvar", "comercial_grupo_intervencao_salvar"),
     (d) => ({
       p_id_item: d.idItem,
-      p_id_empresa: d.idEmpresa,
+      ...chaveDe(d.alvo),
+      ...(d.alvo.tipo === "grupo" ? { p_empresas: d.empresas ?? [] } : {}),
       p_setor_chave: d.setorChave,
       p_setor_nome: d.setorNome,
       p_id_fator: d.idFator,
@@ -224,36 +259,36 @@ export function useSalvarIntervencaoIndicada() {
 }
 
 export function useRetirarIntervencao() {
-  return useGravar<{ idEmpresa: string; idItem: string }>(
-    "comercial_intervencao_retirar",
-    (d) => ({ p_id_empresa: d.idEmpresa, p_id_item: d.idItem }),
+  return useGravar<{ alvo: AlvoConciliacao; idItem: string }>(
+    (d) => rpcDe(d.alvo, "comercial_intervencao_retirar", "comercial_grupo_intervencao_retirar"),
+    (d) => ({ ...chaveDe(d.alvo), p_id_item: d.idItem }),
     () => "Intervenção retirada",
     "Falha ao retirar a intervenção",
   );
 }
 
 export function useSalvarParecerComercial() {
-  return useGravar<{ idEmpresa: string; parecer: string }>(
-    "comercial_salvar_parecer",
-    (d) => ({ p_id_empresa: d.idEmpresa, p_parecer: d.parecer }),
+  return useGravar<{ alvo: AlvoConciliacao; parecer: string }>(
+    (d) => rpcDe(d.alvo, "comercial_salvar_parecer", "comercial_grupo_salvar_parecer"),
+    (d) => ({ ...chaveDe(d.alvo), p_parecer: d.parecer }),
     () => "Parecer salvo",
     "Falha ao salvar o parecer",
   );
 }
 
 export function useConcluirAtendimento() {
-  return useGravar<{ idEmpresa: string; parecer: string }>(
-    "comercial_concluir",
-    (d) => ({ p_id_empresa: d.idEmpresa, p_parecer: d.parecer }),
+  return useGravar<{ alvo: AlvoConciliacao; parecer: string }>(
+    (d) => rpcDe(d.alvo, "comercial_concluir", "comercial_grupo_concluir"),
+    (d) => ({ ...chaveDe(d.alvo), p_parecer: d.parecer }),
     () => "Liberado para o Comercial",
     "Falha ao liberar",
   );
 }
 
 export function useReabrirAtendimento() {
-  return useGravar<{ idEmpresa: string; motivo: string }>(
-    "comercial_reabrir",
-    (d) => ({ p_id_empresa: d.idEmpresa, p_motivo: d.motivo }),
+  return useGravar<{ alvo: AlvoConciliacao; motivo: string }>(
+    (d) => rpcDe(d.alvo, "comercial_reabrir", "comercial_grupo_reabrir"),
+    (d) => ({ ...chaveDe(d.alvo), p_motivo: d.motivo }),
     () => "Retirado do Comercial",
     "Falha ao retirar",
   );
@@ -268,15 +303,16 @@ export interface EventoAtendimento {
   em: string;
 }
 
-export function useEventosAtendimento(idEmpresa: string) {
+export function useEventosAtendimento(alvo: AlvoConciliacao) {
   return useQuery({
-    queryKey: ["comercial-eventos", idEmpresa],
-    enabled: !!idEmpresa,
+    queryKey: ["comercial-eventos", alvo.tipo, alvo.id],
+    enabled: !!alvo.id,
     queryFn: async () => {
+      const grupo = alvo.tipo === "grupo";
       const { data, error } = await sb()
-        .from("comercial_atendimento_eventos")
+        .from(grupo ? "comercial_atendimento_grupo_eventos" : "comercial_atendimento_eventos")
         .select("id_evento, tipo, motivo, parecer, por, em")
-        .eq("id_empresa", idEmpresa)
+        .eq(grupo ? "id_grupo" : "id_empresa", alvo.id)
         .order("em", { ascending: false });
       if (error) throw error;
       return (data ?? []) as EventoAtendimento[];

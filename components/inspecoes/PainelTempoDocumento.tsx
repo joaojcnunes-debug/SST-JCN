@@ -34,7 +34,7 @@ import {
   Users,
 } from "lucide-react";
 import { BotaoPausar, ListaSessoes } from "@/components/inspecoes/SessaoDocumento";
-import { useAgora, useIniciarSessao, type FonteSessao } from "@/lib/hooks/useDocumentoSessoes";
+import { ehFonteComercial, useAgora, useIniciarSessao, type FonteSessao } from "@/lib/hooks/useDocumentoSessoes";
 import { corAvatar } from "@/lib/hooks/useGestao";
 import { hojeSP } from "@/lib/inspecoes/prioridade";
 import {
@@ -94,7 +94,7 @@ const gravar = (k: string, v: string) => {
 
 /** Na Conciliação, os motivos falam dela, não de documento. */
 const rotuloMotivo = (motivo: keyof typeof ROTULO_MOTIVO, fonte: FonteSessao) => {
-  if (fonte !== "comercial") return ROTULO_MOTIVO[motivo];
+  if (!ehFonteComercial(fonte)) return ROTULO_MOTIVO[motivo];
   if (motivo === "CONCLUIDO") return "Liberado para o Comercial";
   if (motivo === "TROCA") return "Iniciou outra conciliação";
   return ROTULO_MOTIVO[motivo];
@@ -127,7 +127,7 @@ export default function PainelTempoDocumento({
   /** v321: o mesmo painel conta o tempo da Conciliação, do primeiro parecer à liberação. */
   fonte?: FonteSessao;
 }) {
-  const conciliacao = fonte === "comercial";
+  const conciliacao = ehFonteComercial(fonte);
   // O cronômetro anda de segundo em segundo só enquanto há alguém trabalhando.
   const algumAberto = sessoes.some((s) => !s.fim);
   const agora = useAgora(algumAberto ? 1000 : 30_000);

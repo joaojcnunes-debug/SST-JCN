@@ -194,6 +194,8 @@ export interface EmpresaComercial {
   aepLiberadaPor: string | null;
   /** Parecer do atendimento concluído em Consolidação › Liberar para o Comercial (v321). */
   parecerEquipe?: string | null;
+  /** v0.3.290 (banco v356): o que veio da Conciliação foi liberado pelo grupo de empresas, com este nome. */
+  liberadaPeloGrupo?: string | null;
 }
 
 const FASE: Record<string, "realizada" | "andamento"> = {
