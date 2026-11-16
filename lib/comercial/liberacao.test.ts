@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
@@ -8,6 +8,7 @@ import {
   normalizarOpcao,
   opcoesDoCatalogo,
   contarUsos,
+  aplicarGrupos,
   aplicarVendas,
   chaveRisco,
   faltaParaConcluir,
@@ -18,6 +19,7 @@ import {
   textoIntervencao,
   visaoDoVendedor,
   type AtendimentoComercial,
+  type AtendimentoGrupo,
   type ConciliacaoFechada,
   type IntervencaoIndicada,
   type ItemConciliado,
@@ -315,4 +317,55 @@ test("não altera a lista recebida", () => {
   assert.equal(c.oportunidades.length, 1);
   assert.deepEqual(c.oportunidades[0].origens, ["Inspeção"]);
   assert.equal(c.parecerEquipe, undefined);
+});
+
+describe("aplicarGrupos (Conciliação por grupo, v0.3.290)", () => {
+  const atendimentoEmpresa = (id: string): AtendimentoComercial => ({
+    id_empresa: id, status: "CONCLUIDO", parecer: "da empresa", concluido_em: "2026-11-01", concluido_por: "Ana",
+  });
+  const intervencao = (id_item: string, id_empresa: string, setor: string, empresas?: string[]) => ({
+    id_item, id_empresa, setor_chave: setor.toUpperCase(), setor_nome: setor, id_fator: "assedio", fator_nome: "Assédio",
+    id_intervencao: null, nome: "Treinamento", modalidade: "EAD", responsavel: null, prazo_dias: 30, ...(empresas ? { empresas } : {}),
+  });
+  const grupo = (status: "CONCLUIDO" | "EM_ANDAMENTO", fechada = true): AtendimentoGrupo => ({
+    id_grupo: "GRP-1", nome_grupo: "Rede X", status, parecer: "do grupo", concluido_em: "2026-11-16", concluido_por: "João", fechada,
+    empresas: [{ id_empresa: "E1", nome_empresa: "Matriz" }, { id_empresa: "E2", nome_empresa: "Filial" }],
+    intervencoes: [{ ...intervencao("CGI-1", "GRP-1", "Loja", ["E2"]), id_grupo: "GRP-1" }],
+    itens: [
+      { setor: "Loja", setor_chave: "LOJA", id_fator: "assedio", fator: "Assédio", questionario: "QPS", decisao: "AET", id_empresas: ["E2"] },
+      { setor: "Caixa", setor_chave: "CAIXA", id_fator: "assedio", fator: "Assédio", questionario: "QPS", decisao: "CONFIRMAR", id_empresas: ["E1"] },
+    ],
+  });
+
+  test("o grupo liberado substitui a empresa e cada empresa recebe só o que é dos setores dela", () => {
+    const r = aplicarGrupos(
+      [atendimentoEmpresa("E1"), atendimentoEmpresa("E9")],
+      [intervencao("CAI-1", "E1", "Produção")],
+      [{ id_fechamento: "PCF-1", id_empresa: "E1", fechado_em: "2026-11-01", fechado_por: null, itens: [] }],
+      [grupo("CONCLUIDO")],
+    );
+    assert.deepEqual(r.atendimentos.map((a) => `${a.id_empresa}:${a.parecer}:${a.nome_grupo ?? ""}`).sort(), ["E1:do grupo:Rede X", "E2:do grupo:Rede X", "E9:da empresa:"]);
+    assert.deepEqual(r.indicadas.map((i) => `${i.id_empresa}:${i.id_item}`), ["E2:CGI-1"], "a intervenção do grupo só na empresa do setor; a própria da E1 sai");
+    const conc = new Map(r.conciliacoes.map((c) => [c.id_empresa, c.itens.map((i) => i.setor)]));
+    assert.deepEqual(conc.get("E1"), ["Caixa"]);
+    assert.deepEqual(conc.get("E2"), ["Loja"]);
+  });
+
+  test("grupo em andamento ou com a conciliação reaberta não muda nada", () => {
+    for (const g of [grupo("EM_ANDAMENTO"), grupo("CONCLUIDO", false)]) {
+      const r = aplicarGrupos([atendimentoEmpresa("E1")], [intervencao("CAI-1", "E1", "Produção")], [], [g]);
+      assert.deepEqual(r.atendimentos.map((a) => a.parecer), ["da empresa"]);
+      assert.deepEqual(r.indicadas.map((i) => i.id_item), ["CAI-1"]);
+    }
+  });
+
+  test("na visão do vendedor a empresa aparece com a marca do grupo", () => {
+    const r = aplicarGrupos([], [], [], [grupo("CONCLUIDO")]);
+    const v = visaoDoVendedor([], r.atendimentos, r.indicadas, r.conciliacoes);
+    const e2 = v.find((c) => c.empresa.idEmpresa === "E2")!;
+    assert.equal(e2.liberadaPeloGrupo, "Rede X");
+    assert.equal(e2.parecerEquipe, "do grupo");
+    assert.ok(e2.oportunidades.some((o) => o.produto === "Intervenção psicossocial"));
+    assert.ok(e2.oportunidades.some((o) => o.produto === "AET"), "o AET do setor Loja");
+  });
 });

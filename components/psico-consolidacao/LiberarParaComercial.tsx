@@ -5,6 +5,8 @@
 // lib/comercial/liberacao.ts; as funções do banco conferem a sessão de quem grava (v321/v322).
 // 0.3.240 (banco v327): Intervenção, Modalidade e Responsável aceitam valor novo, que entra no
 // catálogo, e nenhum campo espera a intervenção ser escolhida.
+// 0.3.290 (banco v356): serve também à Conciliação por grupo (`alvo`). No grupo, cada intervenção leva as empresas do
+// setor (`empresasDoRisco`), e é nelas que o vendedor a vê; `aviso` mostra, antes de liberar, quem o grupo substitui.
 
 import { Fragment, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
@@ -41,6 +43,7 @@ import {
   type RiscoConciliado,
 } from "@/lib/comercial/liberacao";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { AlvoConciliacao } from "@/lib/hooks/useConciliacaoParecer";
 import { mensagemErro } from "@/lib/errors";
 import { cn, fmtData } from "@/lib/utils";
 
@@ -64,7 +67,9 @@ export function TituloEtapa({ numero, titulo, children }: { numero: number; titu
 }
 
 export default function LiberarParaComercial({
-  idEmpresa,
+  alvo,
+  empresasDoRisco,
+  aviso,
   nomeEmpresa,
   municipio,
   fechada,
@@ -74,7 +79,11 @@ export default function LiberarParaComercial({
   podeAlterar,
   podeRetirar,
 }: {
-  idEmpresa: string;
+  alvo: AlvoConciliacao;
+  /** Só no grupo: as empresas do setor de cada risco (chaveRisco). */
+  empresasDoRisco?: (chave: string) => string[];
+  /** Aviso acima do Liberar (no grupo: as empresas que já tinham liberação própria e que o grupo substitui). */
+  aviso?: ReactNode;
   nomeEmpresa: string;
   municipio: string | null;
   /** A última conciliação está fechada. */
@@ -87,7 +96,7 @@ export default function LiberarParaComercial({
   podeRetirar: boolean;
 }) {
   const { data: catalogo = [] } = useCatalogoIntervencoes();
-  const { data: eventos = [] } = useEventosAtendimento(idEmpresa);
+  const { data: eventos = [] } = useEventosAtendimento(alvo);
   const salvarParecer = useSalvarParecerComercial();
   const concluir = useConcluirAtendimento();
 
@@ -150,7 +159,7 @@ export default function LiberarParaComercial({
       confirmLabel: "Liberar",
       variant: "primary",
     });
-    if (ok) concluir.mutate({ idEmpresa, parecer }, { onSuccess: () => setRascunho(null) });
+    if (ok) concluir.mutate({ alvo, parecer }, { onSuccess: () => setRascunho(null) });
   }
 
   return (
@@ -190,7 +199,8 @@ export default function LiberarParaComercial({
                         key={r.chave}
                         risco={r}
                         primeiroDoSetor={n === 0 || riscos[n - 1].setor !== r.setor}
-                        idEmpresa={idEmpresa}
+                        alvo={alvo}
+                        empresas={empresasDoRisco?.(r.chave)}
                         itens={intervencoesDoRisco(indicadas, r.chave)}
                         catalogo={catalogo}
                         opcoes={opcoes}
@@ -245,13 +255,14 @@ export default function LiberarParaComercial({
                 className={cn(inputCls, "disabled:bg-gray-50 disabled:text-gray-600")}
                 placeholder={podeAlterar ? "O que o vendedor precisa saber sobre esta empresa" : ""}
               />
+              {aviso && !liberado && <div className="text-sm">{aviso}</div>}
               {podeAlterar && riscos.length > 0 && (
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   {falta && <span className="mr-auto text-xs text-amber-800">{falta}</span>}
                   <button
                     type="button"
                     disabled={rascunho === null || salvarParecer.isPending}
-                    onClick={() => salvarParecer.mutate({ idEmpresa, parecer }, { onSuccess: () => setRascunho(null) })}
+                    onClick={() => salvarParecer.mutate({ alvo, parecer }, { onSuccess: () => setRascunho(null) })}
                     className={btnNeutro}
                   >
                     {salvarParecer.isPending && <Loader2 className="size-4 animate-spin" />} Salvar parecer
@@ -280,7 +291,7 @@ export default function LiberarParaComercial({
         </div>
       </section>
 
-      {retirando && <JanelaRetirar idEmpresa={idEmpresa} onFechar={() => setRetirando(false)} />}
+      {retirando && <JanelaRetirar alvo={alvo} onFechar={() => setRetirando(false)} />}
     </>
   );
 }
@@ -289,7 +300,8 @@ export default function LiberarParaComercial({
 function LinhasDoRisco({
   risco,
   primeiroDoSetor,
-  idEmpresa,
+  alvo,
+  empresas,
   itens,
   catalogo,
   opcoes,
@@ -298,7 +310,8 @@ function LinhasDoRisco({
   risco: RiscoConciliado;
   /** Os riscos vêm por setor: o nome do setor aparece só no primeiro de cada um (0.3.244). */
   primeiroDoSetor: boolean;
-  idEmpresa: string;
+  alvo: AlvoConciliacao;
+  empresas?: string[];
   itens: IntervencaoIndicada[];
   catalogo: IntervencaoCatalogo[];
   opcoes: OpcoesCatalogo;
@@ -336,12 +349,13 @@ function LinhasDoRisco({
   return (
     <Fragment>
       {itens.map((i, n) => (
-        <LinhaIntervencao key={i.id_item} risco={risco} idEmpresa={idEmpresa} item={i} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar} celulaRisco={n === 0 ? celulaRisco : null} />
+        <LinhaIntervencao key={i.id_item} risco={risco} alvo={alvo} empresas={empresas} item={i} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar} celulaRisco={n === 0 ? celulaRisco : null} />
       ))}
       {mostrarNova && (
         <LinhaIntervencao
           risco={risco}
-          idEmpresa={idEmpresa}
+          alvo={alvo}
+          empresas={empresas}
           item={null}
           catalogo={catalogo}
           opcoes={opcoes}
@@ -454,7 +468,8 @@ const paraOpcoes = (lista: readonly string[]) => lista.map((v) => ({ valor: v, r
 
 function LinhaIntervencao({
   risco,
-  idEmpresa,
+  alvo,
+  empresas,
   item,
   catalogo,
   opcoes,
@@ -464,7 +479,8 @@ function LinhaIntervencao({
   onCancelar,
 }: {
   risco: RiscoConciliado;
-  idEmpresa: string;
+  alvo: AlvoConciliacao;
+  empresas?: string[];
   item: IntervencaoIndicada | null;
   catalogo: IntervencaoCatalogo[];
   opcoes: OpcoesCatalogo;
@@ -497,7 +513,8 @@ function LinhaIntervencao({
     salvar.mutate(
       {
         idItem: item?.id_item ?? null,
-        idEmpresa,
+        alvo,
+        empresas,
         setorChave: risco.setorChave,
         setorNome: risco.setor,
         idFator: risco.idFator,
@@ -591,7 +608,7 @@ function LinhaIntervencao({
   async function remover() {
     if (!item) return;
     const ok = await confirmar({ title: "Retirar esta intervenção?", description: `${item.nome} sai de ${risco.setor} · ${risco.fator}.`, confirmLabel: "Retirar", variant: "danger" });
-    if (ok) retirar.mutate({ idEmpresa, idItem: item.id_item });
+    if (ok) retirar.mutate({ alvo, idItem: item.id_item });
   }
 
   return (
@@ -665,7 +682,7 @@ function LinhaIntervencao({
   );
 }
 
-function JanelaRetirar({ idEmpresa, onFechar }: { idEmpresa: string; onFechar: () => void }) {
+function JanelaRetirar({ alvo, onFechar }: { alvo: AlvoConciliacao; onFechar: () => void }) {
   const reabrir = useReabrirAtendimento();
   const [motivo, setMotivo] = useState("");
   return (
@@ -681,7 +698,7 @@ function JanelaRetirar({ idEmpresa, onFechar }: { idEmpresa: string; onFechar: (
           <button
             type="button"
             disabled={!motivo.trim() || reabrir.isPending}
-            onClick={() => reabrir.mutate({ idEmpresa, motivo }, { onSuccess: onFechar })}
+            onClick={() => reabrir.mutate({ alvo, motivo }, { onSuccess: onFechar })}
             className={btnPrimario}
           >
             {reabrir.isPending && <Loader2 className="size-4 animate-spin" />} Retirar

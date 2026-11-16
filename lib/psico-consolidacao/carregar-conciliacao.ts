@@ -209,7 +209,8 @@ export async function carregarRegistrosConciliacaoGrupo(sb: Sb, idGrupo?: string
     filtro<ParecerConciliacao & { id_grupo: string }>("psico_conciliacao_grupo_pareceres", "*", "id_parecer"),
     filtro<FechamentoGrupo>(
       "psico_conciliacao_grupo_fechamentos",
-      idGrupo ? "*" : "id_fechamento, id_grupo, nome_grupo, fechado_por, fechado_em, resumo, documentos",
+      // A lista também lê os itens (v0.3.290): a coluna Comercial conta os riscos do último fechamento. São poucos grupos.
+      idGrupo ? "*" : "id_fechamento, id_grupo, nome_grupo, fechado_por, fechado_em, resumo, documentos, itens",
       "fechado_em",
     ),
     filtro<ReaberturaConciliacao & { id_grupo: string }>(

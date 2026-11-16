@@ -21,6 +21,8 @@ import { buscar } from "@/lib/busca/texto";
 import { useFontesConciliacao, usePsicoCatalogo, useSetoresDosGrupos } from "@/lib/hooks/usePsicoConsolidacao";
 import { useRegistrosConciliacaoGrupo } from "@/lib/hooks/useConciliacaoParecer";
 import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
+import { useLiberacaoServicos } from "@/lib/hooks/useComercial";
+import { ROTULO_SITUACAO_COMERCIAL, riscosDoFechamento, situacaoComercial, type SituacaoComercial } from "@/lib/comercial/liberacao";
 import { conciliarEmpresa, indexarPareceres, type AlertaRevisao, type LigacaoSetor, type ParecerConciliacao, type TipoAlertaRevisao } from "@/lib/psico-consolidacao/conciliacao";
 import {
   ORIGENS_GRUPO,
@@ -44,6 +46,7 @@ interface Linha {
   resumo: ResumoGrupo;
   fechadaEm: string | null;
   alertas: AlertaRevisao[];
+  comercial: SituacaoComercial;
 }
 
 const ROTULO_ALERTA: Record<TipoAlertaRevisao, string> = {
@@ -57,6 +60,7 @@ export default function ConciliacaoGrupoListaPage() {
   const fontes = useFontesConciliacao();
   const catalogo = usePsicoCatalogo();
   const registros = useRegistrosConciliacaoGrupo();
+  const liberacao = useLiberacaoServicos();
   const setoresGrupos = useSetoresDosGrupos();
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todas");
@@ -116,11 +120,20 @@ export default function ConciliacaoGrupoListaPage() {
         empresas: membros.length,
         resumo: resumirGrupo(g.id_grupo, docs, r, indexarPareceres(pareceres.get(g.id_grupo) ?? [])),
         fechadaEm: fechamento && !fechamento.reabertura ? fechamento.fechado_em : null,
+        comercial: (() => {
+          const at = liberacao.data?.grupos.find((x) => x.id_grupo === g.id_grupo) ?? null;
+          return situacaoComercial({
+            ultimoFechamento: fechamento ? { fechado_em: fechamento.fechado_em, reaberta: !!fechamento.reabertura } : null,
+            atendimento: at,
+            riscos: riscosDoFechamento(fechamento?.itens ?? []).length,
+            intervencoes: at?.intervencoes.length ?? 0,
+          });
+        })(),
         alertas: alertasRevisaoGrupo({ documentos: docs, ultimoFechamento: fechamento, hoje, rotulo: (e) => rotulos.get(e) ?? e }),
       });
     }
     return { linhas: out, foraDoAcesso: fora, semDocumento: semDoc };
-  }, [fontes.data, catalogo.data, registros.data, setoresGrupos.data, grupos, membrosPorGrupo]);
+  }, [fontes.data, catalogo.data, registros.data, setoresGrupos.data, grupos, membrosPorGrupo, liberacao.data]);
 
   const faltaResolver = (r: ResumoGrupo) => r.pareceres.pendentes + r.pareceres.desatualizados + r.pareceres.semAcao > 0;
   const semComparacao = (r: ResumoGrupo) => r.falta.length > 0 || r.semSetorEmComum;
@@ -232,11 +245,12 @@ export default function ConciliacaoGrupoListaPage() {
                 <th className="px-3 py-3">Pareceres</th>
                 <th className="px-3 py-3">Fechada em</th>
                 <th className="px-3 py-3">Revisão</th>
+                <th className="px-3 py-3">Comercial</th>
                 <th className="px-3 py-3" />
               </tr>
             </thead>
             <tbody>
-              {visiveis.map(({ idGrupo, nome, empresas, resumo: r, fechadaEm, alertas }) => (
+              {visiveis.map(({ idGrupo, nome, empresas, resumo: r, fechadaEm, alertas, comercial }) => (
                 <tr key={idGrupo} className="border-b border-gray-50 last:border-0 hover:bg-indigo-50/30">
                   <td className="px-4 py-2.5">
                     <Link href={`/consolidacao-grupo/conciliacao-grupo/${encodeURIComponent(idGrupo)}`} className="font-medium text-gray-900 hover:text-indigo-700 hover:underline">
@@ -313,6 +327,9 @@ export default function ConciliacaoGrupoListaPage() {
                         {alertas.length === 1 ? ROTULO_ALERTA[alertas[0].tipo] : `${alertas.length} avisos`}
                       </span>
                     )}
+                  </td>
+                  <td className={cn("whitespace-nowrap px-3 py-2.5 text-xs", comercial === "liberado" ? "font-medium text-emerald-700" : comercial === "falta-fechar" || comercial === "sem-risco" ? "text-gray-500" : "font-medium text-indigo-700")}>
+                    {ROTULO_SITUACAO_COMERCIAL[comercial]}
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <Link href={`/consolidacao-grupo/conciliacao-grupo/${encodeURIComponent(idGrupo)}`} className="inline-flex items-center text-xs font-medium text-indigo-700 hover:underline">

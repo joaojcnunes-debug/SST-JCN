@@ -11,7 +11,9 @@
 // v0.3.286: a padronização de setores (aba Setores) e os fatores ignorados da Consolidação do grupo valem aqui
 // também, para o relatório do grupo e o que vai ao Comercial baterem. "Ligar à mão" fica para o que faltar.
 //
-// Ainda sem a etapa do Comercial (intervenções e liberar): vem numa próxima versão.
+// v0.3.290 (banco v356): as etapas Intervenções e Liberar para o Comercial, com o tempo (Iniciar) do grupo, como na
+// conciliação por empresa. Nada se altera sem Iniciar; depois de liberado é só leitura. No Comercial o vendedor vê POR
+// EMPRESA (cada uma com as intervenções dos setores dela) e o grupo substitui a liberação própria da empresa.
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -24,7 +26,21 @@ import ParecerModal, { type ContextoParecer } from "@/components/psico-consolida
 import LigacaoSetores from "@/components/psico-consolidacao/LigacaoSetores";
 import FechamentosConciliacao, { type FotoFechamento } from "@/components/psico-consolidacao/FechamentosConciliacao";
 import { CelulaAep, CelulasQuestionario, Colunas } from "@/components/psico-consolidacao/CelulasConciliacao";
-import { TituloEtapa } from "@/components/psico-consolidacao/LiberarParaComercial";
+import LiberarParaComercial, { TituloEtapa } from "@/components/psico-consolidacao/LiberarParaComercial";
+import PainelTempoDocumento from "@/components/inspecoes/PainelTempoDocumento";
+import { useLiberacaoServicos, usePodeLiberarServicos } from "@/lib/hooks/useComercial";
+import { useAgora, useAtividadeSessao, useSessoesComercialGrupo } from "@/lib/hooks/useDocumentoSessoes";
+import { useUserStore } from "@/lib/store";
+import { minhaSessaoAberta, type SessaoDocumento } from "@/lib/inspecoes/sessoes";
+import {
+  ROTULO_SITUACAO_COMERCIAL,
+  chaveRisco,
+  riscosComIntervencoes,
+  riscosDoFechamento,
+  situacaoComercial,
+  type AtendimentoComercial,
+  type IntervencaoIndicada,
+} from "@/lib/comercial/liberacao";
 import { useFontesConciliacao, usePsicoCatalogo, useSetoresDoGrupo } from "@/lib/hooks/usePsicoConsolidacao";
 import { useRegistrosConciliacaoGrupo } from "@/lib/hooks/useConciliacaoParecer";
 import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
@@ -59,6 +75,7 @@ const sel =
   "rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20";
 
 type Ordem = "prioridade" | "setor";
+const SEM_SESSOES: SessaoDocumento[] = [];
 
 export default function ConciliacaoGrupoPage() {
   const { idGrupo: bruto } = useParams<{ idGrupo: string }>();
@@ -113,6 +130,41 @@ export default function ConciliacaoGrupoPage() {
 
   const ultimoFechamento = registros.data?.fechamentos[0] ?? null;
   const fechada = !!ultimoFechamento && !ultimoFechamento.reabertura;
+
+  // ── Caminho até o Comercial (v0.3.290) ──
+  const podeLiberar = usePodeLiberarServicos();
+  const comercial = useLiberacaoServicos();
+  const { data: sessoes = SEM_SESSOES } = useSessoesComercialGrupo(idGrupo);
+  const user = useUserStore((s) => s.user);
+  const agora = useAgora(30_000);
+  const minha = minhaSessaoAberta(sessoes, user?.id_usuario, agora);
+  useAtividadeSessao(idGrupo, !!minha, "comercial-grupo");
+  const atGrupo = comercial.data?.grupos.find((g) => g.id_grupo === idGrupo) ?? null;
+  const atendimento: AtendimentoComercial | null = atGrupo
+    ? { id_empresa: idGrupo, status: atGrupo.status, parecer: atGrupo.parecer, concluido_em: atGrupo.concluido_em, concluido_por: atGrupo.concluido_por }
+    : null;
+  const indicadas = useMemo<IntervencaoIndicada[]>(() => (atGrupo?.intervencoes ?? []).map((i) => ({ ...i, id_empresa: idGrupo })), [atGrupo, idGrupo]);
+  const riscos = useMemo(
+    () =>
+      riscosComIntervencoes(riscosDoFechamento(fechada ? ultimoFechamento?.itens ?? [] : []), indicadas)
+        // Conciliação reaberta: não há "última fechada" para comparar.
+        .map((r) => (fechada ? r : { ...r, foraDaConciliacao: false })),
+    [fechada, ultimoFechamento, indicadas],
+  );
+  const liberado = atendimento?.status === "CONCLUIDO";
+  const situacao = situacaoComercial({
+    ultimoFechamento: ultimoFechamento ? { fechado_em: ultimoFechamento.fechado_em, reaberta: !!ultimoFechamento.reabertura } : null,
+    atendimento,
+    riscos: riscos.length,
+    intervencoes: indicadas.length,
+  });
+  // Empresas do grupo com liberação própria concluída: o grupo as substitui no Comercial (decisão do João, 16/11).
+  const substituidas = useMemo(() => {
+    const doGrupo = new Map(membros.map((m) => [m.id_empresa, m.nome_empresa]));
+    return (comercial.data?.atendimentos ?? [])
+      .filter((a) => a.status === "CONCLUIDO" && doGrupo.has(a.id_empresa))
+      .map((a) => doGrupo.get(a.id_empresa)!);
+  }, [comercial.data, membros]);
   const alertas = useMemo(
     () => alertasRevisaoGrupo({ documentos: docs, ultimoFechamento, hoje: hojeSP(), rotulo }),
     [docs, ultimoFechamento, rotulo],
@@ -172,6 +224,15 @@ export default function ConciliacaoGrupoPage() {
     });
   };
 
+  /** As empresas do setor do risco: as do item do fechamento; sem elas, as do setor agora; sem setor, todas do grupo. */
+  const empresasDoRisco = (chave: string): string[] => {
+    const item = (ultimoFechamento?.itens ?? []).find((i) => chaveRisco(i.setor_chave, i.id_fator) === chave);
+    if (item?.id_empresas?.length) return item.id_empresas;
+    const s = setorPorChave.get(chave.split("|")[0]);
+    const doSetor = s ? empresasDoSetorConciliado(s.empresas) : [];
+    return doSetor.length ? doSetor : ids;
+  };
+
   const montarFechamento = (): FotoFechamento => ({
     documentos: docs.map((d) => ({ origem: d.origem, id: d.id, titulo: d.titulo, data: d.data, id_empresa: d.idEmpresa })),
     resumo: {
@@ -204,7 +265,9 @@ export default function ConciliacaoGrupoPage() {
   const { fonteUnica } = resultado;
   const tituloEtapa1 = fonteUnica ? "Avaliar" : "Comparar";
   const classesTela = fonteUnica ? CLASSES_FONTE_UNICA : CLASSES_COMPARACAO;
-  const podeTrabalhar = podeEditar;
+  // O trabalho inteiro passa pelo tempo: sem a sessão própria aberta, ou depois de liberado, só leitura.
+  const podeTrabalhar = podeEditar && podeLiberar && !!minha && !liberado;
+  const riscosFeitos = riscos.length > 0 && riscos.every((r) => indicadas.some((i) => chaveRisco(i.setor_chave, i.id_fator) === r.chave));
 
   return (
     <div className="space-y-4">
@@ -224,6 +287,8 @@ export default function ConciliacaoGrupoPage() {
           {[
             { id: "etapa-comparar", titulo: tituloEtapa1, feita: contagem.pendentes + contagem.desatualizados === 0 },
             { id: "etapa-fechar", titulo: "Fechar", feita: fechada },
+            { id: "etapa-intervencoes", titulo: "Intervenções", feita: fechada && riscosFeitos },
+            { id: "etapa-liberar", titulo: "Liberar para o Comercial", feita: liberado && fechada },
           ].map((e, i) => (
             <span key={e.id} className="inline-flex items-center gap-2">
               {i > 0 && <ChevronRight className="size-3.5 text-gray-300" />}
@@ -233,10 +298,27 @@ export default function ConciliacaoGrupoPage() {
               </a>
             </span>
           ))}
-          <span className="ml-auto rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-800">
-            {fechada ? "Fechada" : ultimoFechamento?.reabertura ? "Reaberta" : "Em conciliação"}
-          </span>
+          <span className="ml-auto rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-800">{ROTULO_SITUACAO_COMERCIAL[situacao]}</span>
         </nav>
+      )}
+
+      {podeConciliar && podeLiberar && (
+        <PainelTempoDocumento
+          fonte="comercial-grupo"
+          idInspecao={idGrupo}
+          sessoes={sessoes}
+          idUsuario={user?.id_usuario}
+          podeApontar={podeEditar && !liberado}
+          podeCorrigir={false}
+          concluidaEm={atendimento?.concluido_em}
+          entregue={liberado}
+        />
+      )}
+
+      {podeConciliar && podeEditar && podeLiberar && !liberado && !minha && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Clique em <strong>{sessoes.length > 0 ? "Retomar" : "Iniciar"}</strong> para dar pareceres, fechar, indicar as intervenções e liberar.
+        </p>
       )}
 
       {fonteUnica && (
@@ -459,11 +541,34 @@ export default function ConciliacaoGrupoPage() {
             historico={registros.data?.fechamentos ?? []}
             contagem={contagem}
             podeEditar={podeTrabalhar}
-            podeReabrirConciliacao={podeEditar}
+            podeReabrirConciliacao={podeEditar && podeLiberar}
             podeFechar={(fonteUnica || resultado.setoresEmComum > 0) && !fechada}
             montar={montarFechamento}
           />
         </section>
+      )}
+
+      {podeConciliar && podeLiberar && (
+        <LiberarParaComercial
+          alvo={{ tipo: "grupo", id: idGrupo }}
+          empresasDoRisco={empresasDoRisco}
+          aviso={
+            substituidas.length > 0 ? (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+                Ao liberar, o grupo <strong>substitui no Comercial</strong> a liberação própria de {substituidas.join(", ")}. A delas continua
+                guardada no histórico da empresa.
+              </p>
+            ) : null
+          }
+          nomeEmpresa={grupo.nome}
+          municipio={null}
+          fechada={fechada}
+          riscos={riscos}
+          indicadas={indicadas}
+          atendimento={atendimento}
+          podeAlterar={podeTrabalhar && fechada}
+          podeRetirar={podeEditar && podeLiberar && fechada}
+        />
       )}
 
       <details className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-600 shadow-sm">
@@ -484,6 +589,11 @@ export default function ConciliacaoGrupoPage() {
             <b>Parecer</b>: Confirmar e AET criam a ação 5W2H no Plano de Ação de cada empresa do grupo em que o setor aparece.
             <b> Fechar</b> guarda a foto do grupo (empresas, documentos de cada uma, régua, resultados e pareceres), que não muda
             mais, com o PDF para anexar ao PGR de cada empresa.
+          </p>
+          <p>
+            <b>Comercial</b>: as intervenções são indicadas por risco do grupo e o parecer é um só. Ao liberar, o vendedor vê cada
+            empresa do grupo em Oportunidades, com as intervenções e os riscos dos setores dela, marcada como liberada pelo grupo; a
+            venda continua por CNPJ. Se a empresa tinha liberação própria, a do grupo passa a valer no Comercial.
           </p>
         </div>
       </details>

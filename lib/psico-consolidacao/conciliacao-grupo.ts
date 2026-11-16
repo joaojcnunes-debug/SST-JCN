@@ -49,6 +49,8 @@ export interface DocumentoFechamentoGrupo {
 export interface ItemFechamentoGrupo extends ItemFechamento {
   empresas?: string[];
   id_acoes?: string[];
+  /** v0.3.290: os ids das empresas do setor — o Comercial mostra o risco (AET) e a intervenção nelas. */
+  id_empresas?: string[];
 }
 
 /**
@@ -151,6 +153,7 @@ export function itensDoFechamentoGrupo(
   return itensDoFechamento(r, pareceres, nomeFator).map((i) => ({
     ...i,
     empresas: (empresasDoSetor.get(i.setor_chave) ?? []).map(rotulo),
+    id_empresas: empresasDoSetor.get(i.setor_chave) ?? [],
     id_acoes: pareceres.get(chaveParecer(i.setor_chave, i.id_fator, i.questionario))?.id_acoes ?? (i.id_acao ? [i.id_acao] : []),
   }));
 }

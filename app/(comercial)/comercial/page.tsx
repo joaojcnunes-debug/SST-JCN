@@ -512,9 +512,15 @@ function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial
               <TabelaIntervencoes key={o.produto} idEmpresa={e.idEmpresa} o={o} />
             ))}
 
+      {c.liberadaPeloGrupo && (
+        // 0.3.290 (banco v356): a Conciliação foi feita e liberada pelo grupo de empresas; aqui ficam só os setores desta.
+        <p className="mt-3 inline-flex rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-[11px] font-medium text-violet-900">
+          Liberada pelo grupo {c.liberadaPeloGrupo}
+        </p>
+      )}
       {c.parecerEquipe && (
         <p className="mt-3 whitespace-pre-line rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
-          <strong>Parecer da equipe:</strong> {c.parecerEquipe}
+          <strong>Parecer da equipe{c.liberadaPeloGrupo ? " (grupo)" : ""}:</strong> {c.parecerEquipe}
         </p>
       )}
 

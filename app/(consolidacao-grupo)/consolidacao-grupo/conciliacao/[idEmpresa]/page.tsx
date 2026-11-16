@@ -515,7 +515,7 @@ export default function ConciliacaoEmpresaPage() {
 
       {podeConciliar && podeLiberar && (
         <LiberarParaComercial
-          idEmpresa={idEmpresa}
+          alvo={{ tipo: "empresa", id: idEmpresa }}
           nomeEmpresa={empresa.nome}
           municipio={empresa.municipio ?? null}
           fechada={fechada}

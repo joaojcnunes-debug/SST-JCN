@@ -274,12 +274,13 @@ export function useReabrirConciliacao() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (p: { idFechamento: string; alvo: AlvoConciliacao; motivo: string }) => {
-      // Grupo (v354): ainda sem Comercial, a reabertura é só o registro (o banco confere que é a última).
+      // Grupo (v356): a mesma coisa pela função do grupo, que também tira a liberação do Comercial se havia.
       const { error } =
         p.alvo.tipo === "grupo"
-          ? await sb()
-              .from("psico_conciliacao_grupo_reaberturas" as never)
-              .insert({ id_reabertura: gerarId("PGR"), id_fechamento: p.idFechamento, id_grupo: p.alvo.id, motivo: p.motivo.trim() } as never)
+          ? await sb().rpc(
+              "comercial_reabrir_conciliacao_grupo" as never,
+              { p_id_grupo: p.alvo.id, p_id_fechamento: p.idFechamento, p_motivo: p.motivo } as never,
+            )
           : await sb().rpc(
               "comercial_reabrir_conciliacao" as never,
               { p_id_empresa: p.alvo.id, p_id_fechamento: p.idFechamento, p_motivo: p.motivo } as never,

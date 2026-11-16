@@ -75,6 +75,8 @@ export interface AtendimentoComercial {
   concluido_em: string | null;
   concluido_por: string | null;
   empresas?: Cad | null;
+  /** v0.3.290: o atendimento veio da Conciliação por grupo (aplicarGrupos), com o nome do grupo. */
+  nome_grupo?: string | null;
 }
 
 export interface IntervencaoIndicada {
@@ -91,6 +93,8 @@ export interface IntervencaoIndicada {
   prazo_dias: number | null;
   decidido_por?: string | null;
   decidido_em?: string | null;
+  /** Só no grupo (v356): as empresas do grupo em que o setor aparece — o vendedor vê a intervenção nelas. */
+  empresas?: string[];
 }
 
 /** O que importa aqui de cada item da foto do fechamento (ItemFechamento). */
@@ -102,6 +106,8 @@ export interface ItemConciliado {
   questionario: Questionario;
   decisao: DecisaoParecer | null;
   classe?: string | null;
+  /** Só no grupo (v0.3.290): as empresas do grupo em que o setor aparece. */
+  id_empresas?: string[];
 }
 
 export interface ConciliacaoFechada {
@@ -363,7 +369,78 @@ export function visaoDoVendedor(
         },
       ];
     }
-    resultado.set(id, { ...base, oportunidades, ...(a.parecer ? { parecerEquipe: a.parecer } : {}) });
+    resultado.set(id, {
+      ...base,
+      oportunidades,
+      ...(a.parecer ? { parecerEquipe: a.parecer } : {}),
+      ...(a.nome_grupo ? { liberadaPeloGrupo: a.nome_grupo } : {}),
+    });
   }
   return [...resultado.values()];
+}
+
+// ── Conciliação por grupo › Liberar (v0.3.290, banco v356) ──────────────────────
+
+/** Um atendimento de grupo como vem de comercial_dados().grupos. */
+export interface AtendimentoGrupo {
+  id_grupo: string;
+  nome_grupo: string;
+  status: StatusAtendimento;
+  parecer: string | null;
+  concluido_em: string | null;
+  concluido_por: string | null;
+  /** A última conciliação do grupo está fechada (não reaberta). */
+  fechada: boolean;
+  empresas: Array<Cad & { id_empresa: string }>;
+  intervencoes: Array<IntervencaoIndicada & { id_grupo: string }>;
+  itens: ItemConciliado[];
+}
+
+/**
+ * O que o grupo liberado vira para o Comercial, por empresa (decisões do João em 16/11/2026):
+ *  • o vendedor vê POR EMPRESA — cada empresa do grupo ganha um atendimento concluído com o parecer do grupo, as
+ *    intervenções dos setores dela (as do item em que ela está) e os riscos dos setores dela;
+ *  • O GRUPO SUBSTITUI: a empresa coberta por um grupo liberado perde, no Comercial, o atendimento, as intervenções e a
+ *    conciliação próprios (que continuam guardados no banco e no histórico).
+ * Só conta o grupo CONCLUÍDO com a conciliação fechada. O resultado entra direto em `visaoDoVendedor`.
+ */
+export function aplicarGrupos(
+  atendimentos: readonly AtendimentoComercial[],
+  indicadas: readonly IntervencaoIndicada[],
+  conciliacoes: readonly ConciliacaoFechada[],
+  grupos: readonly AtendimentoGrupo[],
+): { atendimentos: AtendimentoComercial[]; indicadas: IntervencaoIndicada[]; conciliacoes: ConciliacaoFechada[] } {
+  const liberados = grupos.filter((g) => g.status === "CONCLUIDO" && g.fechada);
+  const cobertas = new Set(liberados.flatMap((g) => g.empresas.map((e) => e.id_empresa)));
+  const out = {
+    atendimentos: atendimentos.filter((a) => !cobertas.has(a.id_empresa)),
+    indicadas: indicadas.filter((i) => !cobertas.has(i.id_empresa)),
+    conciliacoes: conciliacoes.filter((c) => !cobertas.has(c.id_empresa)),
+  };
+  for (const g of liberados) {
+    for (const e of g.empresas) {
+      const { id_empresa, ...cad } = e;
+      // Item sem a lista de empresas (fechamento antigo): vale para todas as empresas do grupo.
+      const dela = (lista?: string[]) => !lista || lista.length === 0 || lista.includes(id_empresa);
+      out.atendimentos.push({
+        id_empresa,
+        status: "CONCLUIDO",
+        parecer: g.parecer,
+        concluido_em: g.concluido_em,
+        concluido_por: g.concluido_por,
+        empresas: cad,
+        nome_grupo: g.nome_grupo,
+      });
+      for (const i of g.intervencoes) if (dela(i.empresas)) out.indicadas.push({ ...i, id_empresa });
+      out.conciliacoes.push({
+        id_fechamento: `grupo:${g.id_grupo}`,
+        id_empresa,
+        fechado_em: g.concluido_em ?? "",
+        fechado_por: null,
+        itens: g.itens.filter((it) => dela(it.id_empresas)),
+        empresas: cad,
+      });
+    }
+  }
+  return out;
 }
