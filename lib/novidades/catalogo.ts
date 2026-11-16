@@ -54,6 +54,8 @@ export const CATALOGO: Novidade[] = [
     onde: "Consolidação › Conciliação por grupo › um grupo",
     impacto: "Dar parecer, fechar e indicar intervenções no grupo agora pede Iniciar, como na tela da empresa.",
     versoes: ["0.3.290"],
+  },
+  {
     id: "gestao-lista-sem-laco-ao-carregar",
     data: "2026-11-16",
     tipo: "correcao",
