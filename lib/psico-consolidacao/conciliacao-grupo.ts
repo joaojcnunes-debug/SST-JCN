@@ -23,6 +23,7 @@ import {
   type Questionario,
   type ResultadoConciliacao,
 } from "./conciliacao";
+import type { PsicoSetorCanonico, PsicoSetorDepara } from "@/lib/supabase/types";
 import type { OrigemFonte } from "./fatores";
 import { documentosPadrao, type DocumentoFonte } from "./fontes";
 
@@ -48,6 +49,24 @@ export interface DocumentoFechamentoGrupo {
 export interface ItemFechamentoGrupo extends ItemFechamento {
   empresas?: string[];
   id_acoes?: string[];
+}
+
+/**
+ * A padronização de setores da Consolidação do grupo (aba Setores), para a conciliação usar a mesma (v0.3.286):
+ * empresa × origem × nome do documento → nome do setor padronizado, só o que foi CONFIRMADO. O resto segue a
+ * sugestão de sempre, como na Consolidação.
+ */
+export function padronizacaoDoGrupo(
+  canonicos: readonly Pick<PsicoSetorCanonico, "id_setor_canonico" | "nome">[],
+  depara: readonly Pick<PsicoSetorDepara, "id_empresa" | "origem" | "setor_original" | "id_setor_canonico" | "confirmado_em">[],
+): { setorDe: (idEmpresa: string, origem: OrigemFonte, original: string) => string | null; confirmados: number } {
+  const nome = new Map(canonicos.map((c) => [c.id_setor_canonico, c.nome]));
+  const m = new Map<string, string>();
+  for (const d of depara) {
+    const n = d.confirmado_em && d.id_setor_canonico ? nome.get(d.id_setor_canonico) : undefined;
+    if (n) m.set(`${d.id_empresa}|${d.origem}|${d.setor_original}`, n);
+  }
+  return { setorDe: (e, o, original) => m.get(`${e}|${o}|${original}`) ?? null, confirmados: m.size };
 }
 
 /** Os documentos que entram por padrão: o mais recente de cada empresa do grupo, em cada origem. */

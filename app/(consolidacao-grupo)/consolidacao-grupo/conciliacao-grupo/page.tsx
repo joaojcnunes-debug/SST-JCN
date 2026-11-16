@@ -9,6 +9,8 @@
 //
 // Só LÊ a AEP e o DRPS/QPS — nada desses módulos é alterado aqui. Grupo com empresa fora do acesso de quem
 // pede não aparece (o banco também não deixa ver nem gravar a conciliação dele).
+// v0.3.286: usa a padronização de setores e os fatores ignorados da Consolidação do grupo (Grupos de empresas),
+// para o relatório do grupo e o que vai ao Comercial baterem.
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -16,11 +18,19 @@ import { CalendarClock, ChevronRight, Network, Search } from "lucide-react";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { COR_CLASSE, EXPLICACAO_CLASSE } from "@/components/psico-consolidacao/ConciliacaoSelos";
 import { buscar } from "@/lib/busca/texto";
-import { useFontesConciliacao, usePsicoCatalogo } from "@/lib/hooks/usePsicoConsolidacao";
+import { useFontesConciliacao, usePsicoCatalogo, useSetoresDosGrupos } from "@/lib/hooks/usePsicoConsolidacao";
 import { useRegistrosConciliacaoGrupo } from "@/lib/hooks/useConciliacaoParecer";
 import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import { conciliarEmpresa, indexarPareceres, type AlertaRevisao, type LigacaoSetor, type ParecerConciliacao, type TipoAlertaRevisao } from "@/lib/psico-consolidacao/conciliacao";
-import { ORIGENS_GRUPO, alertasRevisaoGrupo, documentosDoGrupo, resumirGrupo, rotuloEmpresa, type ResumoGrupo } from "@/lib/psico-consolidacao/conciliacao-grupo";
+import {
+  ORIGENS_GRUPO,
+  alertasRevisaoGrupo,
+  documentosDoGrupo,
+  padronizacaoDoGrupo,
+  resumirGrupo,
+  rotuloEmpresa,
+  type ResumoGrupo,
+} from "@/lib/psico-consolidacao/conciliacao-grupo";
 import type { FechamentoGrupo } from "@/lib/psico-consolidacao/carregar-conciliacao";
 import { hojeSP } from "@/lib/inspecoes/prioridade";
 import { cn, fmtData } from "@/lib/utils";
@@ -47,12 +57,15 @@ export default function ConciliacaoGrupoListaPage() {
   const fontes = useFontesConciliacao();
   const catalogo = usePsicoCatalogo();
   const registros = useRegistrosConciliacaoGrupo();
+  const setoresGrupos = useSetoresDosGrupos();
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todas");
 
   const { linhas, foraDoAcesso, semDocumento } = useMemo(() => {
     const vazio = { linhas: [] as Linha[], foraDoAcesso: 0, semDocumento: 0 };
-    if (!fontes.data || !catalogo.data || !registros.data) return vazio;
+    if (!fontes.data || !catalogo.data || !registros.data || !setoresGrupos.data) return vazio;
+    const canonicos = setoresGrupos.data.canonicos;
+    const deparaSetor = setoresGrupos.data.depara;
     const { documentos, linhas: todas, pendencias, setoresAep } = fontes.data;
     const ligacoes = new Map<string, LigacaoSetor[]>();
     for (const l of registros.data.ligacoes as Array<LigacaoSetor & { id_grupo?: string }>) {
@@ -89,6 +102,11 @@ export default function ConciliacaoGrupoListaPage() {
         fatores: catalogo.data.fatores,
         depara: catalogo.data.depara,
         deparaSetores: ligacoes.get(g.id_grupo) ?? [],
+        setorPadronizado: padronizacaoDoGrupo(
+          canonicos.filter((c) => c.id_grupo === g.id_grupo),
+          deparaSetor.filter((d) => d.id_grupo === g.id_grupo),
+        ).setorDe,
+        fatoresIgnorados: g.psico_fatores_ignorados ?? [],
       });
       const rotulos = new Map(membros.map((m) => [m.id_empresa, rotuloEmpresa({ nome: m.nome_empresa, cnpj: m.cnpj })]));
       const fechamento = ultimo.get(g.id_grupo) ?? null;
@@ -102,7 +120,7 @@ export default function ConciliacaoGrupoListaPage() {
       });
     }
     return { linhas: out, foraDoAcesso: fora, semDocumento: semDoc };
-  }, [fontes.data, catalogo.data, registros.data, grupos, membrosPorGrupo]);
+  }, [fontes.data, catalogo.data, registros.data, setoresGrupos.data, grupos, membrosPorGrupo]);
 
   const faltaResolver = (r: ResumoGrupo) => r.pareceres.pendentes + r.pareceres.desatualizados + r.pareceres.semAcao > 0;
   const semComparacao = (r: ResumoGrupo) => r.falta.length > 0 || r.semSetorEmComum;
@@ -139,8 +157,8 @@ export default function ConciliacaoGrupoListaPage() {
     );
   }, [linhas, filtro, busca]);
 
-  const carregando = carregandoGrupos || fontes.isLoading || catalogo.isLoading || registros.isLoading;
-  const erro = erroGrupos ?? fontes.error ?? catalogo.error ?? registros.error;
+  const carregando = carregandoGrupos || fontes.isLoading || catalogo.isLoading || registros.isLoading || setoresGrupos.isLoading;
+  const erro = erroGrupos ?? fontes.error ?? catalogo.error ?? registros.error ?? setoresGrupos.error;
 
   return (
     <div className="space-y-4">
@@ -151,8 +169,9 @@ export default function ConciliacaoGrupoListaPage() {
         </h1>
         <p className="mt-0.5 max-w-3xl text-sm text-gray-500">
           A mesma comparação da Conciliação DRPS/QPS × AEP, com o grupo de empresas inteiro: entram a AEP e o DRPS/QPS mais
-          recentes de cada empresa do grupo. Assim a AEP de um CNPJ encontra o questionário de outro. Clique no grupo para ver as
-          divergências, dar parecer e fechar.
+          recentes de cada empresa do grupo. Assim a AEP de um CNPJ encontra o questionário de outro. Os setores padronizados e os
+          fatores deixados de fora em Grupos de empresas valem aqui também. Clique no grupo para ver as divergências, dar parecer e
+          fechar.
         </p>
       </div>
 

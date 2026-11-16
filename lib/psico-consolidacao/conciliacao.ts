@@ -335,8 +335,16 @@ export function conciliarEmpresa(p: {
   fatores: PsicoFator[];
   depara: PsicoFatorDepara[];
   deparaSetores?: readonly LigacaoSetor[];
+  /**
+   * Por grupo (v0.3.286): o setor padronizado na Consolidação do grupo (aba Setores, confirmado) para
+   * empresa × origem × nome do documento; null = sem confirmação, vale a sugestão de sempre.
+   */
+  setorPadronizado?: (idEmpresa: string, origem: OrigemFonte, original: string) => string | null;
+  /** Por grupo (v0.3.286): fatores que o grupo deixou de fora na Consolidação (psico_fatores_ignorados). */
+  fatoresIgnorados?: readonly string[];
 }): ResultadoConciliacao {
-  const ativos = p.fatores.filter((f) => f.ativo !== false).sort((a, b) => a.ordem - b.ordem);
+  const ignorados = new Set(p.fatoresIgnorados ?? []);
+  const ativos = p.fatores.filter((f) => f.ativo !== false && !ignorados.has(f.id_fator)).sort((a, b) => a.ordem - b.ordem);
   const fatorDe = (origem: OrigemFonte, nome: string) => {
     const id = resolverFator(origem, nome, ativos, p.depara).id_fator;
     return id && ativos.some((f) => f.id_fator === id) ? id : null;
@@ -345,14 +353,15 @@ export function conciliarEmpresa(p: {
 
   const setores = new Map<string, SetorConciliacao>();
   const setorDe = (origem: OrigemFonte, original: string, idEmpresa?: string): string | null => {
-    const nome = sugerirSetorCanonico(original);
+    const padrao = idEmpresa && p.setorPadronizado ? p.setorPadronizado(idEmpresa, origem, original) : null;
+    const nome = padrao ?? sugerirSetorCanonico(original);
     if (!nome) return null;
     const k0 = chaveSetor(nome);
     const lig = ligacao.get(k0);
     const k = lig ? lig.chave_para : k0;
     const novo = !setores.has(k);
     const s = setores.get(k) ?? {
-      setor: lig ? tituloComAcento(lig.nome_para) : nome,
+      setor: lig ? tituloComAcento(lig.nome_para) : padrao ? padrao : nome,
       chave: k,
       originais: {},
       chavesOriginais: [],
@@ -366,7 +375,7 @@ export function conciliarEmpresa(p: {
     // maiúscula: quando ela só trocou a grafia (não juntou setores, como "Administrativo
     // (canteiro)"), o nome mostrado é o do documento, em caixa de título, com o acento dele.
     // Setor ligado à mão fica com o nome do destino.
-    if (!lig && chaveSetor(original) === k && (novo || !temAcento(s.setor))) {
+    if (!lig && !padrao && chaveSetor(original) === k && (novo || !temAcento(s.setor))) {
       s.setor = tituloComAcento(original);
     }
     if (!s.chavesOriginais.includes(k0)) s.chavesOriginais.push(k0);
