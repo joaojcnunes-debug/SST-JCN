@@ -10,13 +10,24 @@ import {
   type FiltrosGestao, type GestaoStatus, type GestaoEtiqueta,
 } from "@/lib/hooks/useGestao";
 import { REGIOES } from "@/lib/gestao/regiao-produtos";
-import type { Criador, MostrarItens, Pessoa, PrazoFiltro, SituacaoFiltro } from "@/lib/gestao/filtros";
+import type { Criador, MostrarItens, PapelPessoa, Pessoa, PrazoFiltro, SituacaoFiltro } from "@/lib/gestao/filtros";
 
 const MOSTRAR: { value: MostrarItens; label: string }[] = [
   { value: "tarefas", label: "Só tarefas" },
   { value: "subtarefas", label: "Só subtarefas" },
   { value: "ambas", label: "Tarefas e subtarefas" },
 ];
+
+// 12/11/2026: Responsável, Seguidor e Criada por eram três campos que se somavam (um zerava o outro). Agora é um
+// campo só, "Pessoa", e o papel se escolhe nos botões — como o Mostrar.
+const PAPEIS: { value: PapelPessoa; label: string; ajuda: string }[] = [
+  { value: "responsavel", label: "Responsável", ajuda: "Cartões em que a pessoa é responsável." },
+  { value: "seguidor", label: "Seguidor", ajuda: "Cartões que a pessoa segue." },
+  { value: "criou", label: "Criada por", ajuda: "Cartões que a pessoa criou." },
+  { value: "todos", label: "Os três", ajuda: "Cartões em que a pessoa é responsável, seguidora ou criou." },
+];
+/** Valor da opção "Sem responsável" na lista de pessoas (vira `semResponsavel`). */
+const SEM_RESPONSAVEL = "__sem__";
 
 const PRAZOS: { value: PrazoFiltro; label: string }[] = [
   { value: "", label: "Qualquer" },
@@ -39,13 +50,11 @@ const SITUACOES: { value: SituacaoFiltro; label: string }[] = [
 export interface OpcoesFiltro {
   statuses: GestaoStatus[];
   etiquetas: GestaoEtiqueta[];
-  /** Nomes (Responsável). */
-  usuarios: string[];
-  /** Seguidor (por e-mail). */
+  /** As pessoas do campo Pessoa (nome + e-mail). */
   pessoas?: Pessoa[];
   /** Só as equipes cujos membros eu vejo (gestor, supervisor). */
   equipes?: { id: string; nome: string }[];
-  /** Quem criou as tarefas da lista. */
+  /** Quem criou as tarefas da lista (em "Criada por" entram também os do Runrun sem conta e os formulários). */
   criadores?: Criador[];
   /** Produtos marcados nas tarefas da lista. */
   produtos?: string[];
@@ -86,7 +95,40 @@ export function CamposFiltro({
 }) {
   const set = (patch: Partial<FiltrosGestao>) => onChange({ ...filtros, ...patch });
   const ve = (k: keyof FiltrosGestao) => !esconder?.has(k);
-  const { statuses, etiquetas, usuarios, pessoas = [], equipes = [], criadores = [], produtos = [] } = opcoes;
+  const { statuses, etiquetas, pessoas = [], equipes = [], criadores = [], produtos = [] } = opcoes;
+
+  // ── Pessoa + papel ──
+  const papel = filtros.papel ?? "responsavel";
+  const ajudaPapel = PAPEIS.find((p) => p.value === papel)?.ajuda;
+  /** Filtro salvo antigo guardava o Responsável pelo nome ("n:<nome>"): na tela, a pessoa com esse nome. */
+  const emailDoNome = (k: string) => {
+    if (!k.startsWith("n:")) return k;
+    const p = pessoas.find((x) => x.nome.trim() === k.slice(2).trim());
+    return p ? `e:${p.email.toLowerCase()}` : k;
+  };
+  const criaSemConta = papel === "criou" || papel === "todos";
+  const emailsPessoas = new Set(pessoas.map((p) => `e:${p.email.toLowerCase()}`));
+  const opcoesPessoa = [
+    { value: "", label: "Qualquer pessoa" },
+    ...(papel === "responsavel" && ve("semResponsavel") ? [{ value: SEM_RESPONSAVEL, label: "Sem responsável" }] : []),
+    ...pessoas.map((p) => ({ value: `e:${p.email.toLowerCase()}`, label: p.nome })),
+    // Runrun sem conta no painel e formulários só criam cartão.
+    ...(criaSemConta ? criadores.filter((c) => !emailsPessoas.has(c.chave)).map((c) => ({ value: c.chave, label: c.nome })) : []),
+  ];
+  const valorPessoa = filtros.semResponsavel ? SEM_RESPONSAVEL : emailDoNome(filtros.pessoa ?? "");
+  if (valorPessoa && !opcoesPessoa.some((o) => o.value === valorPessoa)) {
+    opcoesPessoa.push({ value: valorPessoa, label: valorPessoa.replace(/^[a-z]:/, "") }); // ex.: nome que saiu da lista
+  }
+  function escolherPessoa(v: string) {
+    if (v === SEM_RESPONSAVEL) set({ semResponsavel: true, pessoa: "" });
+    else set({ pessoa: v, semResponsavel: false });
+  }
+  function trocarPapel(novo: PapelPessoa) {
+    let pessoa = emailDoNome(filtros.pessoa ?? "");
+    // Runrun sem conta e formulário não são responsáveis nem seguem: a escolha sai.
+    if ((novo === "responsavel" || novo === "seguidor") && /^[rf]:/.test(pessoa)) pessoa = "";
+    set({ papel: novo, pessoa, semResponsavel: novo === "responsavel" && filtros.semResponsavel });
+  }
 
   return (
     <div className="space-y-3">
@@ -100,16 +142,17 @@ export function CamposFiltro({
         </div>
       )}
 
-      {ve("responsavel") && (
+      {ve("pessoa") && (
         <div>
-          <Rotulo>Responsável</Rotulo>
+          <Rotulo>Pessoa</Rotulo>
+          <div className="mb-1.5 flex flex-wrap gap-1.5" role="group" aria-label="Papel da pessoa">
+            {PAPEIS.map((p) => <Chip key={p.value} on={papel === p.value} onClick={() => trocarPapel(p.value)}>{p.label}</Chip>)}
+          </div>
           {/* Lista verde (o <select> nativo abria com o destaque azul do sistema). */}
-          <SelectVerde valor={filtros.responsavel} desabilitado={filtros.semResponsavel} onChange={(v) => set({ responsavel: v })}
-            busca={usuarios.length > 8} placeholderBusca="Buscar pessoa…"
-            opcoes={[{ value: "", label: "Todos" }, ...usuarios.map((u) => ({ value: u, label: u }))]} />
-          <label className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-gray-600">
-            <input type="checkbox" checked={filtros.semResponsavel} onChange={(e) => set({ semResponsavel: e.target.checked, responsavel: e.target.checked ? "" : filtros.responsavel })} className="size-3.5 rounded accent-marca-primary" /> Sem responsável
-          </label>
+          <SelectVerde valor={valorPessoa} onChange={escolherPessoa} busca={opcoesPessoa.length > 8} placeholderBusca="Buscar pessoa…" opcoes={opcoesPessoa} />
+          {(filtros.pessoa || filtros.semResponsavel) && (
+            <p className="mt-1 text-[11px] text-gray-500">{filtros.semResponsavel ? "Cartões sem ninguém responsável." : ajudaPapel}</p>
+          )}
         </div>
       )}
 
@@ -118,22 +161,6 @@ export function CamposFiltro({
           <Rotulo>Equipe do responsável</Rotulo>
           <SelectVerde valor={filtros.equipe} onChange={(v) => set({ equipe: v })} busca={equipes.length > 8} placeholderBusca="Buscar equipe…"
             opcoes={[{ value: "", label: "Todas" }, ...equipes.map((e) => ({ value: e.id, label: e.nome }))]} />
-        </div>
-      )}
-
-      {ve("seguidor") && pessoas.length > 0 && (
-        <div>
-          <Rotulo>Seguidor</Rotulo>
-          <SelectVerde valor={filtros.seguidor} onChange={(v) => set({ seguidor: v })} busca={pessoas.length > 8} placeholderBusca="Buscar pessoa…"
-            opcoes={[{ value: "", label: "Qualquer" }, ...pessoas.map((p) => ({ value: p.email.toLowerCase(), label: p.nome }))]} />
-        </div>
-      )}
-
-      {ve("criadoPor") && criadores.length > 0 && (
-        <div>
-          <Rotulo>Criada por</Rotulo>
-          <SelectVerde valor={filtros.criadoPor} onChange={(v) => set({ criadoPor: v })} busca={criadores.length > 8} placeholderBusca="Buscar pessoa…"
-            opcoes={[{ value: "", label: "Qualquer pessoa" }, ...criadores.map((c) => ({ value: c.chave, label: c.nome }))]} />
         </div>
       )}
 

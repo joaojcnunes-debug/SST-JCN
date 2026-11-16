@@ -4,6 +4,8 @@
 // TipTap só com parágrafo, quebra de linha e imagem: a descrição continua sendo texto; cada imagem é uma linha com a
 // marcação ![nome](anexo:id) e aparece aqui no lugar dela. Colar (Ctrl+V) ou arrastar uma imagem para dentro da
 // caixa a coloca onde está o cursor; clique duplo amplia. Quem só lê vê o mesmo (clique amplia).
+// 12/11/2026 (pedido do usuário): na caixa a imagem aparece em MINIATURA, do tamanho da do Runrun (160×90, recortada);
+// ampliada, as setas ← → do teclado passam pelas imagens da descrição, na ordem em que estão nela.
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { EditorContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor, type Editor, type NodeViewProps } from "@tiptap/react";
@@ -23,6 +25,9 @@ interface Fontes {
 }
 const FontesCtx = createContext<Fontes>({ salvas: new Map(), pendentes: new Map(), ampliar: () => {} });
 
+/** Miniatura do tamanho da do Runrun; o clique (duplo, editando) amplia. */
+const MINIATURA = "block h-[90px] w-40 rounded-md border border-gray-200 bg-gray-100 object-cover";
+
 function ImagemNaDescricao({ node, selected, editor }: NodeViewProps) {
   const { salvas, pendentes, ampliar } = useContext(FontesCtx);
   const id = typeof node.attrs.anexo === "string" ? node.attrs.anexo : null;
@@ -37,13 +42,13 @@ function ImagemNaDescricao({ node, selected, editor }: NodeViewProps) {
         onClick={() => { if (!editor.isEditable) abrir(); }}
         onDoubleClick={abrir}
         title={editor.isEditable ? `${nome} (clique duplo amplia; selecione e apague com Delete)` : `${nome} (clique para ampliar)`}
-        className={`inline-block max-w-full cursor-pointer rounded-md ${selected ? "ring-2 ring-marca-primary ring-offset-1" : ""}`}
+        className={`inline-block max-w-full cursor-pointer rounded-md ${selected ? "ring-2 ring-marca-primary ring-offset-1" : "hover:ring-2 hover:ring-marca-primary/40"}`}
       >
         {salva ? (
-          <StorageImg stored={salva.storage_path} bucket="anexos" alt={nome} className="block max-h-96 max-w-full rounded-md object-contain" />
+          <StorageImg stored={salva.storage_path} bucket="anexos" alt={nome} loading="lazy" className={MINIATURA} />
         ) : urlPendente ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={urlPendente} alt={nome} className="block max-h-96 max-w-full rounded-md object-contain opacity-90" />
+          <img src={urlPendente} alt={nome} className={`${MINIATURA} opacity-90`} />
         ) : (
           <span className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-gray-300 px-2 py-1 text-xs text-gray-500">
             <ImageOff className="size-3.5" /> Imagem indisponível ({nome})
@@ -107,7 +112,8 @@ export default function DescricaoComImagens({
   rotulo?: string;
   vazio?: string;
 }) {
-  const [ampliada, setAmpliada] = useState<Ampliada | null>(null);
+  // A imagem ampliada e a lista de todas as da descrição (para as setas do teclado).
+  const [galeria, setGaleria] = useState<{ lista: Ampliada[]; atual: number } | null>(null);
   // O que o editor mandou por último: o valor que volta do pai igual a isto não é recarregado (o cursor não pula).
   const ultimoRef = useRef<string | null>(null);
   // Só depois de a descrição estar carregada na caixa ela pode mandar mudanças: se o carregamento falhasse, a 1ª tecla
@@ -203,9 +209,35 @@ export default function DescricaoComImagens({
     queueMicrotask(() => inserir(editor, imagens, onde));
   }, [editor, pedido, onPedidoAtendido]);
 
+  /** As imagens da descrição na ordem em que aparecem (cada anexo uma vez só). */
+  function imagensDaDescricao(): Ampliada[] {
+    const ed = editorRef.current;
+    if (!ed || ed.isDestroyed) return [];
+    const { salvas: s, pendentes: p } = fontesRef.current;
+    const vistos = new Set<string>();
+    const lista: Ampliada[] = [];
+    ed.state.doc.descendants((no) => {
+      if (no.type.name !== "image") return;
+      const id = typeof no.attrs.anexo === "string" ? no.attrs.anexo : null;
+      if (!id || vistos.has(id)) return;
+      vistos.add(id);
+      const salva = s.get(id);
+      const pendente = p.get(id);
+      if (salva) lista.push({ anexo: salva });
+      else if (pendente) lista.push({ arquivo: pendente });
+    });
+    return lista;
+  }
+  function ampliar(a: Ampliada) {
+    const lista = imagensDaDescricao();
+    const atual = lista.findIndex((x) =>
+      "anexo" in x ? "anexo" in a && x.anexo.id === a.anexo.id : "arquivo" in a && x.arquivo === a.arquivo);
+    setGaleria(atual >= 0 ? { lista, atual } : { lista: [a], atual: 0 });
+  }
+
   const vazia = !valor.trim();
   return (
-    <FontesCtx.Provider value={{ salvas, pendentes, ampliar: setAmpliada }}>
+    <FontesCtx.Provider value={{ salvas, pendentes, ampliar }}>
       <div
         data-descricao-editor=""
         className={ro
@@ -219,7 +251,11 @@ export default function DescricaoComImagens({
         )}
         <EditorContent editor={editor} />
       </div>
-      <ImagemAmpliada imagem={ampliada} onClose={() => setAmpliada(null)} />
+      <ImagemAmpliada
+        imagem={galeria ? galeria.lista[galeria.atual] ?? null : null}
+        onClose={() => setGaleria(null)}
+        galeria={galeria ? { atual: galeria.atual, total: galeria.lista.length, ir: (i) => setGaleria((g) => (g ? { ...g, atual: i } : g)) } : undefined}
+      />
     </FontesCtx.Provider>
   );
 }

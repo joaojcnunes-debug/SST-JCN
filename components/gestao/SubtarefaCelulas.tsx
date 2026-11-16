@@ -4,7 +4,8 @@
 // Cada uma guarda o que a pessoa está digitando e só grava ao sair do campo (ou Enter); Esc desfaz sem fechar a janela.
 // Assim a data digitada aos poucos (2-0-2-6) não vira uma gravação por tecla.
 
-import { useState, type KeyboardEvent } from "react";
+import { useState, type ButtonHTMLAttributes, type KeyboardEvent } from "react";
+import { GripVertical } from "lucide-react";
 import { PRIORIDADES, type GestaoStatus } from "@/lib/hooks/useGestao";
 
 const fmtDia = (iso: string) => iso.split("-").reverse().join("/");
@@ -179,5 +180,42 @@ export function PrioridadeSubtarefa({ valor, ro, onMudar, rotulo }: {
         {PRIORIDADES.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
       </select>
     </div>
+  );
+}
+
+/** Alça para mudar a subtarefa de lugar (13/11/2026, "igual fazemos com os quadros"): segurar e arrastar a linha; com
+ *  o foco nela, ↑ e ↓ também movem. Quem arrasta é a linha (useListaReordenavel), só enquanto o botão está apertado
+ *  aqui — clicar nos campos da linha continua sendo editar. */
+export function AlcaSubtarefa({ posicao, total, nome, bloqueio, onMover, ...resto }: {
+  posicao: number;
+  total: number;
+  nome: string;
+  /** Por que não dá para mover agora (ex.: buscando); sem isto, a alça funciona. */
+  bloqueio?: string;
+  onMover: (passo: number) => void;
+} & ButtonHTMLAttributes<HTMLButtonElement> & { "data-alca-id"?: string }) {
+  if (bloqueio) {
+    return (
+      <span title={bloqueio} className="inline-flex cursor-not-allowed text-gray-200" aria-hidden>
+        <GripVertical className="size-4" />
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      {...resto}
+      onDoubleClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+        e.preventDefault();
+        onMover(e.key === "ArrowUp" ? -1 : 1);
+      }}
+      title="Arraste para mudar a posição (ou use ↑ ↓)"
+      aria-label={`Mover ${nome}: posição ${posicao} de ${total}. Use as setas para cima e para baixo.`}
+      className="inline-flex cursor-grab rounded text-gray-300 hover:text-gray-600 focus:outline-none focus-visible:text-gray-600 focus-visible:ring-2 focus-visible:ring-marca-primary active:cursor-grabbing"
+    >
+      <GripVertical className="size-4" />
+    </button>
   );
 }

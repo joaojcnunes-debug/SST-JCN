@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Send, X, CheckCircle2, CircleDot, UserRound, UserRoundPlus, Sparkles, Loader2, Paperclip, AtSign, Smile, Bot } from "lucide-react";
 import { mensagemErro } from "@/lib/errors";
-import { resumirComentariosIa, useAnexos, usePessoasMencao } from "@/lib/hooks/useGestao";
-import { mencionados, partesComMencoes, mencaoEmDigitacao, sugestoesMencao, inserirMencao, type PessoaMencao } from "@/lib/gestao/mencoes";
+import { resumirComentariosIa, useAnexos, usePessoasMencao, usePessoasDoQuadro } from "@/lib/hooks/useGestao";
+import { mencionados, partesComMencoes, mencaoEmDigitacao, sugestoesMencao, inserirMencao, pessoasParaSugerir, type PessoaMencao } from "@/lib/gestao/mencoes";
 import { dataHora, quandoComentario, ehMeuComentario } from "@/lib/gestao/comentarios-chat";
 import { useColarImagens } from "@/lib/hooks/useImagensCartao";
 import { separarImagens, TEXTO_SO_IMAGEM } from "@/lib/gestao/imagens-cartao";
@@ -41,6 +41,10 @@ const botaoIcone =
  * 0.3.287 (= Painel 0.3.967, jeito do Runrun): conversa — os meus à direita (balão azul, foto à direita), os dos outros à esquerda,
  * o balão do robô com a criação da tarefa (o botão do robô esconde/mostra), a caixa "Digite uma mensagem…" presa no
  * rodapé com emoji, @, atribuir e clipe dentro dela. A lista rola sozinha até o comentário mais novo.
+ * 12/11/2026: a caixa é de várias linhas — Enter envia, Shift+Enter desce uma linha (antes Shift+Enter enviava); ela
+ *   cresce até ~7 linhas e depois rola.
+ * 12/11/2026: a lista do "@" sugere só as pessoas do quadro (Membros e acessos, gestao_pessoas_do_quadro), os
+ * responsáveis/seguidores do cartão e quem o criou (`idQuadro` + `emailsDoCartao`); sem essa lista, todas.
  */
 export default function ComentariosTarefa({
   idTarefa,
@@ -54,6 +58,8 @@ export default function ComentariosTarefa({
   usuarios = [],
   meuEmail = null,
   meuNome = null,
+  idQuadro = null,
+  emailsDoCartao = [],
   criacao,
   podeResolverTodos = false,
   atribuirA = "",
@@ -76,6 +82,10 @@ export default function ComentariosTarefa({
   meuEmail?: string | null;
   /** Nome de quem está usando: os comentários dele ficam à direita (o autor é gravado pelo nome). */
   meuNome?: string | null;
+  /** Quadro do cartão: a lista do "@" sugere as pessoas dele (mais `emailsDoCartao`). */
+  idQuadro?: string | null;
+  /** Responsáveis, seguidores e quem criou o cartão: também entram na lista do "@". */
+  emailsDoCartao?: string[];
   /** Balão do robô: quando e como a tarefa foi criada. */
   criacao?: { em: string; texto: string };
   /** Quem edita o quadro resolve qualquer comentário atribuído. */
@@ -124,7 +134,14 @@ export default function ComentariosTarefa({
   }, [idTarefa, isLoading, comentarios.length, mostrarRobo]);
   // "@": pessoas que podem ser marcadas, o "@…" em digitação (até o cursor) e o menu de sugestões.
   const { data: pessoasMencao = [] } = usePessoasMencao();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  // A caixa cresce com o texto (Shift+Enter desce a linha) até ~7 linhas; depois rola. Volta a 1 linha ao enviar.
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight + 2}px`;
+  }, [novoComentario]);
   const [cursor, setCursor] = useState(0);
   const [focado, setFocado] = useState(false);
   // Lista fechada (Esc ou pessoa escolhida) para este "@": continua fechada enquanto se escreve depois dele; apagar para
@@ -132,7 +149,13 @@ export default function ComentariosTarefa({
   const [fechado, setFechado] = useState<{ inicio: number; termo: string } | null>(null);
   const [destaque, setDestaque] = useState(0);
   const digitando = podeComentar && focado ? mencaoEmDigitacao(novoComentario, cursor) : null;
-  const sugestoes = digitando ? sugestoesMencao(digitando.termo, pessoasMencao) : [];
+  // Sugestões só de quem é do quadro ou do cartão (a lista do quadro falhou ou não há quadro: todas, como antes).
+  const { data: pessoasQuadro, isError: semPessoasQuadro } = usePessoasDoQuadro(idQuadro);
+  const permitidos = !idQuadro || semPessoasQuadro
+    ? null
+    : new Set([...(pessoasQuadro ?? []).map((p) => p.email.toLowerCase()), ...emailsDoCartao.map((e) => e.toLowerCase())]);
+  const sugeriveis = pessoasParaSugerir(pessoasMencao, permitidos, meuEmail);
+  const sugestoes = digitando ? sugestoesMencao(digitando.termo, sugeriveis) : [];
   const menuAberto = !!digitando && sugestoes.length > 0
     && !(fechado && fechado.inicio === digitando.inicio && digitando.termo.startsWith(fechado.termo));
   useEffect(() => setDestaque(0), [digitando?.inicio, digitando?.termo]);
@@ -381,10 +404,11 @@ export default function ComentariosTarefa({
             ))}
           </div>
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex items-end gap-2">
           <div className="relative min-w-0 flex-1">
-            <input
+            <textarea
               ref={inputRef}
+              rows={1}
               value={novoComentario}
               role="combobox"
               aria-expanded={menuAberto}
@@ -404,7 +428,7 @@ export default function ComentariosTarefa({
                     setDestaque((d) => (d + (e.key === "ArrowDown" ? 1 : n - 1)) % n);
                     return;
                   }
-                  if (e.key === "Enter" || e.key === "Tab") {
+                  if ((e.key === "Enter" && !e.shiftKey) || e.key === "Tab") {
                     e.preventDefault();
                     escolherPessoa(sugestoes[Math.min(destaque, sugestoes.length - 1)]);
                     return;
@@ -415,17 +439,19 @@ export default function ComentariosTarefa({
                     return;
                   }
                 }
-                if (e.key === "Enter" && podeEnviar && !enviando) {
+                // Enter envia; Shift+Enter desce uma linha (o navegador põe a quebra). Enter no meio da escrita com acento
+                // (IME) não envia.
+                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
-                  onEnviar();
+                  if (podeEnviar && !enviando) onEnviar();
                 }
               }}
               placeholder="Digite uma mensagem…"
-              title={onAdicionarImagens ? "@ marca alguém; Ctrl+V cola imagem" : "@ marca alguém"}
+              title={`Enter envia; Shift+Enter desce uma linha; @ marca alguém${onAdicionarImagens ? "; Ctrl+V cola imagem" : ""}`}
               style={{ paddingRight: `${0.75 + icones * 2.125}rem` }}
-              className="h-11 w-full rounded-md border border-transparent bg-gray-100 pl-4 text-sm text-gray-800 placeholder:text-gray-500 focus:border-marca-primary focus:bg-white focus:outline-none"
+              className="block max-h-40 min-h-11 w-full resize-none overflow-y-auto rounded-md border border-transparent bg-gray-100 py-[11px] pl-4 text-sm leading-5 text-gray-800 placeholder:text-gray-500 focus:border-marca-primary focus:bg-white focus:outline-none"
             />
-            <div className="absolute inset-y-0 right-2 flex items-center gap-0.5">
+            <div className="absolute bottom-0 right-2 flex h-11 items-center gap-0.5">
               <button
                 type="button"
                 onClick={() => alternar("emoji")}
@@ -552,8 +578,8 @@ export default function ComentariosTarefa({
             onClick={onEnviar}
             disabled={!podeEnviar || enviando}
             aria-label="Enviar comentário"
-            title="Enviar (Enter)"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full text-marca-primary transition hover:bg-marca-light/50 disabled:text-gray-300 disabled:hover:bg-transparent"
+            title="Enviar (Enter). Shift+Enter desce uma linha"
+            className="mb-0.5 flex size-10 shrink-0 items-center justify-center rounded-full text-marca-primary transition hover:bg-marca-light/50 disabled:text-gray-300 disabled:hover:bg-transparent"
           >
             {enviando ? <Loader2 className="size-5 animate-spin" /> : <Send className="size-5" />}
           </button>

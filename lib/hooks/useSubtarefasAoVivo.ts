@@ -190,6 +190,43 @@ export function useAtualizarSubtarefa() {
   });
 }
 
+/** Nova ordem da lista (arrastar pela alça ou ↑/↓, 13/11/2026): `ordem` = posição, gravada só nas linhas que mudaram
+ *  de lugar. Só a ordem muda: os gatilhos da linha (janela, avisos, eventos) olham título/feito/responsável e não
+ *  disparam; o espelho do cartão (v199) se refaz na nova ordem. */
+export function useReordenarSubtarefas() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id_tarefa: string; ids: string[] }) => {
+      const sb = createSupabaseBrowserClient();
+      const { data: atuais, error } = await sb.from("gestao_subtarefas").select("id,ordem").eq("id_tarefa", p.id_tarefa);
+      if (error) throw error;
+      const ordemDe = new Map(((atuais ?? []) as { id: string; ordem: number }[]).map((r) => [r.id, r.ordem]));
+      const mudar = p.ids.map((id, ordem) => ({ id, ordem })).filter((x) => ordemDe.has(x.id) && ordemDe.get(x.id) !== x.ordem);
+      const res = await Promise.all(
+        mudar.map((x) => sb.from("gestao_subtarefas").update({ ordem: x.ordem } as never).eq("id", x.id).select("id")),
+      );
+      const falha = res.find((r) => r.error)?.error;
+      if (falha) throw falha;
+      if (res.some((r) => !r.data?.length)) throw new Error("Sem permissão para mudar a ordem destas subtarefas.");
+    },
+    onMutate: async (p) => {
+      const pos = new Map(p.ids.map((id, i) => [id, i]));
+      return {
+        antes: await mexerNaLista(qc, p.id_tarefa, (l) =>
+          l.map((s) => (pos.has(s.id) ? { ...s, ordem: pos.get(s.id)! } : s)).sort((a, b) => a.ordem - b.ordem)),
+      };
+    },
+    onError: (e, p, ctx) => {
+      if (ctx?.antes) qc.setQueryData(["gestao-subtarefas", p.id_tarefa], ctx.antes);
+      toast.error(mensagemErro(e, "Não foi possível salvar a nova ordem das subtarefas."));
+    },
+    onSettled: (_d, _e, p) => {
+      qc.invalidateQueries({ queryKey: ["gestao-subtarefas", p.id_tarefa] });
+      qc.invalidateQueries({ queryKey: ["gestao-tarefas"] });
+    },
+  });
+}
+
 /** Linhas novas no fim da lista (o "Adicionar rápido" e as sugeridas pela IA). */
 export function useAdicionarSubtarefas() {
   const qc = useQueryClient();

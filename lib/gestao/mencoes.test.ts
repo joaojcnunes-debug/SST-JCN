@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { mencionados, partesComMencoes, mencaoEmDigitacao, sugestoesMencao, inserirMencao, type PessoaMencao } from "./mencoes";
+import { mencionados, partesComMencoes, mencaoEmDigitacao, sugestoesMencao, inserirMencao, pessoasParaSugerir, type PessoaMencao } from "./mencoes";
 
 // Nomes reais do painel (12/11/2026): 3 Anas e 4 João/Joao — primeiro nome ambíguo.
 const P: PessoaMencao[] = [
@@ -71,6 +71,12 @@ describe("digitação do @", () => {
     assert.deepEqual(sugestoesMencao("re", P).map((p) => p.nome), ["Ana Renata", "Emilia dos Reis"]);
     assert.deepEqual(sugestoesMencao("joao j", P).map((p) => p.nome), ["João Jefferson"]);
     assert.equal(sugestoesMencao("", P, 3).length, 3);
+  });
+  test("lista só de quem é do quadro/cartão, sem eu; sem lista = todas menos eu", () => {
+    const permitidos = new Set(["emilia.reis@chabra.com.br", "ana.clara@chabra.com.br", "suporte.ti@chabra.com.br"]);
+    assert.deepEqual(pessoasParaSugerir(P, permitidos, "Suporte.TI@chabra.com.br").map((p) => p.nome), ["Ana Clara", "Emilia dos Reis"]);
+    assert.equal(pessoasParaSugerir(P, null, "suporte.ti@chabra.com.br").length, P.length - 1);
+    assert.deepEqual(sugestoesMencao("ana", pessoasParaSugerir(P, permitidos, null)).map((p) => p.nome), ["Ana Clara"]);
   });
   test("inserir troca o termo pelo nome completo e põe o cursor depois", () => {
     assert.deepEqual(inserirMencao("oi @emi", 3, 7, "Emilia dos Reis"), { texto: "oi @Emilia dos Reis ", cursor: 20 });

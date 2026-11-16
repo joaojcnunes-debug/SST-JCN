@@ -136,3 +136,15 @@ export function erroDatasSubtarefa(d: DatasSubtarefa): string | null {
   }
   return null;
 }
+
+const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+/** Busca da aba Subtarefas (13/11/2026, pedido do usuário): o termo nas colunas Título, Prioridade, Etapa, Status e
+ *  Alocados da linha, sem diferença de maiúscula e acento. Com várias palavras, cada uma precisa aparecer em alguma
+ *  coluna ("leandro concluido" acha a subtarefa do Leandro que está concluída). Termo vazio mostra todas. */
+export function subtarefaCasaBusca(termo: string, colunas: readonly (string | null | undefined)[]): boolean {
+  const palavras = semAcento(termo).split(/\s+/).filter(Boolean);
+  if (!palavras.length) return true;
+  const texto = colunas.filter(Boolean).map((c) => semAcento(c as string)).join("\n");
+  return palavras.every((p) => texto.includes(p));
+}

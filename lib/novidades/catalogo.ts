@@ -41,6 +41,50 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-salvar-nao-fecha",
+    data: "2026-11-16",
+    tipo: "melhoria",
+    titulo: "Salvar não fecha mais a janela da tarefa",
+    texto:
+      "Clicar em Salvar grava e deixa a janela aberta; ela fecha só pelo X ou pelo Esc. Na Nova tarefa, depois de " +
+      "salvar, a janela passa a ser a da tarefa criada, com Comentários e Anexos.",
+    onde: "Gestão › cartão",
+    versoes: ["0.3.288"],
+  },
+  {
+    id: "gestao-subtarefas-arrastar-buscar",
+    data: "2026-11-16",
+    tipo: "melhoria",
+    titulo: "Subtarefas: arrastar para mudar a ordem, busca e cabeçalho fixo",
+    texto:
+      "Na aba Subtarefas, a ordem muda arrastando a alça (ou com as setas do teclado), há uma busca no topo, a " +
+      "lixeira fica no fim da linha, o cabeçalho da tabela fica fixo e a barra de rolagem fica sempre à vista.",
+    onde: "Gestão › cartão › Subtarefas",
+    versoes: ["0.3.288"],
+  },
+  {
+    id: "gestao-filtro-pessoa",
+    data: "2026-11-16",
+    tipo: "melhoria",
+    titulo: "Filtro Pessoa no lugar de Responsável, Seguidor e Criada por",
+    texto:
+      "Nos filtros das listas, Responsável, Seguidor e Criada por viraram um filtro só, Pessoa: escolha as pessoas e " +
+      "em que papel (responsável, seguidor ou quem criou) elas devem aparecer no cartão.",
+    onde: "Gestão › qualquer lista › Filtros",
+    versoes: ["0.3.288"],
+  },
+  {
+    id: "gestao-comentario-mencao-imagens",
+    data: "2026-11-16",
+    tipo: "melhoria",
+    titulo: "Comentários e imagens: Shift+Enter, @ só de quem é da lista e miniaturas",
+    texto:
+      "No comentário, Enter envia e Shift+Enter desce uma linha. O @ sugere só quem é da lista e do cartão. As imagens " +
+      "da descrição aparecem em miniatura, e na imagem aberta as setas do teclado passam para a próxima.",
+    onde: "Gestão › cartão",
+    versoes: ["0.3.288"],
+  },
+  {
     id: "gestao-comentarios-conversa-e-mencao",
     data: "2026-11-12",
     tipo: "novidade",

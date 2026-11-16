@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   FILTRO_VAZIO,
@@ -33,7 +33,9 @@ test("filtro vazio deixa tudo passar e conta zero", () => {
 test("filtro salvo antigo (sem os campos novos) ganha os campos vazios", () => {
   const antigo = { responsavel: "Ana", prioridades: [], status: [], etiquetas: [], prazo: "hoje", semResponsavel: false } as Partial<FiltrosGestao>;
   const c = comPadrao(antigo);
-  assert.equal(c.responsavel, "Ana");
+  assert.equal(c.pessoa, "n:Ana");
+  assert.equal(c.papel, "responsavel");
+  assert.equal("responsavel" in c, false, "o campo antigo sai");
   assert.deepEqual(c.produtos, []);
   assert.equal(c.equipe, "");
   assert.equal(contarFiltros(c), 2);
@@ -41,8 +43,10 @@ test("filtro salvo antigo (sem os campos novos) ganha os campos vazios", () => {
 
 test("os filtros de antes continuam iguais (responsável, prioridade, status, etiquetas)", () => {
   const t = tf({ responsavel: "Ana Souza, Bruno Lima", prioridade: "Alta", status: "fazendo", etiquetas: ["urgente"] });
-  assert.equal(passaFiltros(t, f({ responsavel: "Bruno Lima" }), ctx()), true);
-  assert.equal(passaFiltros(t, f({ responsavel: "Bruno" }), ctx()), false);
+  const nomeDe = (e: string) => ({ "bruno@x.com": "Bruno Lima", "b@x.com": "Bruno" } as Record<string, string>)[e];
+  assert.equal(passaFiltros(t, f({ pessoa: "e:bruno@x.com" }), ctx({ nomeDe })), true);
+  assert.equal(passaFiltros(t, f({ pessoa: "e:b@x.com" }), ctx({ nomeDe })), false);
+  assert.equal(passaFiltros(t, f({ pessoa: "n:Bruno Lima" }), ctx()), true, "filtro salvo antigo (pelo nome)");
   assert.equal(passaFiltros(t, f({ semResponsavel: true }), ctx()), false);
   assert.equal(passaFiltros(tf(), f({ semResponsavel: true }), ctx()), true);
   assert.equal(passaFiltros(t, f({ prioridades: ["Baixa"] }), ctx()), false);
@@ -81,8 +85,51 @@ test("equipe: algum responsável é da equipe", () => {
 
 test("seguidor (por e-mail, sem diferença de maiúsculas)", () => {
   const segs = (id: string) => (id === "t1" ? ["Ana@Chabra.com.br"] : []);
-  assert.equal(passaFiltros(tf(), f({ seguidor: "ana@chabra.com.br" }), ctx({ seguidoresDe: segs })), true);
-  assert.equal(passaFiltros(tf({ id_tarefa: "t2" }), f({ seguidor: "ana@chabra.com.br" }), ctx({ seguidoresDe: segs })), false);
+  const seg = f({ pessoa: "e:ana@chabra.com.br", papel: "seguidor" });
+  assert.equal(passaFiltros(tf(), seg, ctx({ seguidoresDe: segs })), true);
+  assert.equal(passaFiltros(tf({ id_tarefa: "t2" }), seg, ctx({ seguidoresDe: segs })), false);
+  assert.equal(passaFiltros(tf({ id_tarefa: "t2" }), seg, ctx()), true, "sem saber os seguidores (visita de outra lista), não filtra");
+});
+
+const pp = (x: FiltrosGestao) => ({ pessoa: x.pessoa, papel: x.papel });
+
+describe("Pessoa: um campo só, com o papel (12/11/2026: os três separados se anulavam)", () => {
+  const nomeDe = (e: string) => ({ "ana@x.com": "Ana Souza", "bia@x.com": "Bia Reis" } as Record<string, string>)[e];
+  const segs = (id: string) => ({ t2: ["ana@x.com"] } as Record<string, string[]>)[id] ?? [];
+  const chaveCriador = (t: TarefaFiltravel) => (t.created_by ? "e:" + t.created_by : null);
+  const c = ctx({ nomeDe, seguidoresDe: segs, chaveCriador });
+  const resp = tf({ id_tarefa: "t1", responsavel: "Ana Souza", created_by: "bia@x.com" });
+  const segue = tf({ id_tarefa: "t2", responsavel: "Bia Reis", created_by: "bia@x.com" });
+  const criou = tf({ id_tarefa: "t3", responsavel: "Bia Reis", created_by: "ana@x.com" });
+  const nada = tf({ id_tarefa: "t4", responsavel: "Bia Reis", created_by: "bia@x.com" });
+  const ids = (papel: FiltrosGestao["papel"], cx: CtxFiltro = c) =>
+    [resp, segue, criou, nada].filter((t) => passaFiltros(t, f({ pessoa: "e:ana@x.com", papel }), cx)).map((t) => t.id_tarefa);
+  test("cada papel traz só os cartões daquele papel", () => {
+    assert.deepEqual(ids("responsavel"), ["t1"]);
+    assert.deepEqual(ids("seguidor"), ["t2"]);
+    assert.deepEqual(ids("criou"), ["t3"]);
+  });
+  test("Os três: responsável, seguidora OU criou (não zera a lista)", () => {
+    assert.deepEqual(ids("todos"), ["t1", "t2", "t3"]);
+    assert.deepEqual(ids("todos", { ...c, seguidoresDe: undefined }), ["t1", "t3"], "sem os seguidores, valem responsável e quem criou");
+  });
+  test("o papel sozinho não filtra nem conta; criador do Runrun", () => {
+    assert.equal(contarFiltros(f({ papel: "todos" })), 0);
+    assert.equal(contarFiltros(f({ pessoa: "e:ana@x.com", papel: "todos" })), 1);
+    assert.equal(passaFiltros(nada, f({ papel: "seguidor" }), c), true);
+    const rr = ctx({ chaveCriador: () => "r:madu" });
+    assert.equal(passaFiltros(tf(), f({ pessoa: "r:madu", papel: "criou" }), rr), true);
+    assert.equal(passaFiltros(tf(), f({ pessoa: "r:madu", papel: "todos" }), rr), true);
+    assert.equal(passaFiltros(tf(), f({ pessoa: "r:madu", papel: "responsavel" }), rr), false);
+  });
+  test("filtros salvos antes: cada um vira o campo Pessoa; com mais de um, fica Responsável > Seguidor > Criada por", () => {
+    assert.deepEqual(pp(comPadrao({ seguidor: "Ana@X.com" } as never)), { pessoa: "e:ana@x.com", papel: "seguidor" });
+    assert.deepEqual(pp(comPadrao({ criadoPor: "r:madu" } as never)), { pessoa: "r:madu", papel: "criou" });
+    assert.deepEqual(pp(comPadrao({ responsavel: "Ana Souza", seguidor: "bia@x.com", criadoPor: "e:bia@x.com" } as never)), { pessoa: "n:Ana Souza", papel: "responsavel" });
+    assert.deepEqual(pp(comPadrao({ responsavel: "", seguidor: "", criadoPor: "" } as never)), { pessoa: "", papel: "responsavel" });
+    assert.deepEqual(pp(comPadrao({ pessoa: "e:bia@x.com", papel: "todos" })), { pessoa: "e:bia@x.com", papel: "todos" });
+    assert.deepEqual(pp(comPadrao({ pessoa: "e:bia@x.com", papel: "xyz" as never })), { pessoa: "e:bia@x.com", papel: "responsavel" });
+  });
 });
 
 test("região pela etiqueta (aceita a grafia do importador) e produtos", () => {
@@ -101,11 +148,11 @@ test("situação: em aberto e concluídas", () => {
   assert.equal(passaFiltros(tf({ status: "feito" }), f({ situacao: "concluidas" }), ctx()), true);
 });
 
-test("ignorar: o calendário de várias listas não usa status nem responsável", () => {
+test("ignorar: o calendário de várias listas não usa status nem pessoa", () => {
   const t = tf({ status: "x", responsavel: "Ana" });
-  const ign = new Set<keyof FiltrosGestao>(["status", "responsavel"]);
-  assert.equal(passaFiltros(t, f({ status: ["y"], responsavel: "Bruno" }), ctx({ ignorar: ign })), true);
-  assert.equal(passaFiltros(t, f({ status: ["y"], responsavel: "Bruno", prioridades: ["Alta"] }), ctx({ ignorar: ign })), false);
+  const ign = new Set<keyof FiltrosGestao>(["status", "pessoa"]);
+  assert.equal(passaFiltros(t, f({ status: ["y"], pessoa: "n:Bruno" }), ctx({ ignorar: ign })), true);
+  assert.equal(passaFiltros(t, f({ status: ["y"], pessoa: "n:Bruno", prioridades: ["Alta"] }), ctx({ ignorar: ign })), false);
 });
 
 test("criada por: e-mail, importador com apelido do Runrun e apelido sem dono", () => {
@@ -129,8 +176,8 @@ test("criada por: e-mail, importador com apelido do Runrun e apelido sem dono", 
   assert.equal(criadorDe({ created_by: null }, nomes, ap), null);
 
   const chave = (t: TarefaFiltravel) => criadorDe(t, nomes, ap)?.chave ?? null;
-  assert.equal(passaFiltros(tf({ created_by: "importador", origem: { user_id: "isabela-esteves" } }), f({ criadoPor: "e:isabela@chabra.com.br" }), ctx({ chaveCriador: chave })), true);
-  assert.equal(passaFiltros(tf({ created_by: "leana@chabra.com.br" }), f({ criadoPor: "e:isabela@chabra.com.br" }), ctx({ chaveCriador: chave })), false);
+  assert.equal(passaFiltros(tf({ created_by: "importador", origem: { user_id: "isabela-esteves" } }), f({ pessoa: "e:isabela@chabra.com.br", papel: "criou" }), ctx({ chaveCriador: chave })), true);
+  assert.equal(passaFiltros(tf({ created_by: "leana@chabra.com.br" }), f({ pessoa: "e:isabela@chabra.com.br", papel: "criou" }), ctx({ chaveCriador: chave })), false);
 });
 
 test("Mostrar (tarefas/subtarefas): padrão só tarefas, conta quando muda e filtro salvo antigo/estranho volta ao padrão", () => {
@@ -159,6 +206,6 @@ test("criada por (formulário): quem enviou logado; sem login, o formulário; nu
   assert.deepEqual(criadorDe({ created_by: "Formulário", origem: null }, nomes, ap), { chave: "f:", nome: "Formulário" });
   // filtro por criador usa a mesma chave
   const c = ctx({ chaveCriador: (t) => criadorDe(t, nomes, ap)?.chave ?? null });
-  assert.equal(passaFiltros(tf(logado), f({ criadoPor: "e:ana@x.com" }), c), true);
-  assert.equal(passaFiltros(tf(logado), f({ criadoPor: "e:ti@x.com" }), c), false);
+  assert.equal(passaFiltros(tf(logado), f({ pessoa: "e:ana@x.com", papel: "criou" }), c), true);
+  assert.equal(passaFiltros(tf(logado), f({ pessoa: "e:ti@x.com", papel: "criou" }), c), false);
 });

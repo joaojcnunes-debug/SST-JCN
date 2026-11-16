@@ -14,9 +14,21 @@ export type SituacaoFiltro = "" | "abertas" | "concluidas";
 /** O que a lista mostra: só as tarefas (padrão), só as subtarefas ou as duas (11/11/2026: também dentro do "Filtros"). */
 export type MostrarItens = "tarefas" | "subtarefas" | "ambas";
 const MOSTRAR_VALIDOS: readonly MostrarItens[] = ["tarefas", "subtarefas", "ambas"];
+/**
+ * 12/11/2026 (pedido do usuário: "está dando conflito em responsável, seguidor e criada por, um está anulando o
+ * outro"): os três viraram UM campo, "Pessoa", com o papel ao lado — como o Mostrar (tarefas/subtarefas/ambas).
+ * "todos" = a pessoa é responsável, seguidora OU criou o cartão.
+ */
+export type PapelPessoa = "responsavel" | "seguidor" | "criou" | "todos";
+const PAPEIS_VALIDOS: readonly PapelPessoa[] = ["responsavel", "seguidor", "criou", "todos"];
 
 export interface FiltrosGestao {
-  responsavel: string;
+  /**
+   * Quem: "e:<email>" (pessoa do painel), "r:<apelido do Runrun>" ou "f:<formulário>" (só criam cartão, ver
+   * `criadorDe`) ou "n:<nome>" (filtro salvo antigo de Responsável, que guardava o nome).
+   */
+  pessoa: string;
+  papel: PapelPessoa;
   prioridades: string[];
   status: string[];
   etiquetas: string[];
@@ -24,10 +36,6 @@ export interface FiltrosGestao {
   semResponsavel: boolean;
   /** id da equipe: tarefas em que algum responsável é da equipe. */
   equipe: string;
-  /** e-mail do seguidor. */
-  seguidor: string;
-  /** chave de `criadorDe` ("e:<email>" ou "r:<apelido do Runrun>"). */
-  criadoPor: string;
   /** etiqueta da região (REGIOES.tag). */
   regiao: string;
   produtos: string[];
@@ -40,22 +48,42 @@ export interface FiltrosGestao {
 }
 
 export const FILTRO_VAZIO: FiltrosGestao = {
-  responsavel: "", prioridades: [], status: [], etiquetas: [], prazo: "", semResponsavel: false,
-  equipe: "", seguidor: "", criadoPor: "", regiao: "", produtos: [], situacao: "", prazoDe: "", prazoAte: "",
+  pessoa: "", papel: "responsavel", prioridades: [], status: [], etiquetas: [], prazo: "", semResponsavel: false,
+  equipe: "", regiao: "", produtos: [], situacao: "", prazoDe: "", prazoAte: "",
   mostrar: "tarefas",
 };
 
+/** Como os filtros salvos antes de 12/11/2026 guardavam a pessoa (três campos separados). */
+interface PessoaAntiga { responsavel?: unknown; seguidor?: unknown; criadoPor?: unknown }
+
+/**
+ * Filtro salvo antigo → o campo Pessoa. Se tinha mais de um dos três (era o que zerava a lista), fica o primeiro na
+ * ordem Responsável, Seguidor, Criada por.
+ */
+function pessoaDoAntigo(c: PessoaAntiga): Pick<FiltrosGestao, "pessoa" | "papel"> | null {
+  const txt = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  if (txt(c.responsavel)) return { pessoa: `n:${txt(c.responsavel)}`, papel: "responsavel" };
+  if (txt(c.seguidor)) return { pessoa: `e:${txt(c.seguidor).toLowerCase()}`, papel: "seguidor" };
+  if (txt(c.criadoPor)) return { pessoa: txt(c.criadoPor), papel: "criou" };
+  return null;
+}
+
 /** Critérios de um filtro salvo (talvez antigo, sem os campos novos) → filtro completo. */
-export function comPadrao(c: Partial<FiltrosGestao> | null | undefined): FiltrosGestao {
-  const f = { ...FILTRO_VAZIO, ...(c ?? {}) };
-  return MOSTRAR_VALIDOS.includes(f.mostrar) ? f : { ...f, mostrar: "tarefas" };
+export function comPadrao(c: (Partial<FiltrosGestao> & PessoaAntiga) | null | undefined): FiltrosGestao {
+  const { responsavel, seguidor, criadoPor, ...resto } = c ?? {};
+  const antigo = typeof resto.pessoa === "string" ? null : pessoaDoAntigo({ responsavel, seguidor, criadoPor });
+  const f: FiltrosGestao = { ...FILTRO_VAZIO, ...resto, ...(antigo ?? {}) };
+  if (typeof f.pessoa !== "string") f.pessoa = "";
+  if (!PAPEIS_VALIDOS.includes(f.papel)) f.papel = "responsavel";
+  if (!MOSTRAR_VALIDOS.includes(f.mostrar)) f.mostrar = "tarefas";
+  return f;
 }
 
 export function contarFiltros(f: FiltrosGestao): number {
   return [
-    f.responsavel, f.prioridades.length, f.status.length, f.etiquetas.length,
+    f.pessoa, f.prioridades.length, f.status.length, f.etiquetas.length,
     f.prazo === "periodo" ? f.prazoDe || f.prazoAte : f.prazo, f.semResponsavel,
-    f.equipe, f.seguidor, f.criadoPor, f.regiao, (f.produtos ?? []).length, f.situacao,
+    f.equipe, f.regiao, (f.produtos ?? []).length, f.situacao,
     (f.mostrar ?? "tarefas") !== "tarefas",
   ].filter(Boolean).length;
 }
@@ -153,10 +181,13 @@ export interface CtxFiltro {
   concluida: (t: TarefaFiltravel) => boolean;
   /** Nomes dos membros da equipe escolhida (quando `equipe` está marcado). */
   nomesDaEquipe?: readonly string[];
-  /** E-mails dos seguidores da tarefa. */
+  /** E-mails dos seguidores da tarefa. Sem a função = não se sabe (visitas de outra lista): o papel Seguidor não
+   *  filtra, e em "Os três" valem só responsável e quem criou. */
   seguidoresDe?: (idTarefa: string) => readonly string[];
   /** Chave de quem criou (ver `criadorDe`). */
   chaveCriador?: (t: TarefaFiltravel) => string | null;
+  /** Nome da pessoa pelo e-mail (o responsável do cartão é guardado pelo nome). */
+  nomeDe?: (email: string) => string | null | undefined;
   /** Campos que não se aplicam aqui (ex.: status no calendário de várias listas). */
   ignorar?: ReadonlySet<keyof FiltrosGestao>;
 }
@@ -194,10 +225,29 @@ function noPrazo(f: FiltrosGestao, prazo: string | null, feita: boolean, hoje: s
   }
 }
 
+/** A pessoa do filtro tem o papel escolhido no cartão? */
+function temPapel(t: TarefaFiltravel, pessoa: string, papel: PapelPessoa, ctx: CtxFiltro): boolean {
+  const email = pessoa.startsWith("e:") ? pessoa.slice(2).toLowerCase() : "";
+  const nome = pessoa.startsWith("n:") ? pessoa.slice(2) : email ? ctx.nomeDe?.(email) ?? "" : "";
+  const responsavel = () => !!nome && temResponsavel(t.responsavel, nome);
+  const sabeSeguidores = !!ctx.seguidoresDe;
+  const seguidor = () => !!email && (ctx.seguidoresDe?.(t.id_tarefa) ?? []).some((e) => e.trim().toLowerCase() === email);
+  const criou = () => {
+    const c = ctx.chaveCriador?.(t) ?? null;
+    return !!c && c.toLowerCase() === (email ? `e:${email}` : pessoa.toLowerCase());
+  };
+  switch (papel) {
+    case "responsavel": return responsavel();
+    case "seguidor": return !sabeSeguidores || seguidor();
+    case "criou": return criou();
+    default: return responsavel() || seguidor() || criou();
+  }
+}
+
 export function passaFiltros(t: TarefaFiltravel, f: FiltrosGestao, ctx: CtxFiltro): boolean {
   const usa = (k: keyof FiltrosGestao) => !ctx.ignorar?.has(k);
   if (usa("semResponsavel") && f.semResponsavel && (t.responsavel ?? "").trim()) return false;
-  if (usa("responsavel") && f.responsavel && !temResponsavel(t.responsavel, f.responsavel)) return false;
+  if (usa("pessoa") && f.pessoa && !temPapel(t, f.pessoa, f.papel, ctx)) return false;
   if (usa("prioridades") && f.prioridades.length && !f.prioridades.includes(t.prioridade)) return false;
   if (usa("status") && f.status.length && !f.status.includes(t.status)) return false;
   if (usa("etiquetas") && f.etiquetas.length && !f.etiquetas.some((e) => (t.etiquetas ?? []).includes(e))) return false;
@@ -207,11 +257,6 @@ export function passaFiltros(t: TarefaFiltravel, f: FiltrosGestao, ctx: CtxFiltr
     const resp = nomesResponsaveis(t.responsavel);
     if (!resp.some((n) => nomes.includes(n))) return false;
   }
-  if (usa("seguidor") && f.seguidor) {
-    const s = f.seguidor.toLowerCase();
-    if (!(ctx.seguidoresDe?.(t.id_tarefa) ?? []).some((e) => e.toLowerCase() === s)) return false;
-  }
-  if (usa("criadoPor") && f.criadoPor && (ctx.chaveCriador?.(t) ?? null) !== f.criadoPor) return false;
   if (usa("regiao") && f.regiao && regiaoDasEtiquetas(t.etiquetas) !== f.regiao) return false;
   if (usa("produtos") && (f.produtos ?? []).length) {
     const ps = produtosDa(t.campos);

@@ -84,7 +84,8 @@ function diasAte(iso: string): number {
 /** Calendário de uma pessoa/equipe: os filtros de pessoa não se aplicam (já é a pessoa/equipe escolhida). */
 // "mostrar" também: o calendário de pessoa/equipe só traz tarefas (as subtarefas estão na Agenda).
 // 12/11/2026: como agora só entram tarefas DA LISTA aberta, o filtro de status volta a valer.
-const IGNORAR_CAL_OUTROS: ReadonlySet<keyof FiltrosGestao> = new Set<keyof FiltrosGestao>(["responsavel", "semResponsavel", "equipe", "seguidor", "mostrar"]);
+// 12/11/2026: Responsável, Seguidor e Criada por viraram o campo Pessoa (lib/gestao/filtros.ts) — fora daqui inteiro.
+const IGNORAR_CAL_OUTROS: ReadonlySet<keyof FiltrosGestao> = new Set<keyof FiltrosGestao>(["pessoa", "semResponsavel", "equipe", "mostrar"]);
 
 /** Textos em que a busca da barra procura (título, descrição, responsável, etiquetas e campos do formulário). */
 function textosDaBusca(t: GestaoTarefa) {
@@ -479,6 +480,7 @@ export default function GestaoChabraPage() {
     nomesDaEquipe,
     seguidoresDe: (id) => (vincQuadro?.get(id) ?? []).filter((v) => v.tipo === "seguidor").map((v) => v.usuario_email),
     chaveCriador,
+    nomeDe: (e) => nomePorEmail.get(e.toLowerCase()),
   };
   // "Minhas" (12/11/2026): criei, sou responsável, sigo ou estou alocado(a) numa subtarefa aberta — ver lib/gestao/minhas.ts.
   const { data: minhasSubs } = useMinhasSubtarefasDoQuadro(quadro?.id_quadro, user?.email, soMinhas);
@@ -1009,7 +1011,7 @@ export default function GestaoChabraPage() {
           )}
           {vista !== "calendario" && (
             <FiltrosPanel filtros={filtros} onChange={setFiltros} idQuadro={quadro?.id_quadro ?? ""}
-              opcoes={{ statuses, etiquetas: etiquetasCat, usuarios, pessoas: usuariosEmail, equipes: equipesVisiveis, criadores: criadoresOpcoes, produtos: produtosOpcoes }} />
+              opcoes={{ statuses, etiquetas: etiquetasCat, pessoas: usuariosEmail, equipes: equipesVisiveis, criadores: criadoresOpcoes, produtos: produtosOpcoes }} />
           )}
           {(user?.nome || user?.email) && !calDeOutros && (
             <button type="button" onClick={() => setSoMinhas((v) => !v)} title="Tarefas que criei, em que estou alocado(a) (inclusive numa subtarefa aberta) e que sigo" className={`rounded-lg px-3 py-2 text-sm font-medium transition ${soMinhas ? "bg-marca-primary text-white" : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
@@ -1335,7 +1337,7 @@ export default function GestaoChabraPage() {
                 equipes={equipesVisiveis}
                 filtros={filtros}
                 onFiltros={setFiltros}
-                opcoes={{ statuses, etiquetas: etiquetasCat, usuarios, pessoas: usuariosEmail, equipes: equipesVisiveis, criadores: criadoresOpcoes, produtos: produtosOpcoes }}
+                opcoes={{ statuses, etiquetas: etiquetasCat, pessoas: usuariosEmail, equipes: equipesVisiveis, criadores: criadoresOpcoes, produtos: produtosOpcoes }}
                 esconder={calDeOutros ? IGNORAR_CAL_OUTROS : undefined}
                 idQuadro={quadro.id_quadro}
                 nomeLista={quadro.nome}
