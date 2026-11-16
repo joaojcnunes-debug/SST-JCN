@@ -5,7 +5,7 @@ import { CamposFiltro, FiltrosSalvos, type OpcoesFiltro } from "@/components/ges
 import { FILTRO_VAZIO, contarFiltros, type FiltrosGestao, type Pessoa } from "@/lib/gestao/filtros";
 import { cn } from "@/lib/utils";
 
-/** De quem é o calendário: a lista aberta, uma pessoa ou uma equipe (estas duas: em todas as listas que eu vejo). */
+/** De quem é o calendário: a lista aberta, uma pessoa ou uma equipe (12/11/2026: as três só com tarefas da lista aberta). */
 export type CalDe = { tipo: "lista" } | { tipo: "pessoa"; email: string } | { tipo: "equipe"; id: string };
 
 /**
@@ -91,8 +91,8 @@ export default function LateralCalendario({
           {calDe.tipo === "lista"
             ? <>As tarefas de <span className="font-medium text-gray-700">{nomeLista}</span>.</>
             : <>
-                Tarefas em que {calDe.tipo === "pessoa" ? <span className="font-medium text-gray-700">{nomePessoa ?? "a pessoa"}</span> : <>alguém da equipe <span className="font-medium text-gray-700">{nomeEquipe ?? ""}</span></>} é
-                responsável, em todas as listas que você vê.
+                Cartões desta lista em que {calDe.tipo === "pessoa" ? <span className="font-medium text-gray-700">{nomePessoa ?? "a pessoa"}</span> : <>alguém da equipe <span className="font-medium text-gray-700">{nomeEquipe ?? ""}</span></>} é
+                responsável, seguidor ou criou o cartão.
               </>}
         </p>
       </div>

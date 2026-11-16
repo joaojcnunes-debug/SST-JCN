@@ -1490,8 +1490,10 @@ function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]
               label="Técnica Utilizada"
               valor={risco.tecnica_utilizada}
             />
+            {/* Em branco: o risco não tem campo de forma do agente. Era "Poeira"
+                fixo, herdado do PDF de referência, e saía em todo Químico. */}
             {risco.tipo_risco === "Químico" && (
-              <Campo label="Forma do agente" valor="Poeira" />
+              <Campo label="Forma do agente" valor={null} />
             )}
           </div>
         )}

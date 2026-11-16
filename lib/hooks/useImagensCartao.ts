@@ -15,13 +15,14 @@ import { caminhoDaImagem, colarComoImagem, pastaDoComentario, TEXTO_SO_IMAGEM } 
 
 export const MAX_IMAGEM = 25 * 1024 * 1024; // o mesmo limite da aba Anexos
 
-async function enviarImagem(idTarefa: string, file: File, email: string | null, pasta?: string | null) {
+async function enviarImagem(idTarefa: string, file: File, email: string | null, pasta?: string | null, id?: string) {
   const sb = createSupabaseBrowserClient();
   const path = caminhoDaImagem(idTarefa, file.name, crypto.randomUUID(), pasta);
   const { error: upErr } = await sb.storage.from("anexos").upload(path, file, { upsert: false });
   if (upErr) throw upErr;
   const { error } = await sb.from("gestao_anexos").insert({
-    id: crypto.randomUUID(),
+    // A imagem da descrição já nasce com o id que está na marcação do texto (lib/gestao/descricao-imagens.ts).
+    id: id ?? crypto.randomUUID(),
     id_tarefa: idTarefa,
     nome: file.name,
     storage_path: path,
@@ -33,11 +34,11 @@ async function enviarImagem(idTarefa: string, file: File, email: string | null, 
 }
 
 /** Grava as que cabem; as grandes demais ficam de fora com aviso. Devolve quantas subiram. */
-async function enviarVarias(idTarefa: string, files: File[], email: string | null, pasta?: string | null): Promise<number> {
+async function enviarVarias(idTarefa: string, files: File[], email: string | null, pasta?: string | null, ids?: string[]): Promise<number> {
   let n = 0;
-  for (const f of files) {
+  for (const [k, f] of files.entries()) {
     if (f.size > MAX_IMAGEM) { toast.error(`"${f.name}" passa de 25 MB.`); continue; }
-    await enviarImagem(idTarefa, f, email, pasta);
+    await enviarImagem(idTarefa, f, email, pasta, ids?.[k]);
     n++;
   }
   return n;
@@ -48,12 +49,12 @@ function recarregarAnexos(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: ["gestao-anexos-count"] });
 }
 
-/** Imagens do cartão (abaixo da descrição). */
+/** Imagens do cartão. `ids` (opcional, na mesma ordem dos arquivos): os da marcação na descrição. */
 export function useEnviarImagens() {
   const qc = useQueryClient();
   const email = useUserStore((s) => s.user?.email ?? null);
   return useMutation({
-    mutationFn: (p: { id_tarefa: string; files: File[] }) => enviarVarias(p.id_tarefa, p.files, email),
+    mutationFn: (p: { id_tarefa: string; files: File[]; ids?: string[] }) => enviarVarias(p.id_tarefa, p.files, email, null, p.ids),
     onError: (e) => toast.error(mensagemErro(e, "Não foi possível enviar a imagem.")),
     onSettled: () => recarregarAnexos(qc),
   });
@@ -108,6 +109,7 @@ export function useColarImagens(
   useEffect(() => {
     if (!ativo) return;
     function colar(e: ClipboardEvent) {
+      if (e.defaultPrevented) return;   // o editor da descrição (ou outra caixa) já tratou a colagem
       const imagens = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/"));
       const minha = ancora.current?.closest('[role="dialog"]');
       if (!imagens.length || !minha) return;
