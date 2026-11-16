@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-lista-sem-laco-ao-carregar",
+    data: "2026-11-16",
+    tipo: "correcao",
+    titulo: "Gestão: a lista não fica mais recalculando sem parar ao carregar",
+    texto:
+      "Enquanto os cartões de uma lista ainda não tinham chegado (e no Meu Espaço), a tela se atualizava em laço até o " +
+      "navegador interromper. Não aparecia para quem usa, mas gastava processamento e podia deixar a abertura mais lenta.",
+    onde: "Gestão",
+    versoes: ["0.3.289"],
+  },
+  {
     id: "gestao-salvar-nao-fecha",
     data: "2026-11-16",
     tipo: "melhoria",
