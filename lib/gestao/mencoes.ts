@@ -95,6 +95,20 @@ export function mencaoEmDigitacao(texto: string, cursor: number): { inicio: numb
   return { inicio: i, termo };
 }
 
+/**
+ * Quem a lista do "@" sugere (12/11/2026, "só as pessoas daquele quadro, quem criou e quem é seguidor"): só os e-mails
+ * permitidos (pessoas do quadro + responsáveis/seguidores + quem criou o cartão); `null` (lista indisponível) = todas.
+ * Eu fico de fora (marcar a si mesmo não avisa). Só a SUGESTÃO fecha: quem digita o nome completo de outra pessoa
+ * continua marcando (a regra do aviso é a do banco, gestao_mencionados).
+ */
+export function pessoasParaSugerir(todas: readonly PessoaMencao[], permitidos: ReadonlySet<string> | null, meuEmail?: string | null): PessoaMencao[] {
+  const eu = (meuEmail ?? "").trim().toLowerCase();
+  return todas.filter((p) => {
+    const e = p.email.trim().toLowerCase();
+    return e !== eu && (!permitidos || permitidos.has(e));
+  });
+}
+
 /** Pessoas para o "@termo": o nome começa com o termo ou alguma palavra dele começa; nome começando primeiro. */
 export function sugestoesMencao(termo: string, pessoas: readonly PessoaMencao[], max = 6): PessoaMencao[] {
   const q = nomeNormalizado(termo);

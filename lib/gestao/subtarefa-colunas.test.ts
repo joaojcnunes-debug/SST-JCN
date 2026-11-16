@@ -2,7 +2,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   fmtHorasTrabalhadas, progressoExibir, fmtDataDesejada, entregaAtrasada, corTextoSobre, etapaExibir, alocadosExibir,
-  vemDoRunrun, etapaDaLinha, erroDatasSubtarefa,
+  vemDoRunrun, etapaDaLinha, erroDatasSubtarefa, subtarefaCasaBusca,
 } from "./subtarefa-colunas";
 import type { GestaoStatus } from "@/lib/hooks/useGestao";
 
@@ -151,5 +151,21 @@ describe("erroDatasSubtarefa", () => {
     assert.match(erroDatasSubtarefa({ ...vazio, hora_fim: "08:00" }) ?? "", /data da entrega/);
     assert.match(erroDatasSubtarefa({ ...vazio, data_inicio: "2026-11-15", prazo: "2026-11-14" }) ?? "", /depois da entrega/);
     assert.match(erroDatasSubtarefa({ data_inicio: "2026-11-12", hora_inicio: "10:00", prazo: "2026-11-12", hora_fim: "09:00" }) ?? "", /mesmo dia/);
+  });
+});
+
+describe("subtarefaCasaBusca", () => {
+  const linha = ["Criar página de configuração", "Média", null, "A fazer", "Leandro Salles", "Joao Marcos"];
+  test("sem acento e maiúscula, em qualquer coluna", () => {
+    assert.equal(subtarefaCasaBusca("configuracao", linha), true);
+    assert.equal(subtarefaCasaBusca("MÉDIA", linha), true);
+    assert.equal(subtarefaCasaBusca("joão", linha), true);
+    assert.equal(subtarefaCasaBusca("concluído", linha), false);
+  });
+  test("cada palavra em alguma coluna; vazio mostra todas", () => {
+    assert.equal(subtarefaCasaBusca("leandro fazer", linha), true);
+    assert.equal(subtarefaCasaBusca("leandro urgente", linha), false);
+    assert.equal(subtarefaCasaBusca("   ", linha), true);
+    assert.equal(subtarefaCasaBusca("", [null]), true);
   });
 });
