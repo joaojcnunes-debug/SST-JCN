@@ -109,6 +109,12 @@ const VISTAS: { value: VistaGestao; label: string; icon: typeof KanbanSquare }[]
 
 const LIMITE_COL = 100;
 const SEM_IDS: ReadonlySet<string> = new Set();
+/**
+ * Lista vazia FIXA para o padrão de dados das consultas (16/11/2026, 0.3.289). Com `= []`, cada renderização criava uma
+ * lista nova enquanto a consulta não tinha dados (ou estava desligada, como no Meu Espaço): o efeito que monta os itens
+ * (setItems) via "mudou", gravava, renderizava de novo — laço até o React parar ("Maximum update depth exceeded").
+ */
+const VAZIA: never[] = [];
 // Agrupar/Mostrar: SelectVerde no tamanho dos botões Quadro/Lista/Calendário (text-sm).
 const SELECT_FILTRO = "w-auto min-w-[9rem]";
 const ITEM_RODAPE = "flex w-full items-center gap-2.5 rounded-lg px-3 py-[7px] text-sm font-medium text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white/90";
@@ -149,10 +155,10 @@ export default function GestaoChabraPage() {
     if (!quadroId && quadros.length) setQuadroId(quadros[0].id_quadro);
   }, [quadros, quadroId]);
 
-  const { data: tarefas = [], isLoading: loadingTarefas } = useTarefas(quadro?.id_quadro);
+  const { data: tarefas = VAZIA, isLoading: loadingTarefas } = useTarefas(quadro?.id_quadro);
   const { data: pref } = usePreferenciaVisao(quadro?.id_quadro);
   const salvarPref = useSalvarPreferenciaVisao();
-  const { data: statusList = [], isLoading: loadingStatus } = useStatusQuadro(quadro?.id_quadro);
+  const { data: statusList = VAZIA, isLoading: loadingStatus } = useStatusQuadro(quadro?.id_quadro);
   const { data: campos = [] } = useCamposQuadro(quadro?.id_quadro);
   const { data: etiquetasCat = [] } = useEtiquetasQuadro(quadro?.id_quadro);
   useAutomacaoTick();  // fallback de agendamento sem pg_cron (.107): scan de prazos 1x/dia
@@ -352,13 +358,13 @@ export default function GestaoChabraPage() {
   const abrirSub = useAbrirSubtarefa();
   // v338: nome da empresa ligada, no cartão.
   const { data: nomesEmpresas } = useNomesEmpresas(tarefas.map((t) => t.id_empresa));
-  const { data: usuariosEmail = [] } = useUsuarios();
+  const { data: usuariosEmail = VAZIA } = useUsuarios();
   // O Painel sempre precisa das subtarefas: pela regra da contagem (lib/gestao/contagem-concluidas.ts)
   // subtarefa feita vale uma tarefa feita, mesmo com "Mostrar = Tarefas".
   const precisaSubs = mostrar !== "tarefas" || vista === "painel";
   const { data: subsQuadro } = useSubtarefasDoQuadro(quadro?.id_quadro, precisaSubs);
   const subItens = useMemo(() => {
-    if (!precisaSubs || !subsQuadro) return [];
+    if (!precisaSubs || !subsQuadro) return VAZIA;
     const nomes = new Map(usuariosEmail.map((u) => [u.email.toLowerCase(), u.nome]));
     const sts = statusList.length ? statusList : quadro ? statusPadrao(quadro.id_quadro) : [];
     return montarSubtarefas({ maes: tarefas, linhas: subsQuadro.linhas, filhas: subsQuadro.filhas, statuses: sts, nomeDe: (e) => nomes.get(e.toLowerCase()) ?? null });
