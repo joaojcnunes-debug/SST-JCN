@@ -68,6 +68,7 @@ import {
   padronizacaoDoGrupo,
   rotuloEmpresa,
 } from "@/lib/psico-consolidacao/conciliacao-grupo";
+import { empresasFora } from "@/lib/psico-consolidacao/selecao-grupo";
 import { hojeSP } from "@/lib/inspecoes/prioridade";
 import { cn, fmtData, formatCNPJ } from "@/lib/utils";
 
@@ -82,9 +83,14 @@ export default function ConciliacaoGrupoPage() {
   const idGrupo = decodeURIComponent(bruto);
   const { grupos, membrosPorGrupo, isLoading: carregandoGrupos, error: erroGrupos } = useGruposEmpresas();
   const grupo = grupos.find((g) => g.id_grupo === idGrupo) ?? null;
+  // 0.3.297 (v361): as empresas desmarcadas em Grupos de empresas › Fontes não entram (nem na tabela, nem nas ações do
+  // parecer, nem na foto do fechamento — e por ela, nem no Comercial do grupo).
+  const foraDoGrupo = useMemo(() => empresasFora(grupo), [grupo]);
   const membros = useMemo(
-    () => [...(membrosPorGrupo.get(idGrupo) ?? [])].sort((a, b) => a.nome_empresa.localeCompare(b.nome_empresa, "pt-BR") || (a.cnpj ?? "").localeCompare(b.cnpj ?? "")),
-    [membrosPorGrupo, idGrupo],
+    () => [...(membrosPorGrupo.get(idGrupo) ?? [])]
+      .filter((m) => !foraDoGrupo.has(m.id_empresa))
+      .sort((a, b) => a.nome_empresa.localeCompare(b.nome_empresa, "pt-BR") || (a.cnpj ?? "").localeCompare(b.cnpj ?? "")),
+    [membrosPorGrupo, idGrupo, foraDoGrupo],
   );
   const foraDoAcesso = membros.some((m) => !m.visivel);
   const ids = useMemo(() => membros.map((m) => m.id_empresa), [membros]);
@@ -103,7 +109,7 @@ export default function ConciliacaoGrupoPage() {
   const rotulos = useMemo(() => new Map(membros.map((m) => [m.id_empresa, rotuloEmpresa({ nome: m.nome_empresa, cnpj: m.cnpj })])), [membros]);
   const rotulo = useMemo(() => (idEmpresa: string) => rotulos.get(idEmpresa) ?? idEmpresa, [rotulos]);
 
-  const docs = useMemo(() => documentosDoGrupo(fontes.data?.documentos ?? [], ids), [fontes.data, ids]);
+  const docs = useMemo(() => documentosDoGrupo(fontes.data?.documentos ?? [], ids, grupo), [fontes.data, ids, grupo]);
   const usados = useMemo(() => new Set(docs.map((d) => d.id)), [docs]);
   const ligacoes = useMemo(() => registros.data?.ligacoes ?? [], [registros.data]);
   const padronizacao = useMemo(
@@ -278,7 +284,9 @@ export default function ConciliacaoGrupoPage() {
           {grupo.nome}
         </h1>
         <p className="mt-0.5 text-sm text-gray-500">
-          Grupo de {membros.length} empresa(s) · a AEP e o DRPS/QPS mais recentes de cada uma entram juntos na comparação.
+          Grupo de {membros.length} empresa(s) · entram as empresas e os documentos escolhidos em Grupos de empresas › Fontes
+          (sem escolha, a AEP e o DRPS/QPS mais recentes de cada uma).
+          {foraDoGrupo.size > 0 && <> {foraDoGrupo.size} empresa(s) ficaram fora por escolha.</>}
         </p>
       </div>
 

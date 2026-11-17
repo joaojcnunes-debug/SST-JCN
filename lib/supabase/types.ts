@@ -619,6 +619,10 @@ export interface EmpresaGrupo {
   updated_at: string;
   /** v287 (JCN; painel v295): fatores psicossociais fora da consolidação deste grupo. */
   psico_fatores_ignorados?: string[];
+  /** v361 (0.3.297): empresas desmarcadas na aba Fontes — fora da consolidação, do relatório e da conciliação. */
+  psico_empresas_fora?: string[];
+  /** v361: {id_empresa: [ids dos documentos marcados]}; empresa ausente usa o padrão (mais recente de cada tipo). */
+  psico_documentos?: Record<string, string[]> | null;
   /**
    * v303: GRUPO = grupo de verdade (empresas pelo `empresas.id_grupo`); CONSOLIDACAO =
    * consolidação por empresa salva, com as empresas em `empresas_consolidacao` e fora das

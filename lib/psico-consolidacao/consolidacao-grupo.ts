@@ -6,7 +6,7 @@ import type { MembroGrupo, EmpresaGrupo, PapelEconomico, PsicoSetorCanonico, Psi
 import { carregarFontesDoGrupo, type FontesDoGrupo } from "./carregar-grupo";
 import { montarEntrada, type EntradaMontada } from "./entrada";
 import type { PsicoFator, PsicoFatorDepara } from "./fatores";
-import { documentosPadrao } from "./fontes";
+import { documentosUsados, empresasAtivas } from "./selecao-grupo";
 import { consolidar, type ResultadoMotor } from "./motor";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -84,7 +84,8 @@ export async function carregarConsolidacao(
   if (!g.data) return null;
 
   const membros = await membrosDe(sb, g.data as EmpresaGrupo, m.data as MembroGrupo[] | null);
-  const ids = membros.filter((x) => x.visivel).map((x) => x.id_empresa);
+  // 0.3.297 (v361): só as empresas marcadas na aba Fontes entram.
+  const ids = empresasAtivas(membros.filter((x) => x.visivel).map((x) => x.id_empresa), g.data as EmpresaGrupo);
   const [fontes, pap] = await Promise.all([
     carregarFontesDoGrupo(sb, ids),
     ids.length
@@ -96,9 +97,10 @@ export async function carregarConsolidacao(
     ((pap.data ?? []) as Array<{ id_empresa: string; papel_economico: PapelEconomico | null }>).map((x) => [x.id_empresa, x.papel_economico]),
   );
 
+  // A tela manda o que está usando; sem isso, a escolha gravada no grupo (v361) ou o padrão de cada empresa.
   const usados = opcoes.documentos?.length
     ? new Set(opcoes.documentos.filter((d) => fontes.documentos.some((x) => x.id === d)))
-    : documentosPadrao(fontes.documentos);
+    : documentosUsados(fontes.documentos, ids, g.data as EmpresaGrupo);
   const linhas = fontes.linhas.filter((l) => usados.has(l.idDocumento));
   const comLinha = new Set(linhas.map((l) => l.idEmpresa));
   const nomeEmpresa = nomesDasEmpresas(membros);
@@ -109,7 +111,7 @@ export async function carregarConsolidacao(
     linhas,
     pendencias: fontes.pendencias.filter((p) => usados.has(p.idDocumento)),
     empresas: membros
-      .filter((x) => x.visivel && (comLinha.has(x.id_empresa) || papel.get(x.id_empresa)))
+      .filter((x) => x.visivel && ids.includes(x.id_empresa) && (comLinha.has(x.id_empresa) || papel.get(x.id_empresa)))
       .map((x) => ({ idEmpresa: x.id_empresa, nome: nomeEmpresa(x.id_empresa), papel: papel.get(x.id_empresa) ?? null })),
     fatores,
     fatorDepara: (dep.data ?? []) as PsicoFatorDepara[],

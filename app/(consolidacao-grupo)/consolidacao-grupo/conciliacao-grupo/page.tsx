@@ -33,6 +33,7 @@ import {
   rotuloEmpresa,
   type ResumoGrupo,
 } from "@/lib/psico-consolidacao/conciliacao-grupo";
+import { empresasFora } from "@/lib/psico-consolidacao/selecao-grupo";
 import type { FechamentoGrupo } from "@/lib/psico-consolidacao/carregar-conciliacao";
 import { hojeSP } from "@/lib/inspecoes/prioridade";
 import { cn, fmtData } from "@/lib/utils";
@@ -84,14 +85,16 @@ export default function ConciliacaoGrupoListaPage() {
     let semDoc = 0;
     const out: Linha[] = [];
     for (const g of grupos) {
-      const membros = membrosPorGrupo.get(g.id_grupo) ?? [];
+      // 0.3.297 (v361): as empresas desmarcadas em Grupos de empresas › Fontes não entram.
+      const foraDoGrupo = empresasFora(g);
+      const membros = (membrosPorGrupo.get(g.id_grupo) ?? []).filter((m) => !foraDoGrupo.has(m.id_empresa));
       if (membros.length === 0) continue;
       if (membros.some((m) => !m.visivel)) {
         fora++;
         continue;
       }
       const ids = membros.map((m) => m.id_empresa);
-      const docs = documentosDoGrupo(documentos, ids);
+      const docs = documentosDoGrupo(documentos, ids, g);
       if (docs.length === 0) {
         semDoc++;
         continue;

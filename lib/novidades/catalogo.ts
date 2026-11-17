@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "grupo-escolher-empresas-documentos",
+    data: "2026-11-17",
+    tipo: "melhoria",
+    titulo: "Grupos de empresas: escolha quais empresas entram",
+    texto:
+      "Na aba Fontes da Consolidação de Grupo, cada empresa tem uma caixa de marcar: desmarcada, ela sai da consolidação, do " +
+      "relatório e da Conciliação por grupo. A escolha dos documentos agora fica gravada no grupo, e a Conciliação por grupo " +
+      "usa exatamente o que foi escolhido. \"Voltar ao padrão\" volta a usar todas as empresas e o documento mais recente de cada tipo.",
+    onde: "Consolidação › Grupos de empresas › Fontes e Conciliação por grupo",
+    impacto: "A empresa que ficou fora não é coberta pela liberação do grupo no Comercial (vale a foto do fechamento da conciliação).",
+    versoes: ["0.3.297"],
+  },
+  {
     id: "gestao-alocados-janela-vale",
     data: "2026-11-17",
     tipo: "correcao",
