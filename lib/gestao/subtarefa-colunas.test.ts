@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   fmtHorasTrabalhadas, progressoExibir, fmtDataDesejada, entregaAtrasada, corTextoSobre, etapaExibir, alocadosExibir,
   vemDoRunrun, etapaDaLinha, erroDatasSubtarefa, subtarefaCasaBusca,
+  subtarefaPassaFiltro, filtroSubtarefasAtivo, chaveAlocado, FILTRO_SUBTAREFAS_VAZIO, type SituacaoSubtarefa,
 } from "./subtarefa-colunas";
 import type { GestaoStatus } from "@/lib/hooks/useGestao";
 
@@ -167,5 +168,32 @@ describe("subtarefaCasaBusca", () => {
     assert.equal(subtarefaCasaBusca("leandro urgente", linha), false);
     assert.equal(subtarefaCasaBusca("   ", linha), true);
     assert.equal(subtarefaCasaBusca("", [null]), true);
+  });
+});
+
+describe("subtarefaPassaFiltro (17/11/2026)", () => {
+  const ana = { email: "Ana@x.com", nome: "Ana" };
+  const linha = (extra: Partial<Parameters<typeof subtarefaPassaFiltro>[1]> = {}) =>
+    ({ feito: false, atrasada: false, status: "fazendo", alocados: [ana], ...extra });
+  test("sem filtro passa tudo", () => {
+    assert.equal(filtroSubtarefasAtivo(FILTRO_SUBTAREFAS_VAZIO), false);
+    assert.equal(subtarefaPassaFiltro(FILTRO_SUBTAREFAS_VAZIO, linha({ feito: true, alocados: [] })), true);
+  });
+  test("situação: abertas, concluídas e atrasadas", () => {
+    const f = (situacao: SituacaoSubtarefa) => ({ ...FILTRO_SUBTAREFAS_VAZIO, situacao });
+    assert.equal(subtarefaPassaFiltro(f("abertas"), linha()), true);
+    assert.equal(subtarefaPassaFiltro(f("abertas"), linha({ feito: true })), false);
+    assert.equal(subtarefaPassaFiltro(f("concluidas"), linha({ feito: true })), true);
+    assert.equal(subtarefaPassaFiltro(f("atrasadas"), linha()), false);
+    assert.equal(subtarefaPassaFiltro(f("atrasadas"), linha({ atrasada: true })), true);
+  });
+  test("status e alocado (pelo e-mail, sem diferença de maiúscula; 'ninguem' = sem alocado)", () => {
+    assert.equal(subtarefaPassaFiltro({ ...FILTRO_SUBTAREFAS_VAZIO, status: "fazendo" }, linha()), true);
+    assert.equal(subtarefaPassaFiltro({ ...FILTRO_SUBTAREFAS_VAZIO, status: "feito" }, linha()), false);
+    assert.equal(chaveAlocado(ana), "ana@x.com");
+    assert.equal(subtarefaPassaFiltro({ ...FILTRO_SUBTAREFAS_VAZIO, alocado: "ana@x.com" }, linha()), true);
+    assert.equal(subtarefaPassaFiltro({ ...FILTRO_SUBTAREFAS_VAZIO, alocado: "bia@x.com" }, linha()), false);
+    assert.equal(subtarefaPassaFiltro({ ...FILTRO_SUBTAREFAS_VAZIO, alocado: "ninguem" }, linha({ alocados: [] })), true);
+    assert.equal(subtarefaPassaFiltro({ ...FILTRO_SUBTAREFAS_VAZIO, alocado: "ninguem" }, linha()), false);
   });
 });

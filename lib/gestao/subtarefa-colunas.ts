@@ -148,3 +148,36 @@ export function subtarefaCasaBusca(termo: string, colunas: readonly (string | nu
   const texto = colunas.filter(Boolean).map((c) => semAcento(c as string)).join("\n");
   return palavras.every((p) => texto.includes(p));
 }
+
+// ── Filtro da aba Subtarefas (17/11/2026, pedido do usuário) ─────────────────────────────────────────────────────────
+// Ao lado do "Buscar": Situação, Status e Alocado. Vale junto com a busca (a linha precisa passar nos dois).
+
+export type SituacaoSubtarefa = "" | "abertas" | "concluidas" | "atrasadas";
+
+export interface FiltroSubtarefas {
+  situacao: SituacaoSubtarefa;
+  /** slug do status da janela da subtarefa ("" = todos). */
+  status: string;
+  /** chave do alocado (e-mail em minúsculas, ou "nome:<nome>"); "" = todos, "ninguem" = sem alocado. */
+  alocado: string;
+}
+
+export const FILTRO_SUBTAREFAS_VAZIO: FiltroSubtarefas = { situacao: "", status: "", alocado: "" };
+
+export const filtroSubtarefasAtivo = (f: FiltroSubtarefas) => !!(f.situacao || f.status || f.alocado);
+
+/** A chave de um alocado no filtro: o e-mail; sem e-mail, o nome. */
+export const chaveAlocado = (a: Pick<AlocadoSubtarefa, "email" | "nome">) => (a.email ? a.email.trim().toLowerCase() : `nome:${a.nome.trim()}`);
+
+export function subtarefaPassaFiltro(
+  f: FiltroSubtarefas,
+  linha: { feito: boolean; atrasada: boolean; status: string | null; alocados: readonly Pick<AlocadoSubtarefa, "email" | "nome">[] },
+): boolean {
+  if (f.situacao === "abertas" && linha.feito) return false;
+  if (f.situacao === "concluidas" && !linha.feito) return false;
+  if (f.situacao === "atrasadas" && !linha.atrasada) return false;
+  if (f.status && linha.status !== f.status) return false;
+  if (f.alocado === "ninguem") return linha.alocados.length === 0;
+  if (f.alocado && !linha.alocados.some((a) => chaveAlocado(a) === f.alocado)) return false;
+  return true;
+}
