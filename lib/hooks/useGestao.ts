@@ -2784,6 +2784,25 @@ export function usePessoasDoQuadro(idQuadro: string | null | undefined) {
   });
 }
 
+/**
+ * A equipe da lista (v357, 0.3.292): quem foi colocado nela em Membros e acessos — direto ou por equipe, na lista, na
+ * pasta ou no espaço —, inclusive admin. Diferente de usePessoasDoQuadro, que deixa admin de fora. Usada no seletor
+ * de Responsável/Alocado da tarefa.
+ */
+export function useEquipeDaLista(idQuadro: string | null | undefined) {
+  return useQuery({
+    queryKey: ["gestao-equipe-da-lista", idQuadro],
+    enabled: !!idQuadro,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient() as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> };
+      const { data, error } = await sb.rpc("gestao_equipe_da_lista", { p_id_quadro: idQuadro });
+      if (error) throw error;
+      return (data ?? []) as { email: string; nome: string }[];
+    },
+  });
+}
+
 export function useProdutoResponsaveis(idQuadro: string | null | undefined) {
   return useQuery({
     queryKey: ["gestao-produto-responsaveis", idQuadro],

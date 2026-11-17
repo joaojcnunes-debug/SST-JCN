@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-responsavel-da-equipe-da-lista",
+    data: "2026-11-17",
+    tipo: "melhoria",
+    titulo: "Gestão: o Responsável vem só da equipe da lista",
+    texto:
+      "Na janela da tarefa, o campo Responsável, o Alocado e o responsável das subtarefas mostram só as pessoas da equipe " +
+      "da lista (quem foi colocado nela em Membros e acessos, direto ou por equipe), em vez de todos os usuários. Quem já " +
+      "estava escolhido continua aparecendo, e você sempre pode se atribuir.",
+    onde: "Gestão › janela da tarefa",
+    impacto:
+      "Lista sem equipe cadastrada em Membros e acessos continua mostrando todos. Para limitar, cadastre a equipe da lista.",
+    versoes: ["0.3.292"],
+  },
+  {
     id: "gestao-regiao-obrigatoria-filtro-subtarefas",
     data: "2026-11-17",
     tipo: "melhoria",
