@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-automacao-condicao-salva-sozinha",
+    data: "2026-11-17",
+    tipo: "correcao",
+    titulo: "Automações: a condição do \"Se\" não se perde mais",
+    texto:
+      "A condição \"Só rodar se…\" agora é salva automaticamente, como o resto da automação — não precisa mais clicar em " +
+      "\"Aplicar condição\". Cada automação tem o botão Editar à vista, e a janela ganhou o botão Concluir.",
+    onde: "Gestão › Configurar › Automações",
+    impacto: "Cláusula sem valor fica marcada em amarelo e só vale depois de preenchida.",
+    versoes: ["0.3.294"],
+  },
+  {
     id: "gestao-colaboradores-pelo-supervisor",
     data: "2026-11-17",
     tipo: "melhoria",
