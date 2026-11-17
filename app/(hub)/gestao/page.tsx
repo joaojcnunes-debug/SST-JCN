@@ -241,13 +241,13 @@ export default function GestaoChabraPage() {
   // Abre sempre no Meu Espaço (0.3.252, do Painel): abria no 1º quadro. Link direto para quadro/tarefa
   // (/gestao?quadro=…&tarefa=…, avisos e e-mails) continua abrindo o quadro — ver o efeito abaixo.
   const [meuEspacoView, setMeuEspacoView] = useState(true);
-  // "Colaboradores" (v235): gestor/supervisor acompanham o Meu Quadro dos colaboradores. A entrada
-  // só aparece quando o servidor devolve alguém (gestor: todos; supervisor: as equipes dele).
+  // "Colaboradores" (v235): acompanhar o Meu Quadro dos colaboradores. A entrada só aparece quando o servidor
+  // devolve alguém — v358 (0.3.293): todos só para o dono da Gestão e o perfil Admin; o supervisor, as equipes dele.
   const [colabView, setColabView] = useState(false);
   // Agenda (10/11/2026): tarefas e subtarefas de uma ou várias pessoas, por dia, em todas as listas.
   const [agendaView, setAgendaView] = useState(false);
   const { data: colaboradores = [] } = useColaboradores(!!user && user.perfil !== "Cliente");
-  const mostrarColab = souGestor || colaboradores.length > 0;
+  const mostrarColab = colaboradores.length > 0;
   const [selecaoModo, setSelecaoModo] = useState(false);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const { data: minhasTodas = [] } = useMinhasTarefas(meuEspacoView || inboxView);

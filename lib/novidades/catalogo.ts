@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-colaboradores-pelo-supervisor",
+    data: "2026-11-17",
+    tipo: "melhoria",
+    titulo: "Gestão: Colaboradores mostra só as equipes do supervisor",
+    texto:
+      "Em Colaboradores, cada supervisor vê só os colaboradores das equipes em que é supervisor, cadastradas em Membros e " +
+      "acessos › Equipes. Ver todos fica para o dono da Gestão e para quem tem perfil Admin.",
+    onde: "Gestão › Colaboradores",
+    impacto: "Quem não é supervisor de nenhuma equipe (nem Admin) deixa de ver o item Colaboradores no menu.",
+    versoes: ["0.3.293"],
+  },
+  {
     id: "gestao-responsavel-da-equipe-da-lista",
     data: "2026-11-17",
     tipo: "melhoria",
