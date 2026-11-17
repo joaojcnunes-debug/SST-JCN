@@ -25,7 +25,8 @@ import {
 } from "./conciliacao";
 import type { PsicoSetorCanonico, PsicoSetorDepara } from "@/lib/supabase/types";
 import type { OrigemFonte } from "./fatores";
-import { documentosPadrao, type DocumentoFonte } from "./fontes";
+import type { DocumentoFonte } from "./fontes";
+import { documentosUsados, empresasAtivas, type SelecaoGrupo } from "./selecao-grupo";
 
 export const ORIGENS_GRUPO: OrigemFonte[] = ["AEP", "DRPS", "QPS"];
 
@@ -71,12 +72,13 @@ export function padronizacaoDoGrupo(
   return { setorDe: (e, o, original) => m.get(`${e}|${o}|${original}`) ?? null, confirmados: m.size };
 }
 
-/** Os documentos que entram por padrão: o mais recente de cada empresa do grupo, em cada origem. */
-export function documentosDoGrupo(docs: readonly DocumentoFonte[], idsEmpresa: readonly string[]): DocumentoFonte[] {
-  const ids = new Set(idsEmpresa);
-  const doGrupo = docs.filter((d) => ids.has(d.idEmpresa));
-  const padrao = documentosPadrao(doGrupo);
-  return doGrupo.filter((d) => padrao.has(d.id)).sort((a, b) => ORIGENS_GRUPO.indexOf(a.origem) - ORIGENS_GRUPO.indexOf(b.origem) || (b.data ?? "").localeCompare(a.data ?? ""));
+/** Os documentos que entram: os escolhidos em Grupos de empresas (v361) ou, sem escolha, o mais recente de cada tipo. */
+export function documentosDoGrupo(docs: readonly DocumentoFonte[], idsEmpresa: readonly string[], selecao?: SelecaoGrupo | null): DocumentoFonte[] {
+  // 0.3.297 (v361): o que foi escolhido em Grupos de empresas › Fontes (empresas marcadas e os documentos de cada uma);
+  // sem escolha gravada, o mais recente de cada tipo, como antes.
+  const ids = empresasAtivas(idsEmpresa, selecao);
+  const usados = documentosUsados(docs, ids, selecao);
+  return docs.filter((d) => usados.has(d.id)).sort((a, b) => ORIGENS_GRUPO.indexOf(a.origem) - ORIGENS_GRUPO.indexOf(b.origem) || (b.data ?? "").localeCompare(a.data ?? ""));
 }
 
 /** Os documentos por origem (mais recente primeiro). */

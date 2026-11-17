@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Building2, EyeOff, FileText } from "lucide-react";
+import { AlertTriangle, Building2, EyeOff, FileText, RotateCcw } from "lucide-react";
 import { cn, fmtData, formatCNPJ } from "@/lib/utils";
 import type { FontesDoGrupo } from "@/lib/psico-consolidacao/carregar-grupo";
 import type { MembroGrupo, PapelEconomico } from "@/lib/supabase/types";
@@ -22,6 +22,8 @@ const COR_ORIGEM: Record<string, string> = {
 /**
  * Empresas do grupo e os documentos achados de cada uma (AEP concluída, DRPS/QPS
  * concluído). O técnico marca quais entram; por padrão, o mais recente de cada tipo.
+ * 0.3.297 (v361): a marca na frente da empresa tira a empresa inteira (consolidação, relatório e Conciliação por
+ * grupo), e tudo fica gravado no grupo.
  */
 export default function AbaFontes({
   membros,
@@ -29,12 +31,21 @@ export default function AbaFontes({
   escolhidos,
   onAlternar,
   podeEditar,
+  fora = new Set<string>(),
+  onAlternarEmpresa,
+  temEscolha = false,
+  onVoltarAoPadrao,
 }: {
   membros: MembroGrupo[];
   fontes: FontesDoGrupo;
   escolhidos: Set<string>;
   onAlternar: (idDocumento: string) => void;
   podeEditar: boolean;
+  /** Empresas desmarcadas (fora da consolidação, do relatório e da conciliação do grupo). */
+  fora?: Set<string>;
+  onAlternarEmpresa?: (idEmpresa: string) => void;
+  temEscolha?: boolean;
+  onVoltarAoPadrao?: () => void;
 }) {
   const visiveis = membros.filter((m) => m.visivel);
   const { data: papeis } = usePapeisEconomicos(visiveis.map((m) => m.id_empresa));
@@ -43,6 +54,19 @@ export default function AbaFontes({
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+        <span>
+          Desmarque a empresa que não deve entrar: ela sai da consolidação, do relatório e da Conciliação por grupo. A escolha
+          fica gravada no grupo.
+          {fora.size > 0 && <b className="text-gray-700"> {fora.size} empresa(s) fora.</b>}
+        </span>
+        {podeEditar && temEscolha && onVoltarAoPadrao && (
+          <button type="button" onClick={onVoltarAoPadrao} title="Todas as empresas e, de cada uma, o documento mais recente de cada tipo"
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium text-marca-primary ring-1 ring-marca-primary/30 hover:bg-marca-light/40">
+            <RotateCcw className="size-3.5" /> Voltar ao padrão
+          </button>
+        )}
+      </div>
       {membros.some((m) => !m.visivel) && (
         <p className="flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           <EyeOff className="mt-0.5 size-3.5 shrink-0" />
@@ -56,10 +80,23 @@ export default function AbaFontes({
           const docs = fontes.documentos.filter((d) => d.idEmpresa === m.id_empresa);
           const e = empresaPorId.get(m.id_empresa);
           const local = [e?.municipio, e?.uf].filter(Boolean).join("/");
+          const estaFora = fora.has(m.id_empresa);
           return (
-            <li key={m.id_empresa} className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+            <li key={m.id_empresa} className={cn("rounded-xl border p-3 shadow-sm", estaFora ? "border-dashed border-gray-300 bg-gray-50" : "border-gray-200 bg-white")}>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="min-w-0">
+                <div className="flex min-w-0 items-start gap-2">
+                  {m.visivel && onAlternarEmpresa && (
+                    <input
+                      type="checkbox"
+                      checked={!estaFora}
+                      disabled={!podeEditar}
+                      onChange={() => onAlternarEmpresa(m.id_empresa)}
+                      aria-label={estaFora ? `Incluir ${m.nome_empresa} na consolidação` : `Tirar ${m.nome_empresa} da consolidação`}
+                      title={estaFora ? "Fora da consolidação — marque para incluir" : "Entra na consolidação — desmarque para tirar"}
+                      className="mt-1 size-4 shrink-0 rounded border-gray-300 text-marca-primary disabled:opacity-60"
+                    />
+                  )}
+                <div className={cn("min-w-0", estaFora && "opacity-60")}>
                   <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
                     <Building2 className="size-4 shrink-0 text-gray-400" />
                     <span className="truncate">{m.nome_empresa}</span>
@@ -72,6 +109,8 @@ export default function AbaFontes({
                     {local && ` · ${local}`}
                     {m.unidade_nome && ` · ${m.unidade_nome}`}
                   </p>
+                  {estaFora && <p className="mt-0.5 text-xs font-medium text-gray-600">Fora da consolidação, do relatório e da conciliação do grupo</p>}
+                </div>
                 </div>
                 {m.visivel ? (
                   <select
@@ -96,7 +135,7 @@ export default function AbaFontes({
                 )}
               </div>
 
-              {m.visivel && (
+              {m.visivel && !estaFora && (
                 docs.length === 0 ? (
                   <p className="mt-2 flex items-center gap-1.5 text-xs text-amber-700">
                     <AlertTriangle className="size-3.5" />
@@ -110,6 +149,7 @@ export default function AbaFontes({
                           <input
                             type="checkbox"
                             checked={escolhidos.has(d.id)}
+                            disabled={!podeEditar}
                             onChange={() => onAlternar(d.id)}
                             className="size-3.5 rounded border-gray-300 text-marca-primary"
                           />

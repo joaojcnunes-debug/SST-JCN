@@ -207,6 +207,25 @@ export function useSalvarFatoresIgnorados() {
   });
 }
 
+/**
+ * Empresas e documentos que entram na consolidação do grupo (v361, 0.3.297). Grava o que vier (empresas fora e/ou o
+ * mapa de documentos); a Conciliação por grupo e o relatório leem daqui.
+ */
+export function useSalvarSelecaoGrupo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id_grupo: string; empresas_fora?: string[]; documentos?: Record<string, string[]> }) => {
+      const patch: Record<string, unknown> = {};
+      if (p.empresas_fora) patch.psico_empresas_fora = p.empresas_fora;
+      if (p.documentos) patch.psico_documentos = p.documentos;
+      const { error } = await sb().from("empresa_grupos" as never).update(patch as never).eq("id_grupo", p.id_grupo);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: CHAVE_GRUPOS }),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+}
+
 /** De-para de uma categoria de QPS para um fator (só Admin, pela RLS). */
 export function useSalvarFatorDepara() {
   const qc = useQueryClient();

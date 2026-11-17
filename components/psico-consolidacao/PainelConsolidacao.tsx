@@ -24,8 +24,8 @@ import AbaValidacao from "@/components/psico-consolidacao/AbaValidacao";
 import FiltrosAnalise, { SEM_FILTRO } from "@/components/psico-consolidacao/FiltrosAnalise";
 import { montarOcorrencias, type Analise, type FiltroAnalise } from "@/components/psico-consolidacao/comum";
 import { useCanEdit, useIsAdmin } from "@/lib/hooks/useUsuario";
-import { useFontesDoGrupo, usePapeisEconomicos, usePsicoCatalogo, useSetoresDoGrupo } from "@/lib/hooks/usePsicoConsolidacao";
-import { documentosPadrao } from "@/lib/psico-consolidacao/fontes";
+import { useFontesDoGrupo, usePapeisEconomicos, usePsicoCatalogo, useSalvarSelecaoGrupo, useSetoresDoGrupo } from "@/lib/hooks/usePsicoConsolidacao";
+import { alternarDocumento as alternarNaSelecao, alternarEmpresa, documentosUsados, empresasAtivas, type SelecaoGrupo } from "@/lib/psico-consolidacao/selecao-grupo";
 import { montarEntrada } from "@/lib/psico-consolidacao/entrada";
 import { nomesDasEmpresas } from "@/lib/psico-consolidacao/consolidacao-grupo";
 import { consolidar } from "@/lib/psico-consolidacao/motor";
@@ -62,26 +62,34 @@ export default function PainelConsolidacao({
   const ehAdmin = useIsAdmin();
   const idGrupo = grupo.id_grupo;
   const [aba, setAba] = useState<Aba>("fontes");
-  const [escolhidos, setEscolhidos] = useState<Set<string> | null>(null);
+  // 0.3.297 (v361): empresas e documentos escolhidos ficam GRAVADOS no grupo (antes: só na tela). `selLocal` é a
+  // resposta imediata da tela enquanto a gravação volta; troca de grupo zera.
+  const [selLocal, setSelLocal] = useState<SelecaoGrupo | null>(null);
+  const selecao = useMemo<SelecaoGrupo>(
+    () => selLocal ?? { psico_empresas_fora: grupo.psico_empresas_fora ?? [], psico_documentos: grupo.psico_documentos ?? {} },
+    [selLocal, grupo.psico_empresas_fora, grupo.psico_documentos],
+  );
+  const salvarSelecao = useSalvarSelecaoGrupo();
   const [filtro, setFiltro] = useState<FiltroAnalise>(SEM_FILTRO);
   const [incluirTrivial, setIncluirTrivial] = useState(true);
 
   const idsVisiveis = useMemo(() => membros.filter((m) => m.visivel).map((m) => m.id_empresa), [membros]);
+  const idsAtivos = useMemo(() => empresasAtivas(idsVisiveis, selecao), [idsVisiveis, selecao]);
 
   const fontes = useFontesDoGrupo(idGrupo, idsVisiveis);
   const setores = useSetoresDoGrupo(idGrupo);
   const catalogo = usePsicoCatalogo();
   const papeis = usePapeisEconomicos(idsVisiveis);
 
-  // Grupo novo (ou empresas trocadas) → volta para os documentos padrão (o mais recente de cada tipo).
+  // Grupo novo (ou empresas trocadas) → limpa o filtro e a resposta local (a escolha gravada vale).
   const chaveEmpresas = idsVisiveis.join(",");
   useEffect(() => {
-    setEscolhidos(null);
+    setSelLocal(null);
     setFiltro(SEM_FILTRO);
   }, [idGrupo, chaveEmpresas]);
   const usados = useMemo(
-    () => escolhidos ?? documentosPadrao(fontes.data?.documentos ?? []),
-    [escolhidos, fontes.data],
+    () => documentosUsados(fontes.data?.documentos ?? [], idsAtivos, selecao),
+    [fontes.data, idsAtivos, selecao],
   );
   const linhas = useMemo(
     () => (fontes.data?.linhas ?? []).filter((l) => usados.has(l.idDocumento)),
@@ -98,7 +106,7 @@ export default function PainelConsolidacao({
       linhas,
       pendencias: fontes.data.pendencias.filter((p) => usados.has(p.idDocumento)),
       empresas: membros
-        .filter((m) => m.visivel && (comLinha.has(m.id_empresa) || papeis.data?.get(m.id_empresa)))
+        .filter((m) => idsAtivos.includes(m.id_empresa) && (comLinha.has(m.id_empresa) || papeis.data?.get(m.id_empresa)))
         .map((m) => ({ idEmpresa: m.id_empresa, nome: nomeEmpresa(m.id_empresa), papel: papeis.data?.get(m.id_empresa) ?? null })),
       fatores: catalogo.data.fatores,
       fatorDepara: catalogo.data.depara,
@@ -107,7 +115,7 @@ export default function PainelConsolidacao({
       setorDepara: setores.data.depara,
       aepIncluirTrivialBaixo: incluirTrivial,
     });
-  }, [fontes.data, catalogo.data, setores.data, grupo, linhas, usados, membros, papeis.data, nomeEmpresa, incluirTrivial]);
+  }, [fontes.data, catalogo.data, setores.data, grupo, linhas, usados, membros, idsAtivos, papeis.data, nomeEmpresa, incluirTrivial]);
   const resultado = useMemo(() => (montada ? consolidar(montada.entrada) : null), [montada]);
   const analise = useMemo<Analise | null>(() => {
     if (!montada || !resultado) return null;
@@ -127,13 +135,15 @@ export default function PainelConsolidacao({
     return (id: string) => m.get(id) ?? id;
   }, [catalogo.data]);
 
+  const gravar = (nova: SelecaoGrupo) => {
+    setSelLocal(nova);
+    salvarSelecao.mutate({ id_grupo: idGrupo, empresas_fora: nova.psico_empresas_fora ?? [], documentos: nova.psico_documentos ?? {} });
+  };
   const alternarDocumento = (id: string) =>
-    setEscolhidos(() => {
-      const novo = new Set(usados);
-      if (novo.has(id)) novo.delete(id);
-      else novo.add(id);
-      return novo;
-    });
+    gravar({ ...selecao, psico_documentos: alternarNaSelecao(fontes.data?.documentos ?? [], usados, selecao, id) });
+  const alternarEmpresaFora = (idEmpresa: string) =>
+    gravar({ ...selecao, psico_empresas_fora: alternarEmpresa(selecao, idEmpresa) });
+  const voltarAoPadrao = () => gravar({ psico_empresas_fora: [], psico_documentos: {} });
 
   return (
     <>
@@ -177,7 +187,7 @@ export default function PainelConsolidacao({
                 <BarraExportar
                   idGrupo={idGrupo}
                   rotulo={rotuloExportar}
-                  documentosEscolhidos={escolhidos ? [...escolhidos] : null}
+                  documentosEscolhidos={[...usados]}
                   incluirTrivial={incluirTrivial}
                   nomeCurto={nomeCurto}
                   dados={{
@@ -229,6 +239,10 @@ export default function PainelConsolidacao({
           fontes={fontes.data}
           escolhidos={usados}
           onAlternar={alternarDocumento}
+          fora={new Set(selecao.psico_empresas_fora ?? [])}
+          onAlternarEmpresa={alternarEmpresaFora}
+          temEscolha={(selecao.psico_empresas_fora?.length ?? 0) > 0 || Object.keys(selecao.psico_documentos ?? {}).length > 0}
+          onVoltarAoPadrao={voltarAoPadrao}
           podeEditar={podeEditar}
         />
       ) : aba === "setores" ? (
