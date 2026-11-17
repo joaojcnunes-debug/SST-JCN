@@ -15,6 +15,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
 import { mensagemErro } from "@/lib/errors";
 import type { GestaoSubtarefa } from "@/lib/hooks/useGestao";
+import { vemDoRunrun } from "@/lib/gestao/subtarefa-colunas";
 
 /** O que a lista mostra da janela (tarefa filha) de cada subtarefa. Horas vêm 'HH:MM:SS' do banco. */
 export interface JanelaSubtarefa {
@@ -141,7 +142,9 @@ export function useAlocarNaSubtarefa() {
       const sb = createSupabaseBrowserClient();
       const email = p.email.trim().toLowerCase();
       const daLinha = (p.responsavelLinha ?? "").trim().toLowerCase();
-      if (!p.idFilha) {
+      // 0.3.296 ("a janela vale"): na linha do Runrun sem janela, abre a janela (que nasce com todos os alocados do
+      // Runrun, v359) e ajusta nela — senão tirar alguém não teria efeito (os alocados do Runrun continuariam).
+      if (!p.idFilha && !vemDoRunrun(p.idSubtarefa)) {
         // sem janela: só existe o responsável da linha
         if (p.tirar) {
           if (daLinha !== email) return;

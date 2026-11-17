@@ -80,6 +80,9 @@ export function alocadosExibir(
 ): AlocadoSubtarefa[] {
   // 11/11/2026 (pedido do usuário: "se alocar mais de 1 funcionário apareça todos"): junta os alocados do Runrun, o
   // responsável da linha e os responsáveis da janela da subtarefa (tarefa filha), sem repetir a mesma pessoa.
+  // 0.3.296 (17/11/2026, decisão do usuário: "a janela vale"): com a janela da subtarefa aberta (`responsaveis` é uma
+  // lista), valem SÓ os responsáveis dela — tirar alguém na janela tira da lista, mesmo na linha do Runrun (antes a
+  // pessoa continuava pelos alocados do Runrun). Do Runrun fica só o "entregou" de quem continua lá.
   const out: AlocadoSubtarefa[] = [];
   const vistos = new Set<string>();
   const por = (a: AlocadoSubtarefa) => {
@@ -88,10 +91,19 @@ export function alocadosExibir(
     vistos.add(chave);
     out.push({ ...a, nome: (a.email && nomeDe(a.email)) || a.nome || a.email || "" });
   };
+  const doRunrun = Array.isArray(s.alocados) ? s.alocados.filter((a) => a && (a.email || a.nome)) : [];
+  if (Array.isArray(s.responsaveis)) {
+    const runrun = new Map(doRunrun.filter((a) => a.email).map((a) => [a.email!.trim().toLowerCase(), a]));
+    for (const e of s.responsaveis) {
+      if (typeof e !== "string" || !e) continue;
+      const r = runrun.get(e.trim().toLowerCase());
+      por({ email: e, nome: r?.nome || e, feito: r?.feito ?? false });
+    }
+    return out;
+  }
   // Só listas de verdade (12/11/2026: um cache trocado por objeto derrubou a tela com "not iterable").
-  for (const a of Array.isArray(s.alocados) ? s.alocados : []) if (a && (a.email || a.nome)) por(a);
+  for (const a of doRunrun) por(a);
   if (typeof s.responsavel_email === "string" && s.responsavel_email) por({ email: s.responsavel_email, nome: s.responsavel_email, feito: false });
-  for (const e of Array.isArray(s.responsaveis) ? s.responsaveis : []) if (typeof e === "string" && e) por({ email: e, nome: e, feito: false });
   return out;
 }
 

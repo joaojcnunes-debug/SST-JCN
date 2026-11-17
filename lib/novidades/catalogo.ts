@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-alocados-janela-vale",
+    data: "2026-11-17",
+    tipo: "correcao",
+    titulo: "Subtarefas: quem sai da subtarefa sai da coluna Alocados",
+    texto:
+      "Tirar uma pessoa na janela da subtarefa agora a tira também da coluna Alocados da tarefa, inclusive nas subtarefas " +
+      "vindas do Runrun. A coluna Alocados ganhou o × para tirar e o + Adicionar também nessas subtarefas.",
+    onde: "Gestão › tarefa › Subtarefas",
+    versoes: ["0.3.296"],
+  },
+  {
     id: "gestao-texto-grande-colado-vira-arquivo",
     data: "2026-11-17",
     tipo: "melhoria",

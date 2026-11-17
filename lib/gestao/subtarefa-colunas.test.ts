@@ -101,12 +101,22 @@ describe("alocadosExibir", () => {
       alocados: [], responsavel_email: "Ana@chabra.com.br", feito: false,
       responsaveis: ["ana@chabra.com.br", "isaac.melo@chabra.com.br", "bia@chabra.com.br"],
     }, nomeDe);
-    assert.deepEqual(r.map((a) => a.nome), ["Ana@chabra.com.br", "Isaac Melo (Gestão)", "bia@chabra.com.br"]);
+    assert.deepEqual(r.map((a) => a.nome), ["ana@chabra.com.br", "Isaac Melo (Gestão)", "bia@chabra.com.br"]);
     const rr = alocadosExibir({
       alocados: [{ email: "x@chabra.com.br", nome: "Xis", feito: true }], responsavel_email: null, feito: false,
       responsaveis: ["x@chabra.com.br", "y@chabra.com.br"],
     }, nomeDe);
     assert.deepEqual(rr.map((a) => [a.nome, a.feito]), [["Xis", true], ["y@chabra.com.br", false]]);
+  });
+  test("com a janela aberta vale a janela: quem saiu dela some, mesmo alocado no Runrun (0.3.296)", () => {
+    const r = alocadosExibir({
+      alocados: [{ email: "emilia@chabra.com.br", nome: "Emilia", feito: false }, { email: "paulina@chabra.com.br", nome: "Paulina", feito: true }],
+      responsavel_email: "emilia@chabra.com.br", feito: false,
+      responsaveis: ["paulina@chabra.com.br"],
+    }, nomeDe);
+    assert.deepEqual(r.map((a) => [a.nome, a.feito]), [["Paulina", true]]);
+    // janela aberta sem ninguém: ninguém (não volta a mostrar o Runrun)
+    assert.deepEqual(alocadosExibir({ alocados: [{ email: "emilia@chabra.com.br", nome: "Emilia", feito: false }], responsavel_email: null, feito: false, responsaveis: [] }, nomeDe), []);
   });
 });
 
