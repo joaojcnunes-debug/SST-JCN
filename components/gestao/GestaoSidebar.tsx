@@ -45,7 +45,7 @@ export default function GestaoSidebar({
   /** "Agenda" (10/11/2026): o que cada pessoa tem em cada dia, tarefas e subtarefas. */
   agendaAtiva?: boolean;
   onAgenda?: () => void;
-  /** "Colaboradores" (v235): só para gestor/supervisor — o servidor decide quem aparece. */
+  /** "Colaboradores" (v235/v358): dono da Gestão e perfil Admin veem todos; supervisor, as equipes dele — o servidor decide. */
   colabAtivo?: boolean;
   onColab?: () => void;
   mostrarColab?: boolean;
