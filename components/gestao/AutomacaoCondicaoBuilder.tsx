@@ -1,16 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, X, Check } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, X, Check, Loader2 } from "lucide-react";
 import {
   PRIORIDADES,
   type ClausulaCondicao, type CondicaoAutomacao, type GestaoStatus, type GestaoCampo, type GestaoQuadro,
 } from "@/lib/hooks/useGestao";
+import { clausulaPronta, condicaoParaGravar, SEM_VALOR } from "@/lib/gestao/automacao-condicao";
 
 // Construtor de condição E/OU. Buffer LOCAL (useState) para não bater no servidor a
 // cada tecla e não perder o caret; o pai remonta este componente por automação
 // (key={a.id}), então a inicialização é por-automação e um re-render de fundo do
-// modal NUNCA zera o rascunho (lição C13/F2.1.2). Commit explícito via "Aplicar".
+// modal NUNCA zera o rascunho (lição C13/F2.1.2).
+// 0.3.294 (17/11/2026): grava SOZINHA, como o resto da janela — sem o botão "Aplicar condição", que ficava
+// esquecido (a condição se perdia ao fechar). Listas e seleções gravam logo; o texto grava 0,6 s depois da última
+// tecla e ao sair do campo. Cláusula que ainda precisa de valor e está vazia não é gravada (uma regra ativa não
+// roda com a condição pela metade) e a tela avisa.
 
 const OPS: { value: string; label: string }[] = [
   { value: "=", label: "é igual a" },
@@ -23,7 +28,6 @@ const OPS: { value: string; label: string }[] = [
   { value: "nao_vazio", label: "não está vazio" },
 ];
 
-const SEM_VALOR = new Set(["vazio", "nao_vazio"]);
 
 const ORIGENS = [
   { value: "manual", label: "Criada à mão" },
@@ -63,6 +67,8 @@ export default function AutomacaoCondicaoBuilder({
   const [all, setAll] = useState<ClausulaCondicao[]>(() => condicao.all ?? []);
   const [any, setAny] = useState<ClausulaCondicao[]>(() => condicao.any ?? []);
   const [sujo, setSujo] = useState(false);
+  // Quanto esperar para gravar depois da última mudança: 0 nas listas, 600 ms no texto.
+  const espera = useRef(0);
 
   const camposSst: { value: string; label: string }[] = [
     { value: "empresa", label: "Empresa (nome)" },
@@ -101,6 +107,11 @@ export default function AutomacaoCondicaoBuilder({
     set((cs) => cs.map((c, j) => (j === i ? { ...c, ...patch } : c)));
     setSujo(true);
   }
+  /** Mudança vinda de digitação: espera a pessoa parar de digitar. */
+  function digitar(grupo: "all" | "any", i: number, valor: string) {
+    espera.current = 600;
+    editar(grupo, i, { valor });
+  }
   function adicionar(grupo: "all" | "any") {
     (grupo === "all" ? setAll : setAny)((cs) => [...cs, clausulaVazia(sst)]);
     setSujo(true);
@@ -110,19 +121,26 @@ export default function AutomacaoCondicaoBuilder({
     setSujo(true);
   }
 
+  // Só grava quando o que vai para o banco mudou (completar o valor de uma cláusula vazia, por exemplo).
+  const gravada = useRef(JSON.stringify(condicaoParaGravar(condicao.all ?? [], condicao.any ?? [])));
   function aplicar() {
-    const limpa = (cs: ClausulaCondicao[]) =>
-      cs.filter((c) => c.campo).map((c) => ({ campo: c.campo, op: c.op || "=", valor: SEM_VALOR.has(c.op) ? "" : c.valor ?? "" }));
-    const allL = limpa(all);
-    const anyL = limpa(any);
-    const cond: CondicaoAutomacao = {};
-    if (allL.length) cond.all = allL;
-    if (anyL.length) cond.any = anyL;
-    // sem cláusulas: mantém o caminho E/OU ligado (all vazio = casa sempre no motor)
-    if (!allL.length && !anyL.length) cond.all = [];
-    onAplicar(cond);
+    const cond = condicaoParaGravar(all, any);
+    const json = JSON.stringify(cond);
+    if (json !== gravada.current) {
+      gravada.current = json;
+      onAplicar(cond);
+    }
     setSujo(false);
   }
+  const refAplicar = useRef(aplicar);
+  refAplicar.current = aplicar;
+  useEffect(() => {
+    if (!sujo || disabled) return;
+    const t = setTimeout(() => refAplicar.current(), espera.current);
+    espera.current = 0;
+    return () => clearTimeout(t);
+  }, [all, any, sujo, disabled]);
+  const faltaValor = [...all, ...any].some((c) => !clausulaPronta(c));
 
   function valorWidget(grupo: "all" | "any", i: number, c: ClausulaCondicao) {
     if (SEM_VALOR.has(c.op)) return null;
@@ -166,8 +184,9 @@ export default function AutomacaoCondicaoBuilder({
       );
     }
     return (
-      <input value={c.valor} disabled={disabled} onChange={(e) => editar(grupo, i, { valor: e.target.value })}
-        placeholder={c.op === "in" ? "a, b, c" : "valor"} className={`${sel} min-w-[8rem]`} />
+      <input value={c.valor} disabled={disabled} onChange={(e) => digitar(grupo, i, e.target.value)}
+        onBlur={() => { if (sujo) aplicar(); }}
+        placeholder={c.op === "in" ? "a, b, c" : "valor"} className={`${sel} min-w-[8rem] ${!clausulaPronta(c) ? "border-amber-300" : ""}`} />
     );
   }
 
@@ -206,12 +225,14 @@ export default function AutomacaoCondicaoBuilder({
       {grupoUI("all", all, "TODAS (E)", "todas as cláusulas precisam casar")}
       {grupoUI("any", any, "QUALQUER (OU)", "ao menos uma precisa casar")}
       {!disabled && (
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={aplicar} disabled={!sujo} className="inline-flex items-center gap-1 rounded-md bg-marca-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-marca-dark disabled:opacity-50">
-            <Check className="size-3.5" /> Aplicar condição
-          </button>
-          {sujo && <span className="text-[11px] text-amber-600">alterações não aplicadas</span>}
-        </div>
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+          {sujo ? (
+            <span className="inline-flex items-center gap-1 text-gray-500"><Loader2 className="size-3.5 animate-spin" /> Salvando…</span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-marca-primary"><Check className="size-3.5" /> Condição salva automaticamente</span>
+          )}
+          {faltaValor && <span className="text-amber-700">Cláusula sem valor ainda não vale: escolha ou digite o valor.</span>}
+        </p>
       )}
     </div>
   );

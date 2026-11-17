@@ -4,7 +4,7 @@ import Dica from "@/components/ui/Dica";
 import { DICAS_GESTAO_AUTOMACAO } from "@/lib/dicas/gestao";
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { AlertTriangle, ArrowDown, ArrowUp, BookOpen, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Filter, History, Plus, Trash2, UserCog, Workflow, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, BookOpen, ChevronDown, ChevronRight, Check, ChevronsDownUp, ChevronsUpDown, Filter, History, Pencil, Plus, Trash2, UserCog, Workflow, X } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { confirmar } from "@/components/ui/confirm";
 import AutomacaoCondicaoBuilder from "@/components/gestao/AutomacaoCondicaoBuilder";
@@ -156,7 +156,14 @@ export default function AutomacoesManagerModal({
   const dia = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 
   return (
-    <Modal open={open} onClose={onClose} title="Automações" size="quadrado">
+    <Modal open={open} onClose={onClose} title="Automações" size="quadrado"
+      footer={
+        // 0.3.294: tudo grava sozinho ao mudar cada campo; o botão só fecha (e deixa isso claro).
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1 text-xs text-gray-500"><Check className="size-3.5 text-marca-primary" /> As alterações são salvas automaticamente, campo a campo.</span>
+          <button type="button" onClick={onClose} className="rounded-lg bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-dark">Concluir</button>
+        </div>
+      }>
       <div className="mb-3 flex gap-1 border-b border-gray-100">
         {([["regras", "Regras", Workflow], ["produtos", "Funcionários por produto", UserCog], ["historico", "Histórico", History]] as const).map(([k, rot, Icone]) => (
           <button key={k} type="button" onClick={() => setAba(k)}
@@ -225,6 +232,11 @@ export default function AutomacoesManagerModal({
                 {!aberta && <span className="mt-0.5 line-clamp-2 pl-5 text-xs text-gray-500">{resumo}</span>}
               </button>
               <span className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${a.ativo && completa ? "bg-marca-light text-marca-primary" : "bg-gray-100 text-gray-500"}`}>{a.ativo && completa ? "Ativa" : "Desligada"}</span>
+              {/* 0.3.294: "Editar" à vista (antes só clicando no nome). */}
+              <button type="button" onClick={() => alternar(a.id)}
+                className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium text-marca-primary ring-1 ring-marca-primary/30 hover:bg-marca-light/40">
+                {aberta ? <><ChevronDown className="size-3" /> Fechar</> : <><Pencil className="size-3" /> {podeEditar ? "Editar" : "Ver"}</>}
+              </button>
               {podeEditar && (
                 <span className="flex shrink-0 items-center">
                   <button type="button" title="Rodar antes" disabled={idx === 0 || reordenar.isPending} onClick={() => moverRegra(idx, -1)} className="rounded p-1 text-gray-300 hover:text-gray-600 disabled:opacity-30"><ArrowUp className="size-3.5" /></button>
