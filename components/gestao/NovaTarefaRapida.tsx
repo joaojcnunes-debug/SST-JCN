@@ -5,12 +5,33 @@ import toast from "react-hot-toast";
 import { Plus, X, Loader2 } from "lucide-react";
 import { useUserStore } from "@/lib/store";
 import { useSalvarTarefa, useRegistrarAtividade, type PrioridadeTarefa, type StatusTarefa } from "@/lib/hooks/useGestao";
+import { REGIOES, comRegiao } from "@/lib/gestao/regiao-produtos";
+
+// 17/11/2026 (pedido do usuário): Região obrigatória em toda tarefa. A última escolhida fica lembrada neste navegador,
+// para criar várias da mesma unidade em sequência sem escolher de novo.
+const CHAVE_REGIAO = "gestao:nova-rapida:regiao";
+const lerRegiao = () => {
+  try {
+    const r = localStorage.getItem(CHAVE_REGIAO) ?? "";
+    return REGIOES.some((x) => x.tag === r) ? r : "";
+  } catch {
+    return "";
+  }
+};
+const guardarRegiao = (r: string) => {
+  try {
+    localStorage.setItem(CHAVE_REGIAO, r);
+  } catch {
+    /* sem armazenamento: vale só nesta visita */
+  }
+};
 
 /**
  * "+ Adicionar tarefa" no pé da coluna do quadro (como no Trello): escreve o título, Enter cria a tarefa
  * ali mesmo, sem abrir a janela, e a caixa continua aberta para a próxima. Esc ou X fecha.
  * Grava do mesmo jeito que a janela "Nova tarefa" (useSalvarTarefa + "criada" no histórico), então as
  * automações de tarefa criada rodam no banco igual. Os outros campos ficam para quando abrir a tarefa.
+ * 17/11/2026: a Região é obrigatória também aqui (seletor embaixo do título).
  */
 export default function NovaTarefaRapida({ idQuadro, status, prioridade, ordem }: {
   idQuadro: string;
@@ -22,6 +43,8 @@ export default function NovaTarefaRapida({ idQuadro, status, prioridade, ordem }
 }) {
   const [aberto, setAberto] = useState(false);
   const [titulo, setTitulo] = useState("");
+  const [regiao, setRegiao] = useState(lerRegiao);
+  const regiaoRef = useRef<HTMLSelectElement>(null);
   const salvar = useSalvarTarefa();
   const registrarAtiv = useRegistrarAtividade();
   const userNome = useUserStore((s) => s.user?.nome ?? null);
@@ -35,8 +58,13 @@ export default function NovaTarefaRapida({ idQuadro, status, prioridade, ordem }
   async function criar() {
     const t = titulo.trim();
     if (!t || salvar.isPending) return;
+    if (!regiao) {
+      toast.error("Escolha a Região da tarefa.");
+      regiaoRef.current?.focus();
+      return;
+    }
     try {
-      const id = await salvar.mutateAsync({ id_quadro: idQuadro, titulo: t, status, prioridade: prioridade ?? "Media", ordem });
+      const id = await salvar.mutateAsync({ id_quadro: idQuadro, titulo: t, status, prioridade: prioridade ?? "Media", ordem, etiquetas: comRegiao([], regiao) });
       registrarAtiv.mutate({ id_tarefa: id, ator: userNome, eventos: [{ acao: "criada" }] });
       setTitulo("");
       toast.success("Tarefa criada");
@@ -72,17 +100,39 @@ export default function NovaTarefaRapida({ idQuadro, status, prioridade, ordem }
           if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); criar(); }
           else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); fechar(); }
         }}
-        // Clicou fora sem escrever nada: fecha, como no Trello. Com texto, a caixa fica (nada se perde).
-        onBlur={() => { if (!titulo.trim() && !salvar.isPending) setAberto(false); }}
+        // Clicou fora sem escrever nada: fecha, como no Trello. Com texto, a caixa fica (nada se perde). Ir para a Região
+        // (o seletor logo abaixo) não conta como sair.
+        onBlur={(e) => { if (e.relatedTarget !== regiaoRef.current && !titulo.trim() && !salvar.isPending) setAberto(false); }}
         placeholder="Título da tarefa…"
         aria-label="Título da nova tarefa"
         className="w-full resize-none rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm shadow-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:opacity-60"
       />
+      <select
+        ref={regiaoRef}
+        value={regiao}
+        disabled={salvar.isPending}
+        required
+        aria-required
+        aria-invalid={!regiao}
+        aria-label="Região da nova tarefa (obrigatória)"
+        onChange={(e) => {
+          setRegiao(e.target.value);
+          guardarRegiao(e.target.value);
+          requestAnimationFrame(() => caixaRef.current?.focus());
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); fechar(); }
+        }}
+        className={`w-full rounded-lg border bg-white px-2 py-1.5 text-xs shadow-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:opacity-60 ${regiao ? "border-gray-300 text-gray-700" : "border-red-300 text-red-700"}`}
+      >
+        <option value="">Região (obrigatória)…</option>
+        {REGIOES.map((r) => <option key={r.tag} value={r.tag}>{r.label}</option>)}
+      </select>
       <div className="flex items-center gap-1.5">
         <button
           type="button"
           onClick={criar}
-          disabled={!titulo.trim() || salvar.isPending}
+          disabled={!titulo.trim() || !regiao || salvar.isPending}
           className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
         >
           {salvar.isPending && <Loader2 className="size-3.5 animate-spin" />} Adicionar

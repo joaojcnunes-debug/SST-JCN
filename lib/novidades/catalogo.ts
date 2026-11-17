@@ -41,6 +41,22 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-regiao-obrigatoria-filtro-subtarefas",
+    data: "2026-11-17",
+    tipo: "melhoria",
+    titulo: "Gestão: Região obrigatória e filtro nas subtarefas",
+    texto:
+      "Toda tarefa agora precisa de Região: na janela da tarefa o campo fica sempre à vista, marcado com asterisco, e o " +
+      "Salvar/Criar avisa se faltar; no \"+ Adicionar tarefa\" do pé da coluna há um seletor de Região, que lembra a última " +
+      "escolhida. Na aba Subtarefas, ao lado do Buscar, entrou o filtro por Situação (abertas, concluídas, atrasadas), " +
+      "Status e Alocado, que vale junto com a busca.",
+    onde: "Gestão › janela da tarefa e quadro",
+    impacto:
+      "Tarefa antiga sem Região pede a Região ao ser salva pela janela. Arrastar o cartão, automações e a sincronização " +
+      "do Runrun não mudam. Subtarefa não tem Região.",
+    versoes: ["0.3.291"],
+  },
+  {
     id: "conciliacao-grupo-comercial",
     data: "2026-11-16",
     tipo: "novidade",

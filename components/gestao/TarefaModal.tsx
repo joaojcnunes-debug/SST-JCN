@@ -9,7 +9,7 @@ import {
   ImagePlus, ClipboardPaste,
   Columns3, ArrowRightLeft, UserRound, Flag, Tag, CalendarDays, CalendarCheck, Repeat, Clock, Users, Gauge, List, Link2,
   PanelRightClose, PanelRightOpen, MapPin, Package, ListChecks, Timer, Hourglass, Building2, ExternalLink, LayoutTemplate,
-  CheckCircle2, AlertCircle, type LucideIcon,
+  CheckCircle2, AlertCircle, ListFilter, type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
@@ -62,6 +62,7 @@ import AvatarPessoa from "@/components/gestao/AvatarPessoa";
 import {
   alocadosExibir, entregaAtrasada, etapaExibir, fmtDataDesejada, fmtHorasTrabalhadas, progressoExibir,
   vemDoRunrun, etapaDaLinha, erroDatasSubtarefa, subtarefaCasaBusca,
+  subtarefaPassaFiltro, filtroSubtarefasAtivo, chaveAlocado, FILTRO_SUBTAREFAS_VAZIO, type FiltroSubtarefas, type SituacaoSubtarefa,
 } from "@/lib/gestao/subtarefa-colunas";
 import {
   useAtualizarSubtarefa, useAdicionarSubtarefas, useExcluirSubtarefa, useCriarSubtarefaComJanela, useAtualizarJanelaSubtarefa,
@@ -126,12 +127,14 @@ const DICA_DA_LINHA: Record<string, keyof typeof DICAS_GESTAO_TAREFA> = {
   termino: "termino", recorrencia: "recorrencia", seguidores: "seguidores", pontos: "pontos",
 };
 
-function LinhaCampo({ icone: Icone, rotulo, campo, largo = false, children }: {
+function LinhaCampo({ icone: Icone, rotulo, campo, largo = false, obrigatorio = false, children }: {
   icone: LucideIcon;
   rotulo: string;
   /** Chave da linha: o "Adicionar" põe o cursor no primeiro campo dela. */
   campo?: string;
   largo?: boolean;
+  /** 17/11/2026: o campo precisa estar preenchido para salvar (asterisco vermelho). */
+  obrigatorio?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -139,9 +142,17 @@ function LinhaCampo({ icone: Icone, rotulo, campo, largo = false, children }: {
       <div className={`flex min-w-0 items-center gap-2 text-sm font-medium text-gray-600 ${largo ? "mb-1.5" : "w-32 shrink-0 pt-1.5"}`}>
         <Icone className="size-4 shrink-0 text-gray-400" aria-hidden />
         {campo && DICA_DA_LINHA[campo] ? (
-          <Dica texto={DICAS_GESTAO_TAREFA[DICA_DA_LINHA[campo]]}><span className="truncate">{rotulo}</span></Dica>
+          <Dica texto={DICAS_GESTAO_TAREFA[DICA_DA_LINHA[campo]]}>
+            <span className="truncate">
+              {rotulo}
+              {obrigatorio && <span className="ml-0.5 text-red-600" aria-hidden>*</span>}
+            </span>
+          </Dica>
         ) : (
-          <span className="truncate" title={rotulo}>{rotulo}</span>
+          <span className="truncate" title={obrigatorio ? `${rotulo} (obrigatório)` : rotulo}>
+            {rotulo}
+            {obrigatorio && <span className="ml-0.5 text-red-600" aria-hidden>*</span>}
+          </span>
         )}
       </div>
       <div className="min-w-0 flex-1">{children}</div>
@@ -319,6 +330,9 @@ export default function TarefaModal({
   const [subtarefas, setSubtarefas] = useState<(Subtarefa & { id?: string })[]>([]);
   const [novaSub, setNovaSub] = useState("");
   const [buscaSub, setBuscaSub] = useState("");
+  // 17/11/2026 (pedido do usuário): filtro da aba Subtarefas, ao lado do Buscar.
+  const [filtroSub, setFiltroSub] = useState<FiltroSubtarefas>(FILTRO_SUBTAREFAS_VAZIO);
+  const filtroSubAtivo = filtroSubtarefasAtivo(filtroSub);
   const [valoresCampos, setValoresCampos] = useState<Record<string, unknown>>({});
   // Campos como vieram na abertura: ao salvar, só vai o que a pessoa mudou (diff contra isto),
   // para não regravar por cima do que uma automação escreveu enquanto a janela estava aberta.
@@ -402,6 +416,7 @@ export default function TarefaModal({
     setSubtarefas(tarefa?.subtarefas ?? []);
     setNovaSub("");
     setBuscaSub("");
+    setFiltroSub(FILTRO_SUBTAREFAS_VAZIO);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, idAberta]);
 
@@ -505,7 +520,7 @@ export default function TarefaModal({
   const itensOrdemSub = useMemo(() => subtarefas.map((s, i) => ({ id: chaveSub(s, i), s })), [subtarefas]);
   const ordemSub = useListaReordenavel({
     itens: itensOrdemSub,
-    habilitado: !ro && !buscaSub.trim() && subtarefas.length > 1,
+    habilitado: !ro && !buscaSub.trim() && !filtroSubAtivo && subtarefas.length > 1,
     aoReordenar: (novos) => setSubtarefas(novos.map((x) => x.s)),
     aoSalvar: subAoVivo && tarefa
       ? (novos) => reordenarSubs.mutate({ id_tarefa: tarefa.id_tarefa, ids: novos.flatMap((x) => (x.s.id ? [x.s.id] : [])) })
@@ -689,6 +704,14 @@ export default function TarefaModal({
   async function handleSalvar() {
     if (!titulo.trim()) {
       toast.error(ehSub ? "Informe o título da subtarefa." : "Informe o título da tarefa.");
+      return;
+    }
+    // 17/11/2026 (pedido do usuário): Região obrigatória em toda tarefa (a subtarefa não tem Região).
+    if (!ehSub && !regiaoDasEtiquetas(etiquetas)) {
+      toast.error("Escolha a Região da tarefa.");
+      setAba("detalhes");
+      setPainelAberto(true);
+      requestAnimationFrame(() => painelRef.current?.querySelector<HTMLElement>('[data-campo="regiao"] select')?.focus());
       return;
     }
     if (horaInicio && horaFim && dataInicio && dataInicio === prazo && horaFim < horaInicio) {
@@ -1002,25 +1025,39 @@ export default function TarefaModal({
   const passouEstimativa = estimadoAtual > 0 && gastoSeg > estimadoAtual * 60;
   const feitas = subtarefas.filter((s) => s.feito).length;
   // 13/11/2026: busca da aba Subtarefas, nas colunas Título, Prioridade, Etapa, Status e Alocados (as da imagem do
-  // pedido). null = sem busca; senão, as chaves das linhas que casam.
+  // pedido). 17/11/2026: e o filtro (Situação, Status, Alocado), que vale junto. null = sem busca nem filtro; senão,
+  // as chaves das linhas que passam.
   const termoSub = buscaSub.trim();
-  const achadasSub = termoSub
-    ? new Set(subtarefas.flatMap((s, i) => {
-        const db = s.id ? subPorId.get(s.id) : undefined;
-        const janela = db?.id_tarefa_filha ? janelas?.[db.id_tarefa_filha] : undefined;
-        const statusLinha = s.id ? etapaDaLinha(s.feito, janela?.status, statuses) : null;
-        const alocados = alocadosExibir({
-          alocados: db?.alocados, responsavel_email: s.responsavel_email, feito: s.feito,
-          responsaveis: db?.id_tarefa_filha ? respJanelas?.[db.id_tarefa_filha] : null,
-        }, nomeDe);
+  const linhasSub = subtarefas.map((s, i) => {
+    const db = s.id ? subPorId.get(s.id) : undefined;
+    const janela = db?.id_tarefa_filha ? janelas?.[db.id_tarefa_filha] : undefined;
+    const statusLinha = s.id ? etapaDaLinha(s.feito, janela?.status, statuses) : null;
+    const alocados = alocadosExibir({
+      alocados: db?.alocados, responsavel_email: s.responsavel_email, feito: s.feito,
+      responsaveis: db?.id_tarefa_filha ? respJanelas?.[db.id_tarefa_filha] : null,
+    }, nomeDe);
+    const naLinha = subAoVivo && !!s.id && !vemDoRunrun(s.id);
+    const atrasada = entregaAtrasada(db?.entrega_desejada, s.feito)
+      || (naLinha && !!janela?.prazo && janela.prazo < isoLocal(new Date()) && !s.feito);
+    return { s, chave: chaveSub(s, i), db, janela, statusLinha, alocados, atrasada };
+  });
+  // As opções do filtro: só os status e as pessoas que aparecem nas subtarefas desta tarefa.
+  const statusNasSubs = [...new Set(linhasSub.map((l) => l.statusLinha).filter((x): x is string => !!x))]
+    .sort((a, b) => (statuses.find((x) => x.slug === a)?.ordem ?? 0) - (statuses.find((x) => x.slug === b)?.ordem ?? 0));
+  const alocadosNasSubs = [...new Map(linhasSub.flatMap((l) => l.alocados).map((a) => [chaveAlocado(a), a.nome])).entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], "pt-BR"));
+  const achadasSub = termoSub || filtroSubAtivo
+    ? new Set(linhasSub.flatMap((l) => {
+        const passaFiltro = subtarefaPassaFiltro(filtroSub, { feito: l.s.feito, atrasada: l.atrasada, status: l.statusLinha, alocados: l.alocados });
+        if (!passaFiltro) return [];
         const colunas = [
-          s.texto,
-          PRIORIDADES.find((p) => p.value === janela?.prioridade)?.label,
-          db ? etapaExibir({ ...db, feito: s.feito }, statuses)?.nome : null,
-          statusLinha ? nomeStatus(statusLinha) : null,
-          ...alocados.map((a) => a.nome),
+          l.s.texto,
+          PRIORIDADES.find((p) => p.value === l.janela?.prioridade)?.label,
+          l.db ? etapaExibir({ ...l.db, feito: l.s.feito }, statuses)?.nome : null,
+          l.statusLinha ? nomeStatus(l.statusLinha) : null,
+          ...l.alocados.map((a) => a.nome),
         ];
-        return subtarefaCasaBusca(termoSub, colunas) ? [chaveSub(s, i)] : [];
+        return subtarefaCasaBusca(termoSub, colunas) ? [l.chave] : [];
       }))
     : null;
 
@@ -1369,6 +1406,49 @@ export default function TarefaModal({
                 )}
               </div>
             )}
+            {/* 17/11/2026 (pedido do usuário): filtro ao lado do Buscar. Vale junto com a busca. */}
+            {subtarefas.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filtrar as subtarefas">
+                <ListFilter aria-hidden className="size-3.5 text-gray-400" />
+                <select
+                  value={filtroSub.situacao}
+                  onChange={(e) => setFiltroSub((f) => ({ ...f, situacao: e.target.value as SituacaoSubtarefa }))}
+                  aria-label="Situação da subtarefa"
+                  className={`rounded-md border bg-white py-1 pl-2 pr-6 text-xs focus:border-marca-primary focus:outline-none ${filtroSub.situacao ? "border-marca-primary text-marca-primary" : "border-gray-200 text-gray-700"}`}
+                >
+                  <option value="">Situação: todas</option>
+                  <option value="abertas">Abertas</option>
+                  <option value="concluidas">Concluídas</option>
+                  <option value="atrasadas">Atrasadas</option>
+                </select>
+                {statusNasSubs.length > 0 && (
+                  <select
+                    value={filtroSub.status}
+                    onChange={(e) => setFiltroSub((f) => ({ ...f, status: e.target.value }))}
+                    aria-label="Status da subtarefa"
+                    className={`rounded-md border bg-white py-1 pl-2 pr-6 text-xs focus:border-marca-primary focus:outline-none ${filtroSub.status ? "border-marca-primary text-marca-primary" : "border-gray-200 text-gray-700"}`}
+                  >
+                    <option value="">Status: todos</option>
+                    {statusNasSubs.map((slug) => <option key={slug} value={slug}>{nomeStatus(slug)}</option>)}
+                  </select>
+                )}
+                <select
+                  value={filtroSub.alocado}
+                  onChange={(e) => setFiltroSub((f) => ({ ...f, alocado: e.target.value }))}
+                  aria-label="Alocado na subtarefa"
+                  className={`max-w-48 rounded-md border bg-white py-1 pl-2 pr-6 text-xs focus:border-marca-primary focus:outline-none ${filtroSub.alocado ? "border-marca-primary text-marca-primary" : "border-gray-200 text-gray-700"}`}
+                >
+                  <option value="">Alocado: todos</option>
+                  {alocadosNasSubs.map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}
+                  <option value="ninguem">Sem alocado</option>
+                </select>
+                {filtroSubAtivo && (
+                  <button type="button" onClick={() => setFiltroSub(FILTRO_SUBTAREFAS_VAZIO)} className="text-xs font-medium text-marca-primary hover:underline">
+                    Limpar filtro
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           <div className="space-y-1.5 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-1.5 lg:space-y-0">
             {/* v357: colunas como a lista de subtarefas do Runrun (Etapa, Alocados, Horas trabalhadas, Progresso, Início
@@ -1401,7 +1481,9 @@ export default function TarefaModal({
                   <tbody {...ordemSub.propsContainer()}>
                     {achadasSub?.size === 0 && (
                       <tr>
-                        <td colSpan={ro ? 11 : 12} className="px-3 py-6 text-center text-xs text-gray-500">Nenhuma subtarefa com &quot;{termoSub}&quot;.</td>
+                        <td colSpan={ro ? 11 : 12} className="px-3 py-6 text-center text-xs text-gray-500">
+                          {termoSub ? <>Nenhuma subtarefa com &quot;{termoSub}&quot;{filtroSubAtivo ? " neste filtro" : ""}.</> : "Nenhuma subtarefa neste filtro."}
+                        </td>
                       </tr>
                     )}
                     {subtarefas.map((s, i) => {
@@ -1832,13 +1914,24 @@ export default function TarefaModal({
             <>
               {/* Região e Produtos (0.3.269 = Painel 0.3.908), iguais ao formulário do Comercial, em todas as listas. A Região
                   grava a etiqueta da unidade; Produtos grava o campo da lista Comercial. */}
-              <LinhaCampo icone={MapPin} rotulo="Região" campo="regiao">
-                {campoOuAdicionar("regiao", !!regiao, "Região", () => (
-                  <select value={regiao ?? ""} disabled={ro} onChange={(e) => setEtiquetas((s) => comRegiao(s, e.target.value || null))} aria-label="Região" className={`${caixaPainel} w-full`}>
+              {/* 0.3.291 (= Painel 0.3.984, 17/11/2026): Região obrigatória — sempre à vista, sem o "Adicionar". */}
+              <LinhaCampo icone={MapPin} rotulo="Região" campo="regiao" obrigatorio={!ro}>
+                {ro && !regiao ? <SemValor /> : (
+                  <select
+                    value={regiao ?? ""}
+                    disabled={ro}
+                    required
+                    aria-required
+                    aria-invalid={!regiao}
+                    onChange={(e) => setEtiquetas((s) => comRegiao(s, e.target.value || null))}
+                    aria-label="Região (obrigatória)"
+                    className={`${caixaPainel} w-full ${!regiao ? "border-red-300 bg-red-50/40" : ""}`}
+                  >
                     <option value="">Selecione…</option>
                     {REGIOES.map((r) => <option key={r.tag} value={r.tag}>{r.label}</option>)}
                   </select>
-                ))}
+                )}
+                {!ro && !regiao && <p className="mt-0.5 text-[11px] text-red-600">Obrigatória para salvar.</p>}
               </LinhaCampo>
               <LinhaCampo icone={Package} rotulo="Produtos" campo="produtos">
                 <ListaSuspensaMultipla
