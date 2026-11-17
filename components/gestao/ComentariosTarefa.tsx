@@ -8,8 +8,10 @@ import { resumirComentariosIa, useAnexos, usePessoasMencao, usePessoasDoQuadro }
 import { mencionados, partesComMencoes, mencaoEmDigitacao, sugestoesMencao, inserirMencao, pessoasParaSugerir, type PessoaMencao } from "@/lib/gestao/mencoes";
 import { dataHora, quandoComentario, ehMeuComentario } from "@/lib/gestao/comentarios-chat";
 import { useColarImagens } from "@/lib/hooks/useImagensCartao";
-import { separarImagens, TEXTO_SO_IMAGEM } from "@/lib/gestao/imagens-cartao";
+import { separarImagens, TEXTO_SO_ARQUIVO, TEXTO_SO_IMAGEM } from "@/lib/gestao/imagens-cartao";
 import { ImagemAmpliada, MiniaturaRascunho, MiniaturaSalva, type Ampliada } from "@/components/gestao/ImagensCartao";
+import { CartaoTextoRascunho, CartaoTextoSalvo, TextoAmpliado, type TextoAberto } from "@/components/gestao/TextoColado";
+import { arquivoDeTexto, ehTexto, textoGrande } from "@/lib/gestao/texto-colado";
 import { MIN_COMENTARIOS_RESUMO, type ResumoIa } from "@/lib/gestao/ia-resumo";
 import { useTarefaHistorico } from "@/lib/hooks/useTarefaHistorico";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
@@ -102,6 +104,8 @@ export default function ComentariosTarefa({
   const { data: anexos = [] } = useAnexos(idTarefa);
   const { porComentario } = separarImagens(anexos);
   const [ampliada, setAmpliada] = useState<Ampliada | null>(null);
+  // 0.3.295: texto grande colado vira .txt (cartão no rascunho e na conversa; abre inteiro numa janela).
+  const [textoAberto, setTextoAberto] = useState<TextoAberto | null>(null);
   const caixaRef = useRef<HTMLDivElement>(null);
   const arquivoRef = useRef<HTMLInputElement>(null);
   const listaRef = useRef<HTMLDivElement>(null);
@@ -316,7 +320,7 @@ export default function ComentariosTarefa({
                     <span className="font-bold text-gray-800">{item.ator ?? "—"}</span>
                     <span className="text-gray-400" title={dataHora(item.created_at)}>{quandoComentario(item.created_at, agora)}</span>
                   </p>
-                  {!(item.texto === TEXTO_SO_IMAGEM && porComentario.has(idComentario)) && (
+                  {!((item.texto === TEXTO_SO_IMAGEM || item.texto === TEXTO_SO_ARQUIVO) && porComentario.has(idComentario)) && (
                     <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-gray-800">
                       {partesComMencoes(item.texto ?? "", pessoasMencao).map((p, i) =>
                         p.pessoa ? (
@@ -329,7 +333,9 @@ export default function ComentariosTarefa({
                   )}
                   {(porComentario.get(idComentario) ?? []).length > 0 && (
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {porComentario.get(idComentario)!.map((a) => (
+                      {porComentario.get(idComentario)!.map((a) => ehTexto(a) ? (
+                        <CartaoTextoSalvo key={a.id} anexo={a} onVer={() => setTextoAberto({ anexo: a })} />
+                      ) : (
                         <MiniaturaSalva key={a.id} anexo={a} onAbrir={() => setAmpliada({ anexo: a })} />
                       ))}
                     </div>
@@ -399,7 +405,14 @@ export default function ComentariosTarefa({
         )}
         {imagensRascunho.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-2">
-            {imagensRascunho.map((f, i) => (
+            {imagensRascunho.map((f, i) => ehTexto(f) ? (
+              <CartaoTextoRascunho key={`${i}-${f.name}`} arquivo={f} onVer={() => setTextoAberto({ arquivo: f })} onTirar={() => onTirarImagem?.(i)}
+                onColarComoTexto={(t) => {
+                  onTirarImagem?.(i);
+                  const c = inputRef.current?.selectionStart ?? novoComentario.length;
+                  setNovoComentario(novoComentario.slice(0, c) + t + novoComentario.slice(c));
+                }} />
+            ) : (
               <MiniaturaRascunho key={`${i}-${f.name}`} arquivo={f} pequena onAbrir={() => setAmpliada({ arquivo: f })} onTirar={() => onTirarImagem?.(i)} />
             ))}
           </div>
@@ -417,6 +430,18 @@ export default function ComentariosTarefa({
               aria-label="Escrever um comentário"
               onChange={(e) => { setNovoComentario(e.target.value); setCursor(e.target.selectionStart ?? e.target.value.length); }}
               onSelect={(e) => setCursor(e.currentTarget.selectionStart ?? 0)}
+              onPaste={(e) => {
+                // 0.3.295: texto grande (mais de 2.000 caracteres ou 30 linhas) não entra na caixa: vira um .txt que vai
+                // junto com o comentário, como no Discord. Imagem colada segue o caminho de sempre (e o Word/Excel, que
+                // mandam uma imagem junto com o texto, contam como texto — a mesma regra de colarComoImagem).
+                if (!onAdicionarImagens) return;
+                const t = e.clipboardData?.getData("text/plain") ?? "";
+                if (!textoGrande(t)) return;
+                e.preventDefault();
+                const jaTem = imagensRascunho.filter((f) => ehTexto(f)).length;
+                onAdicionarImagens([arquivoDeTexto(t, new Date(), jaTem + 1)]);
+                toast.success("Texto grande colado como arquivo .txt — vai junto com o comentário.");
+              }}
               onFocus={() => { setFocado(true); setAberto(null); }}
               onBlur={() => setFocado(false)}
               onKeyDown={(e) => {
@@ -593,6 +618,7 @@ export default function ComentariosTarefa({
         </div>
       )}
       <ImagemAmpliada imagem={ampliada} onClose={() => setAmpliada(null)} />
+      <TextoAmpliado fonte={textoAberto} onClose={() => setTextoAberto(null)} />
     </div>
   );
 }

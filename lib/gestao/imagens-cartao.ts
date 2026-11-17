@@ -6,6 +6,8 @@
 // comentário é. As demais imagens do cartão ficam DENTRO da descrição (lib/gestao/descricao-imagens.ts, desde o 2º
 // pedido de 12/11: nada embaixo dela); todas continuam na aba Anexos.
 
+import { ehTexto } from "@/lib/gestao/texto-colado";
+
 export interface AnexoImagem {
   id: string;
   nome: string;
@@ -25,13 +27,16 @@ export function comentarioDoCaminho(path: string): string | null {
   return m ? m[1] : null;
 }
 
-/** Imagens do cartão (sem comentário) e as de cada comentário. Anexo que não é imagem fica de fora (aba Anexos). */
+/**
+ * Imagens do cartão (sem comentário) e os arquivos de cada comentário. Anexo do cartão que não é imagem fica de fora
+ * (aba Anexos). No comentário entram também os textos .txt (0.3.295: texto grande colado vira arquivo).
+ */
 export function separarImagens<T extends AnexoImagem>(anexos: T[]): { doCartao: T[]; porComentario: Map<string, T[]> } {
   const doCartao: T[] = [];
   const porComentario = new Map<string, T[]>();
   for (const a of anexos) {
-    if (!ehImagem(a.mime)) continue;
     const c = comentarioDoCaminho(a.storage_path);
+    if (!ehImagem(a.mime) && !(c && ehTexto({ mime: a.mime, nome: a.nome }))) continue;
     if (!c) { doCartao.push(a); continue; }
     porComentario.set(c, [...(porComentario.get(c) ?? []), a]);
   }
@@ -65,3 +70,5 @@ export function colarComoImagem(p: { emCampoDeTexto: boolean; texto: string; ima
 
 /** Texto do comentário que só tem imagem (a coluna texto é obrigatória e vai nos avisos). */
 export const TEXTO_SO_IMAGEM = "(imagem)";
+/** Texto do comentário que só tem o texto colado como arquivo (0.3.295). */
+export const TEXTO_SO_ARQUIVO = "(texto colado em arquivo)";
