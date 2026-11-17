@@ -1510,6 +1510,9 @@ export default function TarefaModal({
                       // 11/11/2026: subtarefa da Gestão (não SRR-) numa tarefa salva edita status, prioridade e datas aqui mesmo
                       // (na janela dela). As do Runrun mostram status e prioridade da janela, sem editar.
                       const naLinha = subAoVivo && !!s.id && !vemDoRunrun(s.id);
+                      // 0.3.296 ("a janela vale"): os Alocados se ajustam na lista também na linha do Runrun (× e + Adicionar,
+                      // que abrem a janela dela se ainda não existe).
+                      const alocarNaLinha = subAoVivo && !!s.id;
                       const janela = db?.id_tarefa_filha ? janelas?.[db.id_tarefa_filha] : undefined;
                       const statusLinha = s.id ? etapaDaLinha(s.feito, janela?.status, statuses) : null;
                       const atrasada = entregaAtrasada(db?.entrega_desejada, s.feito)
@@ -1587,7 +1590,7 @@ export default function TarefaModal({
                               {/* 11/11/2026: com 2+ alocados (ou só leitura), todos aparecem, cada um com foto e nome (antes: fotos
                                   sobrepostas e, na subtarefa da Gestão, só o responsável da linha). Com 1 ou nenhum, a linha
                                   continua com a foto + o campo de trocar o responsável; vários se ajustam na janela da subtarefa. */}
-                              {(ro || alocados.length >= 2 || naLinha) && alocados.map((a, k) => (
+                              {(ro || alocados.length >= 2 || alocarNaLinha) && alocados.map((a, k) => (
                                 <span key={`${a.email ?? a.nome}-${k}`} className="inline-flex max-w-[11rem] items-center gap-1 rounded-full border border-gray-200 bg-white py-0.5 pl-0.5 pr-2" title={a.feito ? `${a.nome} (entregou)` : a.nome}>
                                   <span className="relative inline-flex shrink-0">
                                     <AvatarPessoa nome={a.nome} email={a.email ?? undefined} className="size-5 text-[9px]" />
@@ -1595,7 +1598,7 @@ export default function TarefaModal({
                                   </span>
                                   <span className="truncate text-xs text-gray-700">{a.nome.split(/\s+/).slice(0, 2).join(" ")}</span>
                                   {/* 11/11/2026: tirar a pessoa pela própria lista (subtarefa da Gestão, tarefa salva) */}
-                                  {naLinha && !ro && a.email && (
+                                  {alocarNaLinha && !ro && a.email && (
                                     <button type="button" disabled={alocarNaSub.isPending} aria-label={`Tirar ${a.nome} de ${s.texto}`} title={`Tirar ${a.nome}`}
                                       onClick={() => alocarNaSub.mutate({ idTarefa: tarefa!.id_tarefa, idSubtarefa: s.id!, idFilha: db?.id_tarefa_filha ?? null, responsavelLinha: s.responsavel_email ?? null, email: a.email!, tirar: true })}
                                       className="-mr-1 shrink-0 rounded-full p-0.5 text-gray-400 hover:bg-gray-100 hover:text-red-600 disabled:opacity-40">
@@ -1605,7 +1608,7 @@ export default function TarefaModal({
                                 </span>
                               ))}
                               {/* 11/11/2026: acrescentar alguém sem abrir a subtarefa */}
-                              {naLinha && !ro && (
+                              {alocarNaLinha && !ro && (
                                 <div className="w-36 shrink-0">
                                   <UsuarioCombobox
                                     usuarios={usuariosDaLista.filter((u) => !alocados.some((a) => a.email && a.email.toLowerCase() === u.email.toLowerCase()))}
@@ -1616,16 +1619,16 @@ export default function TarefaModal({
                                   />
                                 </div>
                               )}
-                              {!ro && !naLinha && alocados.length >= 2 && (
+                              {!ro && !alocarNaLinha && alocados.length >= 2 && (
                                 <span className="w-full text-[10px] text-gray-400">Para mudar, abra a subtarefa (duplo clique)</span>
                               )}
-                              {!ro && !naLinha && alocados.length === 1 && (
+                              {!ro && !alocarNaLinha && alocados.length === 1 && (
                                 <span className="relative inline-flex shrink-0" title={alocados[0].feito ? `${alocados[0].nome} (entregou)` : alocados[0].nome}>
                                   <AvatarPessoa nome={alocados[0].nome} email={alocados[0].email ?? undefined} className="size-5 text-[9px]" />
                                   {alocados[0].feito && <CheckCircle2 aria-hidden className="absolute -bottom-1 -right-1 size-3 rounded-full bg-white text-sky-600" />}
                                 </span>
                               )}
-                              {!ro && !naLinha && alocados.length <= 1 ? (
+                              {!ro && !alocarNaLinha && alocados.length <= 1 ? (
                                 <div className="w-36 shrink-0">
                                   <UsuarioCombobox
                                     usuarios={pessoasDaLista(usuariosFull, daLista, [s.responsavel_email], userEmail)}
