@@ -11,7 +11,8 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
 import { mensagemErro } from "@/lib/errors";
 import { useUserStore } from "@/lib/store";
-import { caminhoDaImagem, colarComoImagem, pastaDoComentario, TEXTO_SO_IMAGEM } from "@/lib/gestao/imagens-cartao";
+import { caminhoDaImagem, colarComoImagem, pastaDoComentario, TEXTO_SO_ARQUIVO, TEXTO_SO_IMAGEM } from "@/lib/gestao/imagens-cartao";
+import { ehTexto } from "@/lib/gestao/texto-colado";
 
 export const MAX_IMAGEM = 25 * 1024 * 1024; // o mesmo limite da aba Anexos
 
@@ -72,7 +73,7 @@ export function useComentarComImagens() {
         id_comentario: id,
         id_tarefa: p.id_tarefa,
         autor: p.autor,
-        texto: p.texto.trim() || TEXTO_SO_IMAGEM,
+        texto: p.texto.trim() || (p.files.length > 0 && p.files.every((f) => ehTexto(f)) ? TEXTO_SO_ARQUIVO : TEXTO_SO_IMAGEM),
         ...(p.atribuido_a ? { atribuido_a: p.atribuido_a.toLowerCase() } : {}),
         created_at: new Date().toISOString(),
       } as never);

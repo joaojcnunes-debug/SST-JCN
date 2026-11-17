@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-texto-grande-colado-vira-arquivo",
+    data: "2026-11-17",
+    tipo: "melhoria",
+    titulo: "Comentários: texto grande colado vira arquivo .txt",
+    texto:
+      "Ao colar no comentário um texto com mais de 2.000 caracteres ou 30 linhas, ele vira um arquivo .txt que vai junto " +
+      "com o comentário, como no Discord. Na conversa aparece um cartão com as primeiras linhas; Abrir mostra o texto inteiro " +
+      "para copiar ou baixar. Se preferir, \"Colar como texto normal\" desfaz.",
+    onde: "Gestão › tarefa › Comentários",
+    impacto: "@menção e o Resumir com IA leem só o texto do comentário, não o arquivo.",
+    versoes: ["0.3.295"],
+  },
+  {
     id: "gestao-automacao-condicao-salva-sozinha",
     data: "2026-11-17",
     tipo: "correcao",
