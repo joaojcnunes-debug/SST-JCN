@@ -30,10 +30,11 @@ import {
   useAnexos, useExcluirAnexo,
   useResolverComentario, useMoverForcandoRequisito, ehErroRequisito, useSlaTarefas, useTempoTarefa, totalSegundos, formatarDuracao,
   type GestaoTempo,
-  useModelos, useResponsaveisSugeridos,
+  useModelos, useResponsaveisSugeridos, useEquipeDaLista,
   type GestaoTarefa, type StatusTarefa, type PrioridadeTarefa, type Subtarefa, type GestaoSubtarefa, type GestaoStatus, type GestaoCampo, type GestaoVinculado,
 } from "@/lib/hooks/useGestao";
 import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
+import { emailsDaLista, pessoasDaLista } from "@/lib/gestao/pessoas-da-lista";
 import { aplicarModelo } from "@/lib/gestao/modelos";
 import AprovacaoNaTarefa from "@/components/gestao/AprovacaoNaTarefa";
 import { nomesResponsaveis } from "@/lib/gestao/responsaveis";
@@ -267,6 +268,13 @@ export default function TarefaModal({
   const { data: idMeuQuadro } = useMeuQuadro(open);
   const novaNoMeuQuadro = !tarefa?.id_tarefa && !!idMeuQuadro && idQuadro === idMeuQuadro;
   const { data: usuariosFull = EMPTY_USUARIOS } = useUsuarios();
+  // 0.3.292 (pedido do João, 17/11): Responsável e Alocado oferecem só a equipe da lista (gestao_equipe_da_lista, v357),
+  // mais quem já está escolhido e eu. Lista sem equipe cadastrada, sem quadro, carregando ou com erro: todos, como antes.
+  // Seguidores continuam todos.
+  const quadroDaTarefa = tarefa?.id_quadro ?? idQuadro;
+  const { data: equipeLista, isError: semEquipeLista } = useEquipeDaLista(open ? quadroDaTarefa : null);
+  const daLista = useMemo(() => emailsDaLista(equipeLista, quadroDaTarefa, semEquipeLista), [equipeLista, quadroDaTarefa, semEquipeLista]);
+  const usuariosDaLista = useMemo(() => pessoasDaLista(usuariosFull, daLista, [], userEmail), [usuariosFull, daLista, userEmail]);
   const registrarAtiv = useRegistrarAtividade();
   const emailDe = (nome: string | null) => (nome ? usuariosFull.find((u) => u.nome === nome)?.email ?? null : null);
   const nomeDe = (email: string | null) => (email ? usuariosFull.find((u) => u.email.toLowerCase() === email.toLowerCase())?.nome ?? null : null);
@@ -387,6 +395,7 @@ export default function TarefaModal({
   }, [titulo]);
   const pedeRespSug = open && !ehSub && podeEditar && responsaveisEmails.length === 0;
   const { data: respSugeridos = [] } = useResponsaveisSugeridos(tarefa?.id_quadro ?? idQuadro, tituloSug, pedeRespSug);
+  const respSugeridosDaLista = pessoasDaLista(respSugeridos, daLista, [], userEmail);
   const { data: tempoEntries = EMPTY_TEMPO } = useTempoTarefa(tarefa?.id_tarefa);
   const tituloRef = useRef<HTMLInputElement>(null);
   const salvarRef = useRef<HTMLButtonElement>(null);
@@ -1599,7 +1608,7 @@ export default function TarefaModal({
                               {naLinha && !ro && (
                                 <div className="w-36 shrink-0">
                                   <UsuarioCombobox
-                                    usuarios={usuariosFull.filter((u) => !alocados.some((a) => a.email && a.email.toLowerCase() === u.email.toLowerCase()))}
+                                    usuarios={usuariosDaLista.filter((u) => !alocados.some((a) => a.email && a.email.toLowerCase() === u.email.toLowerCase()))}
                                     value=""
                                     onChange={(em) => { if (em) alocarNaSub.mutate({ idTarefa: tarefa!.id_tarefa, idSubtarefa: s.id!, idFilha: db?.id_tarefa_filha ?? null, responsavelLinha: s.responsavel_email ?? null, email: em }); }}
                                     placeholder="+ Adicionar"
@@ -1619,7 +1628,7 @@ export default function TarefaModal({
                               {!ro && !naLinha && alocados.length <= 1 ? (
                                 <div className="w-36 shrink-0">
                                   <UsuarioCombobox
-                                    usuarios={usuariosFull}
+                                    usuarios={pessoasDaLista(usuariosFull, daLista, [s.responsavel_email], userEmail)}
                                     value={s.responsavel_email ?? ""}
                                     onChange={(em) => mudarLinha(i, { responsavel_email: em || null })}
                                     incluirVazio
@@ -1868,7 +1877,7 @@ export default function TarefaModal({
               responsaveisEmails,
               (em) => setResponsaveisEmails((s) => s.filter((x) => x !== em)),
               <UsuarioCombobox
-                usuarios={usuariosFull.filter((u) => !responsaveisEmails.includes(u.email.toLowerCase()))}
+                usuarios={usuariosDaLista.filter((u) => !responsaveisEmails.includes(u.email.toLowerCase()))}
                 value=""
                 onChange={(em) => {
                   if (!em) return;
@@ -1881,10 +1890,10 @@ export default function TarefaModal({
               />,
               true,
             )}
-            {pedeRespSug && respSugeridos.length > 0 && (
+            {pedeRespSug && respSugeridosDaLista.length > 0 && (
               <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-gray-500">
                 <span>Costuma fazer tarefas parecidas:</span>
-                {respSugeridos.map((r) => (
+                {respSugeridosDaLista.map((r) => (
                   <button
                     key={r.email}
                     type="button"
