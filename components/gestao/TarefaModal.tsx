@@ -2048,7 +2048,12 @@ export default function TarefaModal({
                       {recTipo === "diaria" ? "dia(s)" : recTipo === "semanal" ? "semana(s)" : "mês(es)"}
                     </span>
                   )}
-                  {recTipo && <p className="text-[11px] text-gray-400">Uma nova tarefa é criada automaticamente a cada período (a partir do prazo).</p>}
+                  {recTipo && (
+                    <p className="text-[11px] text-gray-400">
+                      Uma nova tarefa é criada automaticamente a cada período (a partir do prazo), e a repetição passa para ela.
+                      Para parar, escolha &quot;Não repete&quot; na tarefa mais recente.
+                    </p>
+                  )}
                 </div>
               ))}
             </LinhaCampo>

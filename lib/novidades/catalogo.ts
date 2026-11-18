@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-recorrencia-passa-adiante",
+    data: "2026-11-18",
+    tipo: "correcao",
+    titulo: "Recorrência: desmarcar agora para a repetição",
+    texto:
+      "A recorrência passou a ficar sempre na tarefa mais recente da série: cada tarefa nova criada pela repetição leva a " +
+      "regra junto. Para parar, escolha \"Não repete\" na tarefa mais recente. Antes, a regra ficava escondida na primeira " +
+      "tarefa, e desmarcar numa cópia não adiantava.",
+    onde: "Gestão › tarefa › Recorrência",
+    impacto: "As séries que já existiam foram ajustadas: a regra foi para a tarefa mais nova de cada uma.",
+    versoes: ["0.3.298"],
+  },
+  {
     id: "grupo-escolher-empresas-documentos",
     data: "2026-11-17",
     tipo: "melhoria",
