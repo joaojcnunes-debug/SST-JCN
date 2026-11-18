@@ -9,7 +9,7 @@ import {
   ImagePlus, ClipboardPaste,
   Columns3, ArrowRightLeft, UserRound, Flag, Tag, CalendarDays, CalendarCheck, Repeat, Clock, Users, Gauge, List, Link2,
   PanelRightClose, PanelRightOpen, MapPin, Package, ListChecks, Timer, Hourglass, Building2, ExternalLink, LayoutTemplate,
-  CheckCircle2, AlertCircle, ListFilter, type LucideIcon,
+  AlertCircle, ListFilter, type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
@@ -34,6 +34,7 @@ import {
   type GestaoTarefa, type StatusTarefa, type PrioridadeTarefa, type Subtarefa, type GestaoSubtarefa, type GestaoStatus, type GestaoCampo, type GestaoVinculado,
 } from "@/lib/hooks/useGestao";
 import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
+import AlocadosCompactos from "@/components/gestao/AlocadosCompactos";
 import { emailsDaLista, pessoasDaLista } from "@/lib/gestao/pessoas-da-lista";
 import { aplicarModelo } from "@/lib/gestao/modelos";
 import AprovacaoNaTarefa from "@/components/gestao/AprovacaoNaTarefa";
@@ -1476,7 +1477,7 @@ export default function TarefaModal({
                       <th className="sticky top-0 z-10 bg-gray-50 w-8 px-2 py-1.5"><span className="sr-only">Concluída</span></th>
                       <th className="sticky top-0 z-10 bg-gray-50 min-w-[220px] px-1.5 py-1.5">Título</th>
                       {/* 0.3.300 (pedido do João, 18/11): Alocados logo depois do Título, antes da Prioridade. */}
-                      <th className="sticky top-0 z-10 bg-gray-50 min-w-[290px] px-2 py-1.5">Alocados</th>
+                      <th className="sticky top-0 z-10 bg-gray-50 min-w-[120px] px-2 py-1.5">Alocados</th>
                       <th className="sticky top-0 z-10 bg-gray-50 px-2 py-1.5">Prioridade</th>
                       <th className="sticky top-0 z-10 bg-gray-50 px-2 py-1.5">Etapa</th>
                       <th className="sticky top-0 z-10 bg-gray-50 px-2 py-1.5">Status</th>
@@ -1562,62 +1563,31 @@ export default function TarefaModal({
                             )}
                           </td>
                           <td className="px-2 py-1">
-                            <div className="flex min-w-[280px] flex-wrap items-center gap-1.5">
-                              {/* 11/11/2026: com 2+ alocados (ou só leitura), todos aparecem, cada um com foto e nome (antes: fotos
-                                  sobrepostas e, na subtarefa da Gestão, só o responsável da linha). Com 1 ou nenhum, a linha
-                                  continua com a foto + o campo de trocar o responsável; vários se ajustam na janela da subtarefa. */}
-                              {(ro || alocados.length >= 2 || alocarNaLinha) && alocados.map((a, k) => (
-                                <span key={`${a.email ?? a.nome}-${k}`} className="inline-flex max-w-[11rem] items-center gap-1 rounded-full border border-gray-200 bg-white py-0.5 pl-0.5 pr-2" title={a.feito ? `${a.nome} (entregou)` : a.nome}>
-                                  <span className="relative inline-flex shrink-0">
-                                    <AvatarPessoa nome={a.nome} email={a.email ?? undefined} className="size-5 text-[9px]" />
-                                    {a.feito && <CheckCircle2 aria-hidden className="absolute -bottom-1 -right-1 size-3 rounded-full bg-white text-sky-600" />}
-                                  </span>
-                                  <span className="truncate text-xs text-gray-700">{a.nome.split(/\s+/).slice(0, 2).join(" ")}</span>
-                                  {/* 11/11/2026: tirar a pessoa pela própria lista (subtarefa da Gestão, tarefa salva) */}
-                                  {alocarNaLinha && !ro && a.email && (
-                                    <button type="button" disabled={alocarNaSub.isPending} aria-label={`Tirar ${a.nome} de ${s.texto}`} title={`Tirar ${a.nome}`}
-                                      onClick={() => alocarNaSub.mutate({ idTarefa: tarefa!.id_tarefa, idSubtarefa: s.id!, idFilha: db?.id_tarefa_filha ?? null, responsavelLinha: s.responsavel_email ?? null, email: a.email!, tirar: true })}
-                                      className="-mr-1 shrink-0 rounded-full p-0.5 text-gray-400 hover:bg-gray-100 hover:text-red-600 disabled:opacity-40">
-                                      <X className="size-3" />
-                                    </button>
-                                  )}
-                                </span>
-                              ))}
-                              {/* 11/11/2026: acrescentar alguém sem abrir a subtarefa */}
-                              {alocarNaLinha && !ro && (
-                                <div className="w-36 shrink-0">
-                                  <UsuarioCombobox
-                                    usuarios={usuariosDaLista.filter((u) => !alocados.some((a) => a.email && a.email.toLowerCase() === u.email.toLowerCase()))}
-                                    value=""
-                                    onChange={(em) => { if (em) alocarNaSub.mutate({ idTarefa: tarefa!.id_tarefa, idSubtarefa: s.id!, idFilha: db?.id_tarefa_filha ?? null, responsavelLinha: s.responsavel_email ?? null, email: em }); }}
-                                    placeholder="+ Adicionar"
-                                    className="w-full rounded border border-dashed border-gray-300 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none"
-                                  />
-                                </div>
-                              )}
-                              {!ro && !alocarNaLinha && alocados.length >= 2 && (
-                                <span className="w-full text-[10px] text-gray-400">Para mudar, abra a subtarefa (duplo clique)</span>
-                              )}
-                              {!ro && !alocarNaLinha && alocados.length === 1 && (
-                                <span className="relative inline-flex shrink-0" title={alocados[0].feito ? `${alocados[0].nome} (entregou)` : alocados[0].nome}>
-                                  <AvatarPessoa nome={alocados[0].nome} email={alocados[0].email ?? undefined} className="size-5 text-[9px]" />
-                                  {alocados[0].feito && <CheckCircle2 aria-hidden className="absolute -bottom-1 -right-1 size-3 rounded-full bg-white text-sky-600" />}
-                                </span>
-                              )}
-                              {!ro && !alocarNaLinha && alocados.length <= 1 ? (
-                                <div className="w-36 shrink-0">
-                                  <UsuarioCombobox
-                                    usuarios={pessoasDaLista(usuariosFull, daLista, [s.responsavel_email], userEmail)}
-                                    value={s.responsavel_email ?? ""}
-                                    onChange={(em) => mudarLinha(i, { responsavel_email: em || null })}
-                                    incluirVazio
-                                    vazioLabel="Sem responsável"
-                                    placeholder="Responsável…"
-                                    className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none"
-                                  />
-                                </div>
-                              ) : ro && alocados.length === 0 && <span className="text-gray-300">—</span>}
-                            </div>
+                            {/* 0.3.301 (pedido do João, 18/11): no jeito do Runrun — só as fotos/iniciais; clicando, a caixinha
+                                "Alocados" com a lista (× para tirar) e o Adicionar. Tarefa ainda não salva: o campo simples. */}
+                            {ro || alocarNaLinha ? (
+                              <AlocadosCompactos
+                                pessoas={alocados}
+                                rotulo={`Alocados de ${s.texto}`}
+                                podeEditar={!ro && alocarNaLinha}
+                                ocupado={alocarNaSub.isPending}
+                                usuarios={usuariosDaLista.filter((u) => !alocados.some((a) => a.email && a.email.toLowerCase() === u.email.toLowerCase()))}
+                                onAdicionar={(em) => alocarNaSub.mutate({ idTarefa: tarefa!.id_tarefa, idSubtarefa: s.id!, idFilha: db?.id_tarefa_filha ?? null, responsavelLinha: s.responsavel_email ?? null, email: em })}
+                                onTirar={(em) => alocarNaSub.mutate({ idTarefa: tarefa!.id_tarefa, idSubtarefa: s.id!, idFilha: db?.id_tarefa_filha ?? null, responsavelLinha: s.responsavel_email ?? null, email: em, tirar: true })}
+                              />
+                            ) : (
+                              <div className="w-40">
+                                <UsuarioCombobox
+                                  usuarios={pessoasDaLista(usuariosFull, daLista, [s.responsavel_email], userEmail)}
+                                  value={s.responsavel_email ?? ""}
+                                  onChange={(em) => mudarLinha(i, { responsavel_email: em || null })}
+                                  incluirVazio
+                                  vazioLabel="Sem responsável"
+                                  placeholder="Responsável…"
+                                  className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none"
+                                />
+                              </div>
+                            )}
                           </td>
                           <td className="px-2 py-1">
                             {s.id ? (

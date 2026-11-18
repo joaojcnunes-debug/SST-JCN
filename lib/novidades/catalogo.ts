@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-alocados-estilo-runrun",
+    data: "2026-11-18",
+    tipo: "melhoria",
+    titulo: "Subtarefas: Alocados no jeito do Runrun",
+    texto:
+      "A coluna Alocados das subtarefas mostra só as fotos das pessoas, com o nome ao passar o mouse. Clicando, abre a lista " +
+      "\"Alocados\", com o × para tirar alguém e o botão Adicionar.",
+    onde: "Gestão › tarefa › Subtarefas",
+    versoes: ["0.3.301"],
+  },
+  {
     id: "gestao-janela-tarefa-ampla-alocados",
     data: "2026-11-18",
     tipo: "melhoria",
