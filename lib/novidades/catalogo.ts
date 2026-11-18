@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-janela-tarefa-ampla-alocados",
+    data: "2026-11-18",
+    tipo: "melhoria",
+    titulo: "Tarefa: janela mais larga e Alocados antes da Prioridade",
+    texto:
+      "A janela da tarefa ficou mais larga e um pouco mais alta, e na aba Subtarefas a coluna Alocados veio para logo " +
+      "depois do Título, antes da Prioridade.",
+    onde: "Gestão › tarefa",
+    versoes: ["0.3.300"],
+  },
+  {
     id: "gestao-automacao-duplicar",
     data: "2026-11-18",
     tipo: "melhoria",
