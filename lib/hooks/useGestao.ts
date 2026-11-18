@@ -1715,16 +1715,26 @@ export function useMinhasSubtarefasDoQuadro(idQuadro: string | null | undefined,
           .select("id,id_tarefa,id_tarefa_filha,mae:gestao_tarefas!gestao_subtarefas_id_tarefa_fkey!inner(id_quadro)")
           .eq("mae.id_quadro", idQuadro!)
           .eq("feito", false);
-      const [resp, aloc] = await Promise.all([
+      // 0.3.303 (18/11/2026, pedido do João — "a Emilia saiu de tudo e a tarefa continua em Minhas"): a mesma regra da
+      // coluna Alocados ("a janela vale"). Subtarefa COM janela conta pelos responsáveis da janela; os alocados do
+      // Runrun (gestao_subtarefas.alocados) só contam enquanto não há janela. Antes os alocados do Runrun contavam
+      // sempre, e quem saía pela janela continuava achando a tarefa em "Minhas".
+      const [resp, aloc, minhasJanelas] = await Promise.all([
         base().eq("responsavel_email", eu),
         // jsonb: vai como texto JSON — um array aqui viraria array do Postgres ({...}) e o PostgREST responde 400.
-        base().contains("alocados", JSON.stringify([{ email: eu, feito: false }])),
+        base().is("id_tarefa_filha", null).contains("alocados", JSON.stringify([{ email: eu, feito: false }])),
+        sb.from("gestao_tarefa_vinculados").select("id_tarefa").eq("tipo", "responsavel").ilike("usuario_email", eu),
       ]);
       if (resp.error) throw resp.error;
       if (aloc.error) throw aloc.error;
+      if (minhasJanelas.error) throw minhasJanelas.error;
+      const idsJanelas = [...new Set(((minhasJanelas.data ?? []) as { id_tarefa: string }[]).map((v) => v.id_tarefa))];
+      const daJanela = idsJanelas.length
+        ? await emLotes<{ id: string; id_tarefa: string; id_tarefa_filha: string | null }>(idsJanelas, (lote) => base().in("id_tarefa_filha", lote))
+        : [];
       const subtarefas = new Set<string>();
       const tarefas = new Set<string>();
-      for (const s of [...(resp.data ?? []), ...(aloc.data ?? [])] as unknown as { id: string; id_tarefa: string; id_tarefa_filha: string | null }[]) {
+      for (const s of [...(resp.data ?? []), ...(aloc.data ?? []), ...daJanela] as unknown as { id: string; id_tarefa: string; id_tarefa_filha: string | null }[]) {
         subtarefas.add(s.id);
         tarefas.add(s.id_tarefa);
         if (s.id_tarefa_filha) tarefas.add(s.id_tarefa_filha);
