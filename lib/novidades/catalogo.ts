@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-subtarefa-sem-responsavel",
+    data: "2026-11-18",
+    tipo: "correcao",
+    titulo: "Subtarefas: quem foi retirado não aparece mais nos Alocados",
+    texto:
+      "Quando a última pessoa era tirada da subtarefa, a coluna Alocados voltava a mostrar o responsável antigo. Agora a " +
+      "subtarefa sem ninguém aparece sem ninguém, igual à janela dela.",
+    onde: "Gestão › tarefa › Subtarefas",
+    versoes: ["0.3.302"],
+  },
+  {
     id: "gestao-alocados-estilo-runrun",
     data: "2026-11-18",
     tipo: "melhoria",
