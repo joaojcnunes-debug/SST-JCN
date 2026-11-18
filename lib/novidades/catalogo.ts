@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-automacao-duplicar",
+    data: "2026-11-18",
+    tipo: "melhoria",
+    titulo: "Automações: botão Duplicar",
+    texto:
+      "Cada automação tem agora o botão Duplicar, ao lado do Editar: escolha esta lista ou outra, e a cópia é criada com o " +
+      "mesmo gatilho, condição e ações, desligada, para você revisar e ativar.",
+    onde: "Gestão › Configurar › Automações",
+    impacto: "Em outra lista, confira status, campos e etiquetas antes de ativar a cópia: podem ter outros nomes lá.",
+    versoes: ["0.3.299"],
+  },
+  {
     id: "gestao-recorrencia-passa-adiante",
     data: "2026-11-18",
     tipo: "correcao",
