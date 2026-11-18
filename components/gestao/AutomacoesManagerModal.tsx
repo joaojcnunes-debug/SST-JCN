@@ -4,7 +4,7 @@ import Dica from "@/components/ui/Dica";
 import { DICAS_GESTAO_AUTOMACAO } from "@/lib/dicas/gestao";
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { AlertTriangle, ArrowDown, ArrowUp, BookOpen, ChevronDown, ChevronRight, Check, ChevronsDownUp, ChevronsUpDown, Filter, History, Pencil, Plus, Trash2, UserCog, Workflow, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, BookOpen, ChevronDown, ChevronRight, Check, ChevronsDownUp, ChevronsUpDown, Copy, Filter, History, Pencil, Plus, Trash2, UserCog, Workflow, X } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { confirmar } from "@/components/ui/confirm";
 import AutomacaoCondicaoBuilder from "@/components/gestao/AutomacaoCondicaoBuilder";
@@ -87,6 +87,33 @@ export default function AutomacoesManagerModal({
   const refFoco = useRef<HTMLDivElement | null>(null);
 
   const outrosQuadros = quadros.filter((q) => q.id_quadro !== idQuadro);
+  // 0.3.299 (pedido do João, 18/11): duplicar uma automação nesta lista ou em outra. A cópia nasce DESLIGADA, para
+  // revisar antes (em outra lista, status, campos e etiquetas podem ter outros nomes).
+  const [duplicando, setDuplicando] = useState<string | null>(null);
+  const [destinoCopia, setDestinoCopia] = useState(idQuadro);
+  const duplicar = (a: GestaoAutomacao) => {
+    const mesma = destinoCopia === idQuadro;
+    const nomeDestino = quadros.find((q) => q.id_quadro === destinoCopia)?.nome ?? "outra lista";
+    if (mesma) setAbrirNova(true);
+    salvar.mutate(
+      {
+        id_quadro: destinoCopia,
+        nome: `${a.nome} (cópia)`,
+        gatilho: a.gatilho,
+        condicao: a.condicao ?? {},
+        acoes: acoesDaRegra(a).map((x) => ({ ...x, id: novoId() })),
+        ordem: mesma ? Math.max(0, ...automacoes.map((r) => r.ordem)) + 10 : 9990,
+        ativo: false,
+      },
+      {
+        onSuccess: () => toast.success(mesma
+          ? "Cópia criada, desligada: revise e marque Ativa."
+          : `Cópia criada em "${nomeDestino}", desligada. Abra as automações de lá e confira status, campos e etiquetas antes de ativar.`,
+          { duration: 7000 }),
+      },
+    );
+    setDuplicando(null);
+  };
   // Ordem em que o motor roda: `ordem` (empate: nome, para o número não pular de lugar).
   const ordenadas = useMemo(() => [...automacoes].sort((x, y) => (x.ordem - y.ordem) || x.nome.localeCompare(y.nome, "pt-BR")), [automacoes]);
   const nomes = useMemo(() => nomesDoQuadro(
@@ -221,6 +248,7 @@ export default function AutomacoesManagerModal({
           const aberta = abertas.has(a.id);
           const resumo = descreverRegra({ gatilho: a.gatilho, condicao: a.condicao as never, acoes: acoes as never }, nomes);
           const cabecalho = (
+            <>
             <div className="flex items-start gap-2">
               <span className="mt-0.5 inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 px-1.5 text-xs font-bold text-gray-600" title="Ordem em que roda">{idx + 1}</span>
               <button type="button" onClick={() => alternar(a.id)} className="min-w-0 flex-1 text-left">
@@ -238,12 +266,36 @@ export default function AutomacoesManagerModal({
                 {aberta ? <><ChevronDown className="size-3" /> Fechar</> : <><Pencil className="size-3" /> {podeEditar ? "Editar" : "Ver"}</>}
               </button>
               {podeEditar && (
+                <button type="button" onClick={() => { setDestinoCopia(idQuadro); setDuplicando(duplicando === a.id ? null : a.id); }}
+                  title="Duplicar esta automação (nesta lista ou em outra)"
+                  className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50">
+                  <Copy className="size-3" /> Duplicar
+                </button>
+              )}
+              {podeEditar && (
                 <span className="flex shrink-0 items-center">
                   <button type="button" title="Rodar antes" disabled={idx === 0 || reordenar.isPending} onClick={() => moverRegra(idx, -1)} className="rounded p-1 text-gray-300 hover:text-gray-600 disabled:opacity-30"><ArrowUp className="size-3.5" /></button>
                   <button type="button" title="Rodar depois" disabled={idx === ordenadas.length - 1 || reordenar.isPending} onClick={() => moverRegra(idx, 1)} className="rounded p-1 text-gray-300 hover:text-gray-600 disabled:opacity-30"><ArrowDown className="size-3.5" /></button>
                 </span>
               )}
             </div>
+            {duplicando === a.id && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md bg-gray-50 px-2.5 py-2 text-xs text-gray-600">
+                <Copy className="size-3.5 shrink-0 text-gray-400" />
+                <span>Duplicar em</span>
+                <select value={destinoCopia} onChange={(e) => setDestinoCopia(e.target.value)} aria-label="Lista da cópia" className={`${sel} text-xs`}>
+                  <option value={idQuadro}>esta lista</option>
+                  {outrosQuadros.filter((q) => !q.dono_email).map((q) => <option key={q.id_quadro} value={q.id_quadro}>{q.nome}</option>)}
+                </select>
+                <button type="button" disabled={salvar.isPending} onClick={() => duplicar(a)}
+                  className="rounded-md bg-marca-primary px-2.5 py-1 font-semibold text-white hover:bg-marca-dark disabled:opacity-50">
+                  Duplicar
+                </button>
+                <button type="button" onClick={() => setDuplicando(null)} className="rounded-md px-2 py-1 text-gray-500 hover:bg-gray-100">Cancelar</button>
+                <span className="w-full text-[11px] text-gray-400">A cópia nasce desligada, com &quot;(cópia)&quot; no nome. Em outra lista, confira status, campos e etiquetas antes de ativar.</span>
+              </div>
+            )}
+            </>
           );
           if (!aberta) {
             return (
