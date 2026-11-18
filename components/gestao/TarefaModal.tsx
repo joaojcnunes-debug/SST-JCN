@@ -1176,10 +1176,11 @@ export default function TarefaModal({
       open={open}
       onClose={onClose}
       title={ehSub ? (tarefa ? "Subtarefa" : "Nova subtarefa") : tarefa ? "Editar tarefa" : "Nova tarefa"}
-      size="3xl"
+      size="amplo"
+      // 0.3.300 (pedido do João, 18/11): janela mais larga e um pouco mais alta (era 3xl / 70vh).
       // Tela larga: duas colunas (como no Runrun), cada uma com a própria rolagem e altura fixa — a janela
       // não pula ao trocar de aba. Celular: uma coluna só, o conteúdo e depois os campos.
-      corpoClassName="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-[0_1_70vh] lg:flex-row lg:overflow-hidden"
+      corpoClassName="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-[0_1_78vh] lg:flex-row lg:overflow-hidden"
       footer={
         !ro ? (
           <div className="flex items-center justify-between">
@@ -1474,10 +1475,11 @@ export default function TarefaModal({
                       {!ro && <th className="sticky top-0 z-10 bg-gray-50 w-6 py-1.5 pl-2 pr-0"><span className="sr-only">Posição</span></th>}
                       <th className="sticky top-0 z-10 bg-gray-50 w-8 px-2 py-1.5"><span className="sr-only">Concluída</span></th>
                       <th className="sticky top-0 z-10 bg-gray-50 min-w-[220px] px-1.5 py-1.5">Título</th>
+                      {/* 0.3.300 (pedido do João, 18/11): Alocados logo depois do Título, antes da Prioridade. */}
+                      <th className="sticky top-0 z-10 bg-gray-50 min-w-[290px] px-2 py-1.5">Alocados</th>
                       <th className="sticky top-0 z-10 bg-gray-50 px-2 py-1.5">Prioridade</th>
                       <th className="sticky top-0 z-10 bg-gray-50 px-2 py-1.5">Etapa</th>
                       <th className="sticky top-0 z-10 bg-gray-50 px-2 py-1.5">Status</th>
-                      <th className="sticky top-0 z-10 bg-gray-50 min-w-[290px] px-2 py-1.5">Alocados</th>
                       <th className="sticky top-0 z-10 bg-gray-50 whitespace-nowrap px-2 py-1.5">Horas trabalhadas</th>
                       <th className="sticky top-0 z-10 bg-gray-50 px-2 py-1.5">Progresso</th>
                       <th className="sticky top-0 z-10 bg-gray-50 whitespace-nowrap px-2 py-1.5">Início desejado</th>
@@ -1560,32 +1562,6 @@ export default function TarefaModal({
                             )}
                           </td>
                           <td className="px-2 py-1">
-                            {s.id ? (
-                              <PrioridadeSubtarefa
-                                valor={janela?.prioridade ?? null}
-                                ro={ro || !naLinha}
-                                rotulo={`Prioridade de ${s.texto}`}
-                                onMudar={(pr) => void mudarJanela(s, { prioridade: pr }, { acao: "prioridade", payload: { de: janela?.prioridade ?? "—", para: pr } })}
-                              />
-                            ) : <span className="text-gray-300">—</span>}
-                          </td>
-                          <td className="px-2 py-1">
-                            {etapa ? (
-                              <span className={`inline-block whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium ${etapa.concluida ? "bg-green-600 text-white" : "border border-gray-300 bg-gray-100 text-gray-700"}`}>{etapa.nome}</span>
-                            ) : <span className="text-gray-300">—</span>}
-                          </td>
-                          <td className="px-2 py-1">
-                            {s.id ? (
-                              <StatusSubtarefa
-                                valor={statusLinha}
-                                statuses={statuses}
-                                ro={ro || !naLinha}
-                                rotulo={`Status de ${s.texto}`}
-                                onMudar={(slug) => void mudarJanela(s, { status: slug }, { acao: "status", payload: { de: nomeStatus(statusLinha ?? ""), para: nomeStatus(slug) } })}
-                              />
-                            ) : <span className="text-gray-300">—</span>}
-                          </td>
-                          <td className="px-2 py-1">
                             <div className="flex min-w-[280px] flex-wrap items-center gap-1.5">
                               {/* 11/11/2026: com 2+ alocados (ou só leitura), todos aparecem, cada um com foto e nome (antes: fotos
                                   sobrepostas e, na subtarefa da Gestão, só o responsável da linha). Com 1 ou nenhum, a linha
@@ -1642,6 +1618,32 @@ export default function TarefaModal({
                                 </div>
                               ) : ro && alocados.length === 0 && <span className="text-gray-300">—</span>}
                             </div>
+                          </td>
+                          <td className="px-2 py-1">
+                            {s.id ? (
+                              <PrioridadeSubtarefa
+                                valor={janela?.prioridade ?? null}
+                                ro={ro || !naLinha}
+                                rotulo={`Prioridade de ${s.texto}`}
+                                onMudar={(pr) => void mudarJanela(s, { prioridade: pr }, { acao: "prioridade", payload: { de: janela?.prioridade ?? "—", para: pr } })}
+                              />
+                            ) : <span className="text-gray-300">—</span>}
+                          </td>
+                          <td className="px-2 py-1">
+                            {etapa ? (
+                              <span className={`inline-block whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium ${etapa.concluida ? "bg-green-600 text-white" : "border border-gray-300 bg-gray-100 text-gray-700"}`}>{etapa.nome}</span>
+                            ) : <span className="text-gray-300">—</span>}
+                          </td>
+                          <td className="px-2 py-1">
+                            {s.id ? (
+                              <StatusSubtarefa
+                                valor={statusLinha}
+                                statuses={statuses}
+                                ro={ro || !naLinha}
+                                rotulo={`Status de ${s.texto}`}
+                                onMudar={(slug) => void mudarJanela(s, { status: slug }, { acao: "status", payload: { de: nomeStatus(statusLinha ?? ""), para: nomeStatus(slug) } })}
+                              />
+                            ) : <span className="text-gray-300">—</span>}
                           </td>
                           <td className="whitespace-nowrap px-2 py-1 text-xs tabular-nums text-gray-700">{fmtHorasTrabalhadas(db?.tempo_trabalhado_seg)}</td>
                           <td className="px-2 py-1">

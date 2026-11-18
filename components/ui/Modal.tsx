@@ -10,7 +10,7 @@ interface ModalProps {
   onClose: () => void;
   title?: string;
   children: ReactNode;
-  size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "quadrado";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "amplo" | "quadrado";
   footer?: ReactNode;
   closeOnBackdrop?: boolean;
   /** Troca as classes do corpo (padrão: uma rolagem só, com respiro) — ex.: janela da tarefa em duas colunas que rolam separadas. */
@@ -24,6 +24,8 @@ const SIZE: Record<NonNullable<ModalProps["size"]>, string> = {
   xl: "max-w-4xl",
   "2xl": "max-w-6xl",
   "3xl": "max-w-7xl",
+  /** 0.3.300: a janela da tarefa — até 1536 px ou 95% da tela. */
+  amplo: "max-w-[min(95vw,96rem)]",
   // altura fixa e largura igual à altura (até 64rem): não estica e não muda de tamanho ao trocar de aba
   quadrado: "h-[90vh] max-w-[min(90vh,64rem)]",
 };
