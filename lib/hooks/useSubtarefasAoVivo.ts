@@ -15,7 +15,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
 import { mensagemErro } from "@/lib/errors";
 import type { GestaoSubtarefa } from "@/lib/hooks/useGestao";
-import { vemDoRunrun } from "@/lib/gestao/subtarefa-colunas";
+import { responsaveisPorJanela, vemDoRunrun } from "@/lib/gestao/subtarefa-colunas";
 
 /** O que a lista mostra da janela (tarefa filha) de cada subtarefa. Horas vêm 'HH:MM:SS' do banco. */
 export interface JanelaSubtarefa {
@@ -107,11 +107,7 @@ export function useResponsaveisDasJanelas(idsFilhas: string[]) {
         .in("id_tarefa", chave.split(","))
         .order("created_at", { ascending: true });
       if (error) throw error;
-      const porId: Record<string, string[]> = {};
-      for (const v of (data ?? []) as unknown as { id_tarefa: string; usuario_email: string }[]) {
-        (porId[v.id_tarefa] ??= []).push(v.usuario_email.toLowerCase());
-      }
-      return porId;
+      return responsaveisPorJanela(chave.split(","), (data ?? []) as unknown as { id_tarefa: string; usuario_email: string }[]);
     },
   });
 }

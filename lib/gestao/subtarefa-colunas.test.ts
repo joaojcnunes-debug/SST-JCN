@@ -1,7 +1,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  fmtHorasTrabalhadas, progressoExibir, fmtDataDesejada, entregaAtrasada, corTextoSobre, etapaExibir, alocadosExibir,
+  fmtHorasTrabalhadas, progressoExibir, fmtDataDesejada, entregaAtrasada, corTextoSobre, etapaExibir, alocadosExibir, responsaveisPorJanela,
   vemDoRunrun, etapaDaLinha, erroDatasSubtarefa, subtarefaCasaBusca,
   subtarefaPassaFiltro, filtroSubtarefasAtivo, chaveAlocado, FILTRO_SUBTAREFAS_VAZIO, type SituacaoSubtarefa,
 } from "./subtarefa-colunas";
@@ -117,6 +117,17 @@ describe("alocadosExibir", () => {
     assert.deepEqual(r.map((a) => [a.nome, a.feito]), [["Paulina", true]]);
     // janela aberta sem ninguém: ninguém (não volta a mostrar o Runrun)
     assert.deepEqual(alocadosExibir({ alocados: [{ email: "emilia@chabra.com.br", nome: "Emilia", feito: false }], responsavel_email: null, feito: false, responsaveis: [] }, nomeDe), []);
+  });
+});
+
+describe("responsaveisPorJanela", () => {
+  test("janela sem ninguém entra com lista vazia — a coluna não volta a mostrar o responsável antigo (0.3.302)", () => {
+    const r = responsaveisPorJanela(["TRF-A", "TRF-B"], [{ id_tarefa: "TRF-A", usuario_email: "Ana@chabra.com.br" }]);
+    assert.deepEqual(r, { "TRF-A": ["ana@chabra.com.br"], "TRF-B": [] });
+    assert.deepEqual(alocadosExibir({
+      alocados: [{ email: "paulina@chabra.com.br", nome: "Paulina", feito: false }],
+      responsavel_email: "paulina@chabra.com.br", feito: false, responsaveis: r["TRF-B"],
+    }, () => null), []);
   });
 });
 

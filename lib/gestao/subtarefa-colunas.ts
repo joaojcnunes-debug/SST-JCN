@@ -112,6 +112,18 @@ export function alocadosExibir(
 // na janela dela (tarefa filha, v300): a lista mostra e grava lá. As do Runrun (linhas SRR-) seguem como vêm da
 // sincronização, que regrava título, feito, responsável, etapa e datas a partir do Runrun.
 
+/**
+ * Agrupa os responsáveis por janela. 0.3.302 (18/11/2026, pedido do João): TODA janela consultada entra, mesmo sem
+ * ninguém (lista vazia). Antes a janela sem responsável ficava de fora, e a lista de subtarefas entendia "sem janela" e
+ * voltava a mostrar o responsável antigo da linha ou dos alocados do Runrun — tirar a última pessoa não sumia da coluna.
+ */
+export function responsaveisPorJanela(idsFilhas: readonly string[], linhas: readonly { id_tarefa: string; usuario_email: string }[]): Record<string, string[]> {
+  const porId: Record<string, string[]> = {};
+  for (const id of idsFilhas) if (id) porId[id] = [];
+  for (const v of linhas) (porId[v.id_tarefa] ??= []).push(v.usuario_email.toLowerCase());
+  return porId;
+}
+
 /** Linha que a sincronização com o Runrun mantém (importador: id SRR-<id do Runrun>). */
 export function vemDoRunrun(id: string | null | undefined): boolean {
   return !!id && id.startsWith("SRR-");
