@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "sinalizacao-pessoas-foto",
+    data: "2026-11-19",
+    tipo: "melhoria",
+    titulo: "Sinalização psicossocial: foto de quem fez e de quem enviou",
+    texto:
+      "Nos cartões das empresas e no detalhe da AEP, Realizada por e Enviada por mostram a foto ou as iniciais da " +
+      "pessoa antes do nome, como na Gestão e nas Inspeções.",
+    onde: "Sinalização psicossocial e AEP psicossocial",
+    versoes: ["0.3.306"],
+  },
+  {
     id: "dashboard-pessoas-circulos",
     data: "2026-11-19",
     tipo: "melhoria",
