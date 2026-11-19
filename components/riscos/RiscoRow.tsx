@@ -1,5 +1,6 @@
 "use client";
 
+import SeloOrigemRisco from "./SeloOrigemRisco";
 import { Pencil, Trash2, Copy } from "lucide-react";
 import NivelBadge from "./NivelBadge";
 import type { NivelRisco, Risco } from "@/lib/supabase/types";
@@ -25,6 +26,7 @@ export default function RiscoRow({
     <tr className="hover:bg-gray-50">
       <td className="px-4 py-2 font-medium text-gray-900">
         {risco.agente ?? "—"}
+        <SeloOrigemRisco origem={risco.origem} />
       </td>
       <td className="px-4 py-2 text-gray-600">{setorNome ?? "—"}</td>
       <td className="px-4 py-2 text-gray-600">{risco.probabilidade ?? "—"}</td>

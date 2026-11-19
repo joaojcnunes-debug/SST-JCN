@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "inspecao-riscos-da-aep-aet",
+    data: "2026-11-19",
+    tipo: "novidade",
+    titulo: "Riscos da AEP e da AET na aba Riscos",
+    texto:
+      "Na aba Riscos da inspeção, o botão Trazer riscos da AEP/AET mostra, por setor, os riscos do laudo e os fatores " +
+      "organizacionais com o nível AIHA. Você marca o que quer e eles entram como os demais riscos, com o selo AEP ou " +
+      "AET. Trazer de novo não duplica: atualiza o que mudou no laudo.",
+    onde: "Inspeção › Riscos",
+    versoes: ["0.3.308"],
+  },
+  {
     id: "inspecao-aep-aet-da-empresa",
     data: "2026-11-19",
     tipo: "melhoria",
