@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "certificados-pessoas-foto",
+    data: "2026-11-19",
+    tipo: "melhoria",
+    titulo: "Certificados: foto de quem emitiu",
+    texto:
+      "Na lista de Certificados, a coluna Emitido por e o quadro Por emissor mostram a foto ou as iniciais da pessoa " +
+      "antes do nome, como no resto do sistema.",
+    onde: "Certificados",
+    versoes: ["0.3.311"],
+  },
+  {
     id: "comercial-pessoas-foto",
     data: "2026-11-19",
     tipo: "melhoria",

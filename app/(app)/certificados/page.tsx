@@ -28,6 +28,7 @@ import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import Modal from "@/components/ui/Modal";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { ConfirmHost, confirmar } from "@/components/ui/confirm";
+import PessoaComFoto from "@/components/ui/PessoaComFoto";
 import { buscar } from "@/lib/busca/texto";
 import { cn, fmtData, formatCPF } from "@/lib/utils";
 
@@ -309,7 +310,7 @@ export default function CertificadosPage() {
                       emissorFiltro === e.nome && "bg-sky-50 ring-1 ring-sky-200"
                     )}
                   >
-                    <span className="truncate text-gray-700">{e.nome}</span>
+                    <span className="min-w-0 text-gray-700"><PessoaComFoto nome={e.nome} /></span>
                     <span className="font-bold text-gray-900">{e.total}</span>
                   </button>
                 </li>
@@ -345,7 +346,7 @@ export default function CertificadosPage() {
           {temFiltro && (
             <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
               {filtrados.length} de {certificados.length} certificados
-              {emissorFiltro && <span className="rounded-full bg-sky-50 px-2 py-0.5 text-sky-700">Emissor: {emissorFiltro}</span>}
+              {emissorFiltro && <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-sky-700">Emissor: <PessoaComFoto nome={emissorFiltro} tamanho="size-4 text-[7px]" /></span>}
               <button
                 type="button"
                 onClick={() => { setBusca(""); setEmpresaFiltro(null); setEmissorFiltro(null); setSituacaoFiltro(""); }}
@@ -403,7 +404,8 @@ export default function CertificadosPage() {
                             {SITUACAO[s].rotulo}
                           </span>
                         </td>
-                        <td className="py-2.5 pr-3 text-gray-700">{c.emitido_por_nome}</td>
+                        {/* 0.3.311: foto (ou iniciais) antes do nome, como no resto do sistema. */}
+                        <td className="py-2.5 pr-3 text-gray-700"><PessoaComFoto nome={c.emitido_por_nome} /></td>
                         {canEdit && (
                           <td className="whitespace-nowrap py-2.5 text-right">
                             <button
