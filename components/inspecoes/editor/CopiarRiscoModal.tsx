@@ -153,6 +153,9 @@ export default function CopiarRiscoModal({
         id_empresa: idEmpresaFinal,
         id_setor: idSetorDestino,
         id_cargo: idCargoDestino || null,
+        // v363: a cópia é um risco à mão — sem a marca de origem da AEP/AET (única por inspeção).
+        origem: null,
+        origem_chave: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };

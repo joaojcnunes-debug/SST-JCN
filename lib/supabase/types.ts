@@ -812,6 +812,9 @@ export interface Risco {
   // V5: ponteiro pro modelo que originou esse risco (opcional — riscos
   // antigos ou criados sem modelo escolhido ficam null).
   id_modelo?: string | null;
+  // v363 (0.3.308): risco trazido da AEP/AET da inspeção — de onde veio e o item do laudo (único por inspeção).
+  origem?: "AEP" | "AET" | null;
+  origem_chave?: string | null;
   created_at?: string;
   updated_at?: string | null;
 }

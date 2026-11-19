@@ -243,6 +243,9 @@ export default function CopiarSetorModal({
                 copiarCargos && r.id_cargo
                   ? mapaCargo.get(r.id_cargo) ?? null
                   : null,
+              // v363: a cópia é um risco à mão — sem a marca de origem da AEP/AET (única por inspeção).
+              origem: null,
+              origem_chave: null,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             };

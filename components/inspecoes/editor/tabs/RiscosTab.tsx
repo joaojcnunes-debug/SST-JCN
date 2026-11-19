@@ -2,7 +2,10 @@
 
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { Plus, ChevronDown, LayoutGrid, Pencil, Copy, Trash2, Loader2, Send } from "lucide-react";
+import { Plus, ChevronDown, LayoutGrid, Pencil, Copy, Trash2, Loader2, Send, ArrowDownToLine } from "lucide-react";
+import SeloOrigemRisco from "@/components/riscos/SeloOrigemRisco";
+import TrazerRiscosLaudoModal from "../TrazerRiscosLaudoModal";
+import { useLaudoErgoDaInspecao } from "@/lib/hooks/useErgonomiaInspecao";
 import RiscoForm from "../RiscoForm";
 import RiscoRow from "@/components/riscos/RiscoRow";
 import NivelBadge from "@/components/riscos/NivelBadge";
@@ -44,6 +47,11 @@ export default function RiscosTab({
   const [openTipos, setOpenTipos] = useState<Record<string, boolean>>({});
   // 12/11: abre no Quadro (riscos por setor), como o usuário pediu; o seletor Lista | Quadro continua.
   const [viewMode, setViewMode] = useState<"lista" | "quadro">("quadro");
+  // 0.3.308: riscos da AEP/AET da inspeção (as mesmas consultas das abas AEP/AET, já em cache).
+  const { data: aepDaInspecao } = useLaudoErgoDaInspecao("aep", idInspecao);
+  const { data: aetDaInspecao } = useLaudoErgoDaInspecao("aet", idInspecao);
+  const temLaudo = !!aepDaInspecao || !!aetDaInspecao;
+  const [trazendoLaudo, setTrazendoLaudo] = useState(false);
 
   const setorMap = useMemo(
     () => new Map(setores.map((s) => [s.id_setor, s.setor_ghe])),
@@ -169,6 +177,16 @@ export default function RiscosTab({
                 Enviar {elegiveis.length} para o Plano de Ação
               </button>
             )}
+            {temLaudo && (
+              <button
+                type="button"
+                onClick={() => setTrazendoLaudo(true)}
+                title="Mostra os riscos da AEP/AET desta inspeção por setor e traz os que você marcar. Não duplica."
+                className="inline-flex items-center gap-1.5 rounded-md border border-sky-300 bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-700 hover:bg-sky-100"
+              >
+                <ArrowDownToLine className="size-4" /> Trazer riscos da {aepDaInspecao && aetDaInspecao ? "AEP/AET" : aepDaInspecao ? "AEP" : "AET"}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => { setEditing(null); setFormOpen(true); }}
@@ -264,6 +282,17 @@ export default function RiscosTab({
       )}
 
       {/* Modais compartilhados entre os dois modos */}
+      {trazendoLaudo && (
+        <TrazerRiscosLaudoModal
+          open={trazendoLaudo}
+          onClose={() => setTrazendoLaudo(false)}
+          idInspecao={idInspecao}
+          idEmpresa={idEmpresa}
+          setores={setores}
+          riscos={riscos}
+        />
+      )}
+
       <CopiarRiscoModal
         open={!!copiando}
         onClose={() => setCopiando(null)}
@@ -389,6 +418,7 @@ function QuadroRiscoSetor({
                       <tr key={r.id_risco} className="hover:bg-gray-50">
                         <td className="px-4 py-2.5 font-medium text-gray-800">
                           {r.agente ?? "—"}
+                          <SeloOrigemRisco origem={r.origem} />
                         </td>
                         <td className="px-4 py-2.5 text-gray-500">
                           <span className="text-base mr-1">{iconeDe(r.tipo_risco)}</span>
@@ -465,7 +495,7 @@ function QuadroRiscoSetor({
               <tbody className="divide-y divide-amber-100">
                 {semSetor.map((r) => (
                   <tr key={r.id_risco} className="hover:bg-amber-50/70">
-                    <td className="px-4 py-2.5 font-medium text-gray-800">{r.agente ?? "—"}</td>
+                    <td className="px-4 py-2.5 font-medium text-gray-800">{r.agente ?? "—"}<SeloOrigemRisco origem={r.origem} /></td>
                     <td className="px-4 py-2.5 text-gray-500">
                       <span className="text-base mr-1">{iconeDe(r.tipo_risco)}</span>
                       {r.tipo_risco}
