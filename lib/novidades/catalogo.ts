@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dashboard-pessoas-circulos",
+    data: "2026-11-19",
+    tipo: "melhoria",
+    titulo: "Dashboard: pessoas em círculos",
+    texto:
+      "Na Atividade recente, os técnicos de campo e quem está no documento aparecem em círculos com foto ou iniciais, " +
+      "como na lista de Inspeções. Passe o mouse para ver o nome ou clique para ver a lista. Em Situação por " +
+      "colaborador, a foto aparece antes do nome.",
+    onde: "Dashboard",
+    versoes: ["0.3.305"],
+  },
+  {
     id: "inspecoes-pessoas-circulos",
     data: "2026-11-19",
     tipo: "melhoria",

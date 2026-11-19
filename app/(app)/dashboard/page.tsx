@@ -48,6 +48,8 @@ import FiltroUnidade from "@/components/dashboard/FiltroUnidade";
 import { hojeSP } from "@/lib/inspecoes/prioridade";
 import { situacaoDocumento, type LinhaDocumento } from "@/lib/inspecoes/documento";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
+import AlocadosCompactos from "@/components/gestao/AlocadosCompactos";
+import AvatarPessoa from "@/components/gestao/AvatarPessoa";
 import { BalaoGrafico, BalaoUmValor, LinhaBalao } from "@/components/ui/BalaoGrafico";
 import { TabelaSkeleton } from "@/components/ui/PageSkeletons";
 import { cn, fmtData } from "@/lib/utils";
@@ -718,6 +720,9 @@ export default function DashboardPage() {
                     return (
                       <tr key={c.pessoa} className={cn("transition-colors hover:bg-marca-light/30", idx < colaboradores.length - 1 && "border-b border-gray-50")}>
                         <td className="px-4 py-2.5">
+                          {/* 0.3.305: a foto (ou as iniciais) antes do nome, como no resto do sistema. */}
+                          <span className="inline-flex items-center gap-2">
+                          <AvatarPessoa nome={c.pessoa} className="size-7 text-[10px]" />
                           {supervisor && id ? (
                             <Link href={`/inspecoes/minhas?pessoa=${id}`} className="font-medium text-gray-900 hover:text-marca-primary hover:underline" title="Abrir a fila desta pessoa">
                               {c.pessoa}
@@ -725,6 +730,7 @@ export default function DashboardPage() {
                           ) : (
                             <span className="font-medium text-gray-900">{c.pessoa}</span>
                           )}
+                          </span>
                         </td>
                         <Num v={c.campoAbertas} />
                         <Num v={c.campoParadas} alerta="laranja" />
@@ -791,6 +797,17 @@ export default function DashboardPage() {
                 <tbody>
                   {recentes.map((i, idx) => {
                     const campo = (i.tecnicos_campo ?? "").trim();
+                    // 0.3.305: técnicos de campo e gente do documento em círculos (nome ao passar o mouse), como na lista
+                    // de Inspeções. tecnicos_campo vem do banco separado por ", " (v282).
+                    const tecnicos = campo
+                      ? campo.split(",").map((n) => n.trim()).filter(Boolean).map((nome) => ({ nome }))
+                      : i.responsavel?.trim() ? [{ nome: i.responsavel.trim() }] : [];
+                    const respDoc = (i.elaboracao_responsavel ?? "").trim();
+                    const gentesDoc = (i.inspecao_associados ?? []).map((a) => (a.nome ?? "").trim()).filter(Boolean);
+                    const pessoasDoc = [
+                      ...(respDoc ? [{ nome: respDoc, nota: "assumiu o documento" }] : []),
+                      ...gentesDoc.filter((n) => n.toLowerCase() !== respDoc.toLowerCase()).map((nome) => ({ nome })),
+                    ];
                     const doc = situacaoDocumento(
                       {
                         status: i.status,
@@ -814,13 +831,22 @@ export default function DashboardPage() {
                           {ehRenovacao(i.tipo_criacao) && <span className="ml-1.5 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-normal text-gray-500">renovação</span>}
                         </td>
                         <td className="px-4 py-3 text-gray-600">
-                          {campo || (
-                            <span title="Ninguém na aba Responsáveis: conta para quem abriu">
-                              {i.responsavel?.trim() || "—"} <span className="text-[11px] text-amber-600">(sem registro)</span>
-                            </span>
-                          )}
+                          <span className="inline-flex items-center gap-1.5">
+                            <AlocadosCompactos pessoas={tecnicos} rotulo={`Técnicos de campo de ${nomeDaEmpresa(i.empresas)}`} titulo="Técnico de campo" textoVazio="Ninguém registrado." podeEditar={false} />
+                            {!campo && tecnicos.length > 0 && (
+                              <span className="text-[11px] text-amber-600" title="Ninguém na aba Responsáveis: conta para quem abriu">(sem registro)</span>
+                            )}
+                          </span>
                         </td>
-                        <td className={cn("px-4 py-3 text-xs", doc?.cor ?? "text-gray-300")}>{doc?.texto ?? "—"}</td>
+                        <td className={cn("px-4 py-3 text-xs", doc?.cor ?? "text-gray-300")}>
+                          <span className="inline-flex items-center gap-1.5">
+                            {pessoasDoc.length > 0 && (
+                              <AlocadosCompactos pessoas={pessoasDoc} rotulo={`Documento de ${nomeDaEmpresa(i.empresas)}`} titulo="Documento" podeEditar={false} />
+                            )}
+                            {/* Os nomes já estão nos círculos: aqui fica só a situação. */}
+                            <span>{!doc ? "—" : doc.chave === "EM_ELABORACAO" ? "Em elaboração" : doc.chave === "ATRIBUIDO" ? "Atribuído · não iniciado" : doc.texto}</span>
+                          </span>
+                        </td>
                         <td className="px-4 py-3">
                           <StatusBadge status={i.status as StatusInspecao} />
                         </td>
