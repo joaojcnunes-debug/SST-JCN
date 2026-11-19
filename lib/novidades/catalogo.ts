@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "inspecao-aep-aet-da-empresa",
+    data: "2026-11-19",
+    tipo: "melhoria",
+    titulo: "Inspeção: AEP e AET feitas à parte aparecem nas abas",
+    texto:
+      "Quando a inspeção ainda não tem AEP ou AET, as abas mostram as que a empresa já tem: sem inspeção, em outra " +
+      "inspeção ou em outro cadastro com o mesmo CNPJ. Dá para consultar o laudo ou trazê-lo para a inspeção, sem " +
+      "mudar o conteúdo.",
+    onde: "Inspeção › abas AEP e AET",
+    versoes: ["0.3.307"],
+  },
+  {
     id: "sinalizacao-pessoas-foto",
     data: "2026-11-19",
     tipo: "melhoria",

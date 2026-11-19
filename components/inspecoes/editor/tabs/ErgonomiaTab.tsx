@@ -26,6 +26,7 @@ import AetPsicossocialEditor from "@/components/aet/AetPsicossocialEditor";
 import AetPlanoAcaoEditor from "@/components/aet/AetPlanoAcaoEditor";
 import AetDadosEditor from "@/components/aet/AetDadosEditor";
 import { ConfirmHost, confirmar } from "@/components/ui/confirm";
+import LaudosErgoDaEmpresa from "@/components/inspecoes/editor/LaudosErgoDaEmpresa";
 import { cn, fmtData } from "@/lib/utils";
 import type { Cargo, Empresa, InspecaoMaquina, Setor } from "@/lib/supabase/types";
 
@@ -71,6 +72,10 @@ export default function ErgonomiaTab({ tipo, idInspecao, idEmpresa, empresa, set
 
   if (!laudo) {
     return (
+      <div className="space-y-4">
+      <ConfirmHost />
+      {/* 0.3.307: a AEP/AET feita à parte (sem inspeção, em outra inspeção ou em outro cadastro com o mesmo CNPJ). */}
+      <LaudosErgoDaEmpresa tipo={tipo} idInspecao={idInspecao} idEmpresa={idEmpresa} cnpj={empresa?.cnpj} readOnly={readOnly} />
       <div className="mx-auto max-w-xl rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">
         <Sparkles className="mx-auto size-8 text-sky-500" />
         <h3 className="mt-3 text-base font-semibold text-gray-900">
@@ -94,6 +99,7 @@ export default function ErgonomiaTab({ tipo, idInspecao, idEmpresa, empresa, set
             {iniciar.isPending ? "Criando..." : `Iniciar ${rotulo} desta inspeção`}
           </button>
         )}
+      </div>
       </div>
     );
   }
