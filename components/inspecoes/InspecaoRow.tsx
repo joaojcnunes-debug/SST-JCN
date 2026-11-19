@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { comVolta } from "@/lib/inspecoes/volta";
 import { Pencil, ChartBar, Trash2, RefreshCw } from "lucide-react";
+import { ResponsavelCelula, AssociadosCelula } from "./PessoasDaInspecao";
 import StatusBadge from "./StatusBadge";
 import { fmtData } from "@/lib/utils";
 import { PrioridadeCelula } from "./PrioridadeInspecao";
 import PrioridadeCalculada from "./PrioridadeCalculada";
 import ComplexidadeCelula from "./ComplexidadeCelula";
-import { iniciais, corAvatar } from "@/lib/hooks/useGestao";
 import { situacaoDocumento, type ChaveDocumento } from "@/lib/inspecoes/documento";
 import { ehRenovacao } from "@/lib/dashboard/inspecoes";
 import type { Inspecao, InspecaoAssociado } from "@/lib/supabase/types";
@@ -40,8 +40,7 @@ export default function InspecaoRow({
   insp,
   associados = [],
   onDelete,
-  onEditResponsavel,
-  onEditAssociados,
+  podeEditarPessoas = false,
   showEmpresa,
   podeEditarPrioridade,
   comAcoes = true,
@@ -60,10 +59,8 @@ export default function InspecaoRow({
   /** Associados à elaboração do Documento SGG desta inspeção. */
   associados?: InspecaoAssociado[];
   onDelete?: (insp: Inspecao) => void;
-  /** Quando fornecido (apenas Admin), mostra o lápis para editar o responsável. */
-  onEditResponsavel?: (insp: Inspecao) => void;
-  /** Idem, para associar/remover quem elabora o documento direto da lista (26/10). */
-  onEditAssociados?: (insp: Inspecao) => void;
+  /** Supervisor: troca o responsável e associa/tira quem elabora direto nos círculos (0.3.304; antes, lápis + janela). */
+  podeEditarPessoas?: boolean;
   showEmpresa?: boolean;
 }) {
   return (
@@ -101,27 +98,13 @@ export default function InspecaoRow({
           </span>
         )}
       </td>
+      {/* 0.3.304: o responsável num círculo (nome ao passar o mouse), como os alocados da Gestão. Quem foi a campo,
+          quando não é quem lançou (07/10), segue escrito embaixo: é por ele que o filtro Técnico acha a inspeção. */}
       <td className="px-3 py-3 text-sm text-gray-700">
-        <span className="inline-flex items-center gap-1.5">
-          <span>
-            {insp.responsavel ?? "—"}
-            {/* Quem foi a campo, quando não é quem lançou (07/10): é por ele que
-                o filtro Técnico acha a inspeção. */}
-            {campoDiferente(insp) && (
-              <span className="block text-[11px] text-gray-400">campo: {insp.tecnicos_campo}</span>
-            )}
-          </span>
-          {onEditResponsavel && (
-            <button
-              type="button"
-              onClick={() => onEditResponsavel(insp)}
-              className="flex size-6 items-center justify-center rounded-md text-gray-300 transition hover:bg-marca-light hover:text-marca-primary"
-              title="Editar responsável (Admin)"
-            >
-              <Pencil className="size-3" />
-            </button>
-          )}
-        </span>
+        <ResponsavelCelula insp={insp} podeEditar={podeEditarPessoas} campo={campoDiferente(insp) ? insp.tecnicos_campo : null} />
+        {campoDiferente(insp) && (
+          <span className="block max-w-36 truncate text-[11px] text-gray-400" title={`campo: ${insp.tecnicos_campo}`}>campo: {insp.tecnicos_campo}</span>
+        )}
       </td>
       {/* Status antes de Associados (pedido dele, 22/09): a pílula fica mais
           perto do responsável e os avatares encostam nas Ações. O cabeçalho da
@@ -157,42 +140,7 @@ export default function InspecaoRow({
           return (
             <>
             <td className="px-3 py-3">
-            <span className="inline-flex items-center gap-1.5">
-            {pessoas.length === 0 ? (
-              <span className="text-xs text-gray-300">—</span>
-            ) : (
-            <div className="flex items-center -space-x-1.5">
-              {pessoas.slice(0, 4).map((p) => (
-                <span
-                  key={p.key}
-                  title={p.nome}
-                  className="flex size-6 items-center justify-center rounded-full border-2 border-white text-[9px] font-bold text-white"
-                  style={{ backgroundColor: corAvatar(p.nome) }}
-                >
-                  {iniciais(p.nome)}
-                </span>
-              ))}
-              {pessoas.length > 4 && (
-                <span
-                  title={pessoas.slice(4).map((p) => p.nome).join(", ")}
-                  className="flex size-6 items-center justify-center rounded-full border-2 border-white bg-gray-200 text-[9px] font-bold text-gray-600"
-                >
-                  +{pessoas.length - 4}
-                </span>
-              )}
-            </div>
-            )}
-            {onEditAssociados && (
-              <button
-                type="button"
-                onClick={() => onEditAssociados(insp)}
-                className="flex size-6 items-center justify-center rounded-md text-gray-300 transition hover:bg-marca-light hover:text-marca-primary"
-                title="Editar associados"
-              >
-                <Pencil className="size-3" />
-              </button>
-            )}
-            </span>
+              <AssociadosCelula insp={insp} associados={associados} podeEditar={podeEditarPessoas} />
             </td>
             {/* Status dos associados em coluna própria (pedido dele, 21/10): antes
                 era a letrinha embaixo dos avatares. Entregue = Concluído. */}

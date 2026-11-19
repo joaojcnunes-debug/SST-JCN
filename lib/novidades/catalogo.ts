@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "inspecoes-pessoas-circulos",
+    data: "2026-11-19",
+    tipo: "melhoria",
+    titulo: "Inspeções: responsável e associados em círculos",
+    texto:
+      "Na lista de Inspeções, as colunas Responsável e Associados mostram as pessoas em círculos com foto ou iniciais, " +
+      "como na Gestão. Passe o mouse para ver o nome. Clicando, abre a lista; o supervisor troca o responsável e " +
+      "associa ou tira pessoas ali mesmo, sem abrir janela.",
+    onde: "Inspeções › lista",
+    versoes: ["0.3.304"],
+  },
+  {
     id: "gestao-minhas-segue-janela",
     data: "2026-11-18",
     tipo: "correcao",

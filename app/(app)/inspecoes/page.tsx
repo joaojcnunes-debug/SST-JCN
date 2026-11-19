@@ -6,7 +6,7 @@ import { enderecoDaLista } from "@/lib/inspecoes/volta";
 import Link from "next/link";
 import { Plus, ChartBar, SlidersHorizontal, X, UserCheck, ListTodo, LayoutList, ClipboardList, FileText } from "lucide-react";
 import { Suspense } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import InspecaoRow, { ACOES_FIXAS } from "@/components/inspecoes/InspecaoRow";
@@ -18,8 +18,7 @@ import { useInspecoesPaginadas, type FiltroInspecao } from "@/lib/hooks/useInspe
 import { useIdsAtribuidas, usePessoasAtribuicao } from "@/lib/hooks/useInspecoesAtribuidas";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useUnidades } from "@/lib/hooks/useUnidades";
-import { useCanCreate, useCanDelete, useCanEdit, useCurrentUser, useIsSupervisor } from "@/lib/hooks/useUsuario";
-import AssociadosElaboracao from "@/components/inspecoes/AssociadosElaboracao";
+import { useCanCreate, useCanDelete, useCanEdit, useIsSupervisor } from "@/lib/hooks/useUsuario";
 import { useUnidadeAtiva, useUserStore } from "@/lib/store";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { registrarSoftNaLixeira } from "@/lib/hooks/useLixeira";
@@ -111,8 +110,6 @@ function InspecoesInner() {
   const acoes = acoesDaLista(eu, isAdmin);
   const qc = useQueryClient();
   const [confirmDel, setConfirmDel] = useState<Inspecao | null>(null);
-  const [editResp, setEditResp] = useState<Inspecao | null>(null);
-  const [editAssoc, setEditAssoc] = useState<Inspecao | null>(null);
   const [maisFiltros, setMaisFiltros] = useState(false);
 
   const delInsp = useMutation({
@@ -531,8 +528,7 @@ function InspecoesInner() {
                     comAcoes={acoes.coluna}
                     comEditar={acoes.editar}
                     onDelete={isAdmin && canDelete ? setConfirmDel : undefined}
-                    onEditResponsavel={isAdmin ? setEditResp : undefined}
-                    onEditAssociados={isAdmin ? setEditAssoc : undefined}
+                    podeEditarPessoas={isAdmin}
                     showEmpresa={!f.empresa}
                     podeEditarPrioridade={isAdmin && canEdit}
                     volta={enderecoDaLista(pathname, params.toString())}
@@ -558,147 +554,6 @@ function InspecoesInner() {
         onCancel={() => setConfirmDel(null)}
       />
 
-      {editResp && (
-        <ModalEditarResponsavel insp={editResp} onClose={() => setEditResp(null)} />
-      )}
-      {editAssoc && (
-        <ModalEditarAssociados insp={editAssoc} onClose={() => setEditAssoc(null)} />
-      )}
-    </div>
-  );
-}
-
-/**
- * Associados da elaboração direto da lista (26/10) — o mesmo bloco da tela do
- * relatório, com as mesmas regras (tirar o responsável limpa o nome do documento).
- * Só supervisor abre, como o lápis do responsável.
- */
-function ModalEditarAssociados({ insp, onClose }: { insp: Inspecao; onClose: () => void }) {
-  const qc = useQueryClient();
-  const user = useCurrentUser();
-  const fechar = () => {
-    // Tirar o responsável muda a própria inspeção (elaboracao_*), não só os associados.
-    qc.invalidateQueries({ queryKey: ["inspecoes-lista"] });
-    onClose();
-  };
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={fechar}>
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="border-b border-gray-100 px-5 py-4">
-          <h2 className="font-semibold text-gray-900">Editar associados</h2>
-          <p className="mt-0.5 text-xs text-gray-400">
-            Inspeção {insp.id_inspecao} · {insp.empresas?.nome_empresa ?? "—"}
-          </p>
-        </div>
-        <div className="min-h-40 px-5 pb-4">
-          <AssociadosElaboracao
-            idInspecao={insp.id_inspecao}
-            user={user}
-            isAdmin
-            responsavelNome={insp.elaboracao_responsavel}
-            elaboracaoStatus={insp.elaboracao_status}
-            concluidaEm={insp.elaboracao_concluida_em}
-          />
-        </div>
-        <div className="flex justify-end border-t border-gray-100 px-5 py-4">
-          <button type="button" onClick={fechar} className="rounded-lg bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent">
-            Fechar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Edição do responsável (técnico) de uma inspeção — apenas Admin. */
-function ModalEditarResponsavel({ insp, onClose }: { insp: Inspecao; onClose: () => void }) {
-  const qc = useQueryClient();
-  const [nome, setNome] = useState(insp.responsavel ?? "");
-
-  // Técnicos/Admins ativos cadastrados como usuários (modal só abre para Admin → pode ler usuarios).
-  const { data: tecnicos = [] } = useQuery({
-    queryKey: ["usuarios-tecnicos"],
-    staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
-      const supabase = createSupabaseBrowserClient();
-      const { data, error } = await supabase
-        .from("usuarios")
-        .select("nome, perfil, ativo_sistema")
-        .in("perfil", ["Admin", "Tecnico"])
-        .order("nome");
-      if (error) throw error;
-      return ((data ?? []) as Array<{ nome: string; ativo_sistema: boolean | null }>)
-        .filter((u) => u.ativo_sistema !== false && (u.nome ?? "").trim())
-        .map((u) => u.nome.trim());
-    },
-  });
-
-  // Lista de opções: técnicos cadastrados + o valor atual (se for nome legado fora da lista).
-  const opcoes = Array.from(
-    new Set([...(insp.responsavel?.trim() ? [insp.responsavel.trim()] : []), ...tecnicos]),
-  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
-
-  const save = useMutation({
-    mutationFn: async (responsavel: string) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("inspecoes")
-        .update({ responsavel, updated_at: new Date().toISOString() } as never)
-        .eq("id_inspecao", insp.id_inspecao);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecoes-lista"] });
-      qc.invalidateQueries({ queryKey: ["inspecoes-tecnico"] });
-      qc.invalidateQueries({ queryKey: ["inspecoes-por-mes"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-concluidas-detalhe"] });
-      qc.invalidateQueries({ queryKey: ["inspecao", insp.id_inspecao] });
-      toast.success("Responsável atualizado");
-      onClose();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl">
-        <div className="border-b border-gray-100 px-5 py-4">
-          <h2 className="font-semibold text-gray-900">Editar responsável</h2>
-          <p className="mt-0.5 text-xs text-gray-400">
-            Inspeção {insp.id_inspecao} · rev. {insp.revisao}
-          </p>
-        </div>
-        <div className="px-5 py-4">
-          <label className="mb-1.5 block text-xs font-semibold text-gray-600">Técnico responsável</label>
-          <select
-            value={nome}
-            autoFocus
-            onChange={(e) => setNome(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-marca-primary/40"
-          >
-            <option value="">Selecione o técnico…</option>
-            {opcoes.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-          <p className="mt-1.5 text-[11px] text-gray-400">
-            Lista de usuários cadastrados como Técnico/Admin (ativos).
-          </p>
-        </div>
-        <div className="flex justify-end gap-2 border-t border-gray-100 px-5 py-4">
-          <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium hover:bg-gray-50">
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={() => save.mutate(nome.trim())}
-            disabled={save.isPending || !nome.trim()}
-            className="rounded-lg bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
-          >
-            {save.isPending ? "Salvando..." : "Salvar"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
