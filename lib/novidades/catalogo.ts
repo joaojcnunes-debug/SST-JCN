@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "caixinha-pessoas-no-lugar",
+    data: "2026-11-19",
+    tipo: "correcao",
+    titulo: "Caixinha das pessoas abre junto dos círculos",
+    texto:
+      "Na lista de Inspeções e no Dashboard, a caixinha que abre ao clicar nos círculos das pessoas podia aparecer " +
+      "longe da linha. Agora ela abre logo abaixo dos círculos, ou logo acima quando não há espaço embaixo.",
+    onde: "Inspeções e Dashboard",
+    versoes: ["0.3.309"],
+  },
+  {
     id: "inspecao-riscos-da-aep-aet",
     data: "2026-11-19",
     tipo: "novidade",

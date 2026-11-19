@@ -6,7 +6,8 @@
 // 0.3.304 (19/11): o mesmo formato vale para as outras telas com pessoas (Inspeções: Responsável e Associados) —
 // título, textos e a chave de quem sai viraram parâmetros; na Gestão nada muda.
 
-import { useEffect, useLayoutEffect, useRef, useState, type ComponentProps } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { CheckCircle2, UserPlus, X } from "lucide-react";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
 import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
@@ -36,6 +37,7 @@ export default function AlocadosCompactos({
   textoVazio = "Ninguém alocado.",
   textoAdicionar = "Adicionar",
   dicaVazio,
+  noBody = false,
 }: {
   pessoas: PessoaAlocada[];
   /** Para leitores de tela e o título da caixinha (ex.: "Alocados de Confirmar deslocamento"). */
@@ -53,10 +55,17 @@ export default function AlocadosCompactos({
   textoAdicionar?: string;
   /** Dica do círculo tracejado (quem edita, sem ninguém): padrão "Alocar alguém". */
   dicaVazio?: string;
+  /**
+   * true = a caixinha vai direto no <body> (portal). Necessário quando um ancestral tem transform (ex.: o cartão
+   * .reveal-up da lista de Inspeções e do Dashboard), que faz o position:fixed contar a partir dele e a caixa abrir
+   * deslocada. Padrão false: dentro da janela da tarefa (Gestão) a caixa fica onde está, sem brigar com a trava de foco.
+   * (0.3.309 — correção achada pelo dev do Painel na 0.3.999.)
+   */
+  noBody?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const [adicionando, setAdicionando] = useState(false);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
   const botaoRef = useRef<HTMLButtonElement>(null);
   const caixaRef = useRef<HTMLDivElement>(null);
 
@@ -70,8 +79,13 @@ export default function AlocadosCompactos({
     const r = botaoRef.current.getBoundingClientRect();
     const largura = 260;
     const left = Math.max(8, Math.min(r.left, window.innerWidth - largura - 8));
-    const top = r.bottom + 6 + 320 > window.innerHeight ? Math.max(8, r.top - 6 - 320) : r.bottom + 6;
-    setPos({ top, left });
+    // Sem espaço embaixo, abre para cima encostada nos círculos (0.3.309: antes descontava 320px fixos e a caixa
+    // pequena ficava solta, longe da linha).
+    if (r.bottom + 6 + 320 > window.innerHeight && r.top > window.innerHeight - r.bottom) {
+      setPos({ bottom: Math.max(8, window.innerHeight - r.top + 6), left });
+    } else {
+      setPos({ top: r.bottom + 6, left });
+    }
   }, [aberto, pessoas.length, adicionando]);
 
   // Fecha ao clicar fora.
@@ -89,6 +103,7 @@ export default function AlocadosCompactos({
   }, [aberto]);
 
   const semNinguem = pessoas.length === 0;
+  const emPortal = (no: ReactNode) => (noBody && typeof document !== "undefined" ? createPortal(no, document.body) : no);
 
   return (
     <>
@@ -122,13 +137,13 @@ export default function AlocadosCompactos({
         )}
       </button>
 
-      {aberto && pos && (
+      {aberto && pos && emPortal(
         <div
           ref={caixaRef}
           role="dialog"
           aria-label={rotulo}
           onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setAberto(false); setAdicionando(false); botaoRef.current?.focus(); } }}
-          style={{ position: "fixed", top: pos.top, left: pos.left, width: 260 }}
+          style={{ position: "fixed", top: pos.top, bottom: pos.bottom, left: pos.left, width: 260, maxHeight: "calc(100vh - 16px)", overflowY: "auto" }}
           className="z-[60] rounded-lg border border-gray-200 bg-white p-3 text-left shadow-xl"
         >
           <p className="mb-2 text-sm font-semibold text-gray-800">{titulo}</p>
