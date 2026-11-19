@@ -832,7 +832,7 @@ export default function DashboardPage() {
                         </td>
                         <td className="px-4 py-3 text-gray-600">
                           <span className="inline-flex items-center gap-1.5">
-                            <AlocadosCompactos pessoas={tecnicos} rotulo={`Técnicos de campo de ${nomeDaEmpresa(i.empresas)}`} titulo="Técnico de campo" textoVazio="Ninguém registrado." podeEditar={false} />
+                            <AlocadosCompactos pessoas={tecnicos} rotulo={`Técnicos de campo de ${nomeDaEmpresa(i.empresas)}`} titulo="Técnico de campo" textoVazio="Ninguém registrado." podeEditar={false} noBody />
                             {!campo && tecnicos.length > 0 && (
                               <span className="text-[11px] text-amber-600" title="Ninguém na aba Responsáveis: conta para quem abriu">(sem registro)</span>
                             )}
@@ -841,7 +841,7 @@ export default function DashboardPage() {
                         <td className={cn("px-4 py-3 text-xs", doc?.cor ?? "text-gray-300")}>
                           <span className="inline-flex items-center gap-1.5">
                             {pessoasDoc.length > 0 && (
-                              <AlocadosCompactos pessoas={pessoasDoc} rotulo={`Documento de ${nomeDaEmpresa(i.empresas)}`} titulo="Documento" podeEditar={false} />
+                              <AlocadosCompactos pessoas={pessoasDoc} rotulo={`Documento de ${nomeDaEmpresa(i.empresas)}`} titulo="Documento" podeEditar={false} noBody />
                             )}
                             {/* Os nomes já estão nos círculos: aqui fica só a situação. */}
                             <span>{!doc ? "—" : doc.chave === "EM_ELABORACAO" ? "Em elaboração" : doc.chave === "ATRIBUIDO" ? "Atribuído · não iniciado" : doc.texto}</span>

@@ -84,6 +84,7 @@ export function ResponsavelCelula({ insp, podeEditar, campo }: { insp: Inspecao;
       onAdicionar={(nome) => salvar.mutate(nome)}
       ocupado={salvar.isPending}
       max={1}
+      noBody
     />
   );
 }
@@ -156,6 +157,7 @@ export function AssociadosCelula({
       onAdicionar={adicionar}
       onTirar={tirar}
       ocupado={associar.isPending || desassociar.isPending}
+      noBody
     />
   );
 }
