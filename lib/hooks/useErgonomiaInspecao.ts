@@ -19,6 +19,7 @@ import { montarEnderecoEmpresa } from "@/lib/textos-padrao/variaveis";
 import { gerarId } from "@/lib/utils";
 import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import type { Cargo, Empresa, InspecaoMaquina, Setor } from "@/lib/supabase/types";
+import { grafiasCnpj, type LaudoDaEmpresa } from "@/lib/ergonomia/laudos-empresa";
 
 export type TipoErgo = "aep" | "aet";
 
@@ -369,5 +370,78 @@ export function useExcluirLaudoErgo(tipo: TipoErgo) {
       toast.success(`${ROTULO_ERGO[tipo]} excluída — está na Lixeira`);
     },
     onError: (e: Error) => toast.error(e.message || "Falha ao excluir"),
+  });
+}
+
+// ─── AEP/AET da empresa, para a inspeção que não tem laudo próprio (0.3.307) ───
+
+/**
+ * Laudos AEP/AET da empresa da inspeção: os do mesmo cadastro e os de outro cadastro com o MESMO CNPJ (a AEP às
+ * vezes é feita à parte, num cadastro repetido da empresa). Ver lib/ergonomia/laudos-empresa.ts.
+ */
+export function useLaudosErgoDaEmpresa(tipo: TipoErgo, idEmpresa: string, cnpj: string | null | undefined, habilitado = true) {
+  return useQuery({
+    queryKey: ["ergo-da-empresa", tipo, idEmpresa, cnpj ?? ""],
+    enabled: habilitado && !!idEmpresa,
+    queryFn: async (): Promise<{ laudos: LaudoDaEmpresa[]; nomes: Record<string, string> }> => {
+      const sb = db();
+      const grafias = grafiasCnpj(cnpj);
+      const nomes: Record<string, string> = {};
+      let ids = [idEmpresa];
+      if (grafias.length) {
+        const { data, error } = await sb.from("empresas").select("id_empresa, nome_empresa").in("cnpj", grafias);
+        if (error) throw error;
+        for (const e of (data ?? []) as { id_empresa: string; nome_empresa: string | null }[]) {
+          nomes[e.id_empresa] = e.nome_empresa ?? e.id_empresa;
+        }
+        ids = Array.from(new Set([idEmpresa, ...Object.keys(nomes)]));
+      }
+      const { data, error } = await sb
+        .from(tabela(tipo))
+        .select("id_relatorio, id_empresa, id_inspecao, status, data_elaboracao, responsavel_elaboracao, created_at")
+        .in("id_empresa", ids);
+      if (error) throw error;
+      return { laudos: (data ?? []) as LaudoDaEmpresa[], nomes };
+    },
+  });
+}
+
+/**
+ * Traz um laudo da empresa para esta inspeção (0.3.307): passa a ser o laudo da aba AEP/AET dela. Se estava em outra
+ * inspeção, sai de lá (uma inspeção tem um laudo de cada tipo); se estava em outro cadastro com o mesmo CNPJ, passa
+ * para o cadastro desta inspeção. O conteúdo do laudo não muda. Fica cadastrado no módulo (enviado_modulo_em).
+ */
+export function useTrazerLaudoErgo(tipo: TipoErgo) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { idRelatorio: string; idInspecao: string; idEmpresa: string; idEmpresaAntes: string; idInspecaoAntes: string | null }) => {
+      const agora = new Date().toISOString();
+      const patch: Record<string, unknown> = { id_inspecao: args.idInspecao, updated_at: agora };
+      if (args.idEmpresa !== args.idEmpresaAntes) patch.id_empresa = args.idEmpresa;
+      const sb = db();
+      const { data: atual, error: e1 } = await sb.from(tabela(tipo)).select("enviado_modulo_em").eq("id_relatorio", args.idRelatorio).maybeSingle();
+      if (e1) throw e1;
+      if (!(atual as { enviado_modulo_em: string | null } | null)?.enviado_modulo_em) patch.enviado_modulo_em = agora;
+      const { error } = await sb.from(tabela(tipo)).update(patch).eq("id_relatorio", args.idRelatorio);
+      if (error) {
+        if (String(error.code) === "23505") throw new Error(`Esta inspeção já tem uma ${ROTULO_ERGO[tipo]}. Recarregue a página.`);
+        throw error;
+      }
+      return args;
+    },
+    onSuccess: (args) => {
+      qc.invalidateQueries({ queryKey: ["ergo-inspecao", tipo] });
+      qc.invalidateQueries({ queryKey: ["ergo-da-empresa", tipo] });
+      qc.invalidateQueries({ queryKey: [`${tipo}-relatorios`] });
+      qc.invalidateQueries({ queryKey: [`${tipo}-entregues`] });
+      qc.invalidateQueries({ queryKey: ["aeps-com-inspecao"] });
+      qc.invalidateQueries({ queryKey: ["inspecoes", args.idEmpresa] });
+      toast.success(
+        args.idInspecaoAntes
+          ? `${ROTULO_ERGO[tipo]} trazida para esta inspeção (saiu da ${args.idInspecaoAntes})`
+          : `${ROTULO_ERGO[tipo]} trazida para esta inspeção`,
+      );
+    },
+    onError: (e: Error) => toast.error(e.message || `Falha ao trazer a ${ROTULO_ERGO[tipo]}`),
   });
 }
