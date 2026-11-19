@@ -3,6 +3,8 @@
 // Alocados no jeito do Runrun (0.3.301, 18/11/2026 — pedido do João): na linha, só as fotos/iniciais em círculos
 // (nome ao passar o mouse, "+N" quando passa do limite). Clicando, abre a caixinha "Alocados" com a lista de nomes
 // (× para tirar) e o botão Adicionar embaixo. Substitui as etiquetas com nome e o "+ Adicionar" de cada linha.
+// 0.3.304 (19/11): o mesmo formato vale para as outras telas com pessoas (Inspeções: Responsável e Associados) —
+// título, textos e a chave de quem sai viraram parâmetros; na Gestão nada muda.
 
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentProps } from "react";
 import { CheckCircle2, UserPlus, X } from "lucide-react";
@@ -13,6 +15,12 @@ export interface PessoaAlocada {
   email?: string | null;
   nome: string;
   feito?: boolean;
+  /** O que o onTirar recebe (ex.: o id da linha de associado). Sem ela, vai o e-mail. */
+  chave?: string | null;
+  /** Linha pequena embaixo do nome na caixinha (ex.: "assumiu o documento"). */
+  nota?: string | null;
+  /** false = esta pessoa não tem o × (mesmo quem edita). */
+  tiravel?: boolean;
 }
 
 export default function AlocadosCompactos({
@@ -24,6 +32,10 @@ export default function AlocadosCompactos({
   onTirar,
   ocupado = false,
   max = 3,
+  titulo = "Alocados",
+  textoVazio = "Ninguém alocado.",
+  textoAdicionar = "Adicionar",
+  dicaVazio,
 }: {
   pessoas: PessoaAlocada[];
   /** Para leitores de tela e o título da caixinha (ex.: "Alocados de Confirmar deslocamento"). */
@@ -35,6 +47,12 @@ export default function AlocadosCompactos({
   onTirar?: (email: string) => void;
   ocupado?: boolean;
   max?: number;
+  /** Cabeçalho da caixinha ("Alocados", "Associados", "Responsável"…). */
+  titulo?: string;
+  textoVazio?: string;
+  textoAdicionar?: string;
+  /** Dica do círculo tracejado (quem edita, sem ninguém): padrão "Alocar alguém". */
+  dicaVazio?: string;
 }) {
   const [aberto, setAberto] = useState(false);
   const [adicionando, setAdicionando] = useState(false);
@@ -78,9 +96,9 @@ export default function AlocadosCompactos({
         ref={botaoRef}
         type="button"
         onClick={() => { setAberto((v) => !v); setAdicionando(false); }}
-        aria-label={semNinguem ? `${rotulo}: ninguém alocado` : `${rotulo}: ${nomes}`}
+        aria-label={semNinguem ? `${rotulo}: ${textoVazio.replace(/\.$/, "").toLowerCase()}` : `${rotulo}: ${nomes}`}
         aria-expanded={aberto}
-        title={semNinguem ? (podeEditar ? "Alocar alguém" : "Ninguém alocado") : nomes}
+        title={semNinguem ? (podeEditar ? (dicaVazio ?? "Alocar alguém") : textoVazio.replace(/\.$/, "")) : nomes}
         className="inline-flex items-center gap-1 rounded-full p-0.5 hover:bg-gray-100"
       >
         {semNinguem ? (
@@ -113,18 +131,21 @@ export default function AlocadosCompactos({
           style={{ position: "fixed", top: pos.top, left: pos.left, width: 260 }}
           className="z-[60] rounded-lg border border-gray-200 bg-white p-3 text-left shadow-xl"
         >
-          <p className="mb-2 text-sm font-semibold text-gray-800">Alocados</p>
+          <p className="mb-2 text-sm font-semibold text-gray-800">{titulo}</p>
           {semNinguem ? (
-            <p className="mb-2 text-xs text-gray-400">Ninguém alocado.</p>
+            <p className="mb-2 text-xs text-gray-400">{textoVazio}</p>
           ) : (
             <ul className="mb-2 max-h-48 space-y-1 overflow-y-auto">
               {pessoas.map((p, k) => (
                 <li key={`${p.email ?? p.nome}-${k}`} className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-gray-50">
                   <AvatarPessoa nome={p.nome} email={p.email ?? undefined} className="size-7 text-[10px]" />
-                  <span className="min-w-0 flex-1 truncate text-sm text-gray-800">{p.nome}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm text-gray-800">{p.nome}</span>
+                    {p.nota && <span className="block truncate text-[11px] text-gray-400">{p.nota}</span>}
+                  </span>
                   {p.feito && <CheckCircle2 aria-label="entregou" className="size-3.5 shrink-0 text-sky-600" />}
-                  {podeEditar && p.email && onTirar && (
-                    <button type="button" disabled={ocupado} onClick={() => onTirar(p.email!)} aria-label={`Tirar ${p.nome}`} title={`Tirar ${p.nome}`}
+                  {podeEditar && (p.chave ?? p.email) && onTirar && p.tiravel !== false && (
+                    <button type="button" disabled={ocupado} onClick={() => onTirar((p.chave ?? p.email)!)} aria-label={`Tirar ${p.nome}`} title={`Tirar ${p.nome}`}
                       className="shrink-0 rounded p-0.5 text-gray-300 hover:bg-gray-100 hover:text-red-600 disabled:opacity-40">
                       <X className="size-3.5" />
                     </button>
@@ -145,7 +166,7 @@ export default function AlocadosCompactos({
             ) : (
               <button type="button" disabled={ocupado} onClick={() => setAdicionando(true)}
                 className="w-full rounded-md bg-marca-primary py-2 text-sm font-semibold text-white hover:bg-marca-dark disabled:opacity-50">
-                Adicionar
+                {textoAdicionar}
               </button>
             )
           )}
