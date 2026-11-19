@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-minhas-segue-janela",
+    data: "2026-11-18",
+    tipo: "correcao",
+    titulo: "Minhas: quem saiu da subtarefa não vê mais a tarefa",
+    texto:
+      "O filtro Minhas deixava de fora quem tinha saído da subtarefa só pela janela dela: a tarefa continuava aparecendo. " +
+      "Agora vale quem está na subtarefa de verdade. O Minhas continua mostrando também as tarefas que você criou e as que segue.",
+    onde: "Gestão › lista › Minhas",
+    versoes: ["0.3.303"],
+  },
+  {
     id: "gestao-subtarefa-sem-responsavel",
     data: "2026-11-18",
     tipo: "correcao",
