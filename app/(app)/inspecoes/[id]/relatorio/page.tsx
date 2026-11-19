@@ -38,6 +38,7 @@ import AssociadosElaboracao from "@/components/inspecoes/AssociadosElaboracao";
 import AguardandoInicio, { useAguardandoInicio } from "@/components/inspecoes/AguardandoInicio";
 import { soConsultaDocumento } from "@/lib/inspecoes/acoes-lista";
 import PainelTempoDocumento from "@/components/inspecoes/PainelTempoDocumento";
+import TempoCampoRelatorio from "@/components/inspecoes/TempoCampoRelatorio";
 import {
   MINUTOS_DESFAZER_CONCLUSAO,
   useAgora,
@@ -603,6 +604,14 @@ export default function RelatorioChabraPage({ params }: Props) {
             concluidaEm={inspecao.elaboracao_concluida_em}
           />
         )}
+        {/* 0.3.315 (banco v365): o tempo de campo do técnico, só para consulta (supervisão vê todos e corrige). */}
+        <TempoCampoRelatorio
+          idInspecao={id}
+          inspecao={inspecao}
+          responsaveis={responsaveis ?? []}
+          usuario={user}
+          supervisor={ehSupervisor(user)}
+        />
         <EnviarRiscosSgg idInspecao={id} setores={ctx.setores} />
       </div>
 
