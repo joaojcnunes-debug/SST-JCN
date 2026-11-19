@@ -43,6 +43,7 @@ import {
 import { PRIORIDADES_DESC, PRIORIDADE_INFO, hojeSP, type PrioridadeInspecao } from "@/lib/inspecoes/prioridade";
 import { COMPLEXIDADES_DESC, COMPLEXIDADE_INFO, type ComplexidadeInspecao } from "@/lib/inspecoes/complexidade";
 import type { Inspecao } from "@/lib/supabase/types";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 const PAGE_SIZE = 20;
 
@@ -88,14 +89,6 @@ const VISOES: { value: Visao; label: string; icone: typeof ClipboardList; dica: 
   { value: "tecnicos", label: "Técnicos (campo)", icone: ClipboardList, dica: "Quem foi a campo e o andamento da inspeção" },
   { value: "associados", label: "Associados (documento)", icone: FileText, dica: "Quem está no documento e a situação dele" },
 ];
-
-/** Tabela com grade pontilhada e colunas centralizadas (0.3.312): borda tracejada em cada célula; título e conteúdo no centro. */
-const GRADE_CENTRALIZADA =
-  "w-full border-collapse text-sm [&_th]:border [&_td]:border [&_th]:border-dashed [&_td]:border-dashed " +
-  "[&_th]:border-gray-300 [&_td]:border-gray-300 " +
-  // A borda lisa e clarinha das linhas (<tr>) ganhava da tracejada nas horizontais e elas sumiam.
-  "[&_tr]:!border-0 " +
-  "[&_th]:!text-center [&_td]:!text-center [&_td>*]:mx-auto";
 
 export default function InspecoesPage() {
   return (
@@ -506,7 +499,7 @@ function InspecoesInner() {
           <div className="overflow-x-auto">
             {/* 0.3.312 (19/11/2026, pedido do João): linhas de grade pontilhadas em todas as células e cada título centralizado com o
                 conteúdo da coluna. Vale para a tabela inteira (cabeçalho e InspecaoRow), por isso fica aqui. */}
-            <table className={GRADE_CENTRALIZADA}>
+            <table className={cn(TABELA_GRADE, "w-full text-sm")}>
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/70">
                   <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">ID</th>

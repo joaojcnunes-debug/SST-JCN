@@ -41,6 +41,7 @@ import { ROTULO_SITUACAO_COMERCIAL, riscosDoFechamento, situacaoComercial, type 
 import { hojeSP } from "@/lib/inspecoes/prioridade";
 import type { OrigemFonte } from "@/lib/psico-consolidacao/fatores";
 import { cn, fmtData, formatCNPJ } from "@/lib/utils";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 type Filtro = "todas" | "divergencia" | "parecer" | "falta" | "revisao" | "liberar" | "liberado";
 
@@ -238,7 +239,7 @@ export default function ConciliacaoPage() {
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-          <table className="w-full text-sm">
+          <table className={cn(TABELA_GRADE, "w-full text-sm")}>
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/70 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                 <th className="px-4 py-3">Empresa</th>

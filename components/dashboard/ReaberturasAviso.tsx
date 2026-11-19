@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight, RotateCcw } from "lucide-react";
 import type { Reabertura } from "@/lib/hooks/useDashboardFontes";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
+import { cn } from "@/lib/utils";
 
 /** Rótulo humano da tabela auditada (a inspeção e as abas dela). */
 const ROTULO_TABELA: Record<string, string> = {
@@ -96,7 +98,7 @@ export default function ReaberturasAviso({
                   {r.alteracoes.length === 0 ? (
                     <p className="text-gray-600">Nenhum campo foi alterado entre a reabertura e a nova conclusão.</p>
                   ) : (
-                    <table className="w-full text-left text-[11px] text-gray-700">
+                    <table className={cn(TABELA_GRADE, "w-full text-[11px] text-gray-700")}>
                       <thead>
                         <tr className="border-b border-amber-100 text-gray-500">
                           <th className="py-1 pr-2 font-medium">Quando</th>

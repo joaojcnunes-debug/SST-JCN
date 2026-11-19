@@ -17,6 +17,8 @@ import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useInspecoesByEmpresa } from "@/lib/hooks/useInspecao";
 import { fmtData, formatCNPJ } from "@/lib/utils";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
+import { cn } from "@/lib/utils";
 
 export default function RelatoriosPage() {
   return (
@@ -146,7 +148,7 @@ function RelatoriosInner() {
               </div>
             ) : (
               <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-                <table className="w-full text-sm">
+                <table className={cn(TABELA_GRADE, "w-full text-sm")}>
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50/70">
                       <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Revisão</th>

@@ -57,6 +57,7 @@ import { useUserStore, useTema } from "@/lib/store";
 import { corAvatar } from "@/lib/hooks/useGestao";
 import type { StatusInspecao } from "@/lib/supabase/types";
 import { useState, useEffect, useMemo } from "react";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -701,7 +702,7 @@ export default function DashboardPage() {
             <p className="p-10 text-center text-sm text-gray-500">Ninguém com inspeção ou documento em aberto, nem entrega no mês.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className={cn(TABELA_GRADE, "w-full text-sm")}>
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/70 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                     <th className="px-4 py-3 text-left">Colaborador</th>
@@ -778,7 +779,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className={cn(TABELA_GRADE, "w-full text-sm")}>
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/70">
                     {["Empresa", "Técnico de campo", "Documento", "Status", "Visita", "Alterada", ""].map((h) => (

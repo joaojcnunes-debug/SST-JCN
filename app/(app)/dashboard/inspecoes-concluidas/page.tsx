@@ -40,6 +40,8 @@ import NotaSemTecnico from "@/components/dashboard/NotaSemTecnico";
 import TickPessoa from "@/components/dashboard/TickPessoa";
 import FiltroUnidade from "@/components/dashboard/FiltroUnidade";
 import { useFiltroUnidadeDashboard } from "@/lib/hooks/useFiltroUnidadeDashboard";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
+import { cn } from "@/lib/utils";
 
 /**
  * Inspeções realizadas por TST (pedido de 26/10/2026).
@@ -300,7 +302,7 @@ export default function InspecoesConcluidasDashboard() {
             </button>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className={cn(TABELA_GRADE, "w-full text-sm")}>
               <thead>
                 <tr className="border-b border-gray-100 text-xs uppercase tracking-wider text-gray-500">
                   <th className="py-2 pr-3 font-medium">Empresa</th>

@@ -9,6 +9,7 @@ import { useQpsTipos } from "@/lib/hooks/useQuestionarios";
 import type { QpsAplicacao, StatusQpsAplicacao } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 const STATUS_LABEL: Record<StatusQpsAplicacao, string> = {
   RASCUNHO: "Rascunho",
@@ -120,7 +121,7 @@ export default function QpsListaPage() {
                 </p>
               </div>
             ) : (
-              <table className="min-w-full divide-y divide-gray-100 text-sm">
+              <table className={cn(TABELA_GRADE, "min-w-full text-sm")}>
                 <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                   <tr>
                     <th className="px-4 py-3 text-left font-semibold">Título</th>

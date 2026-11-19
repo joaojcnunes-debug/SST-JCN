@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { buscar } from "@/lib/busca/texto";
 import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 // O filtro "Tipo" segue os módulos da conta (v0.3.636) — oferecer um tipo que
 // a lista nunca vai trazer só faria a pessoa achar que a empresa não tem o
@@ -156,7 +157,7 @@ export default function ValidadesPage() {
           ) : (
             <div className="overflow-x-auto">
               <AvisoBuscaAproximada aproximado={aproximado} busca={busca} total={filtrados.length} className="m-3" />
-              <table className="w-full text-sm">
+              <table className={cn(TABELA_GRADE, "w-full text-sm")}>
                 <thead>
                   <tr className="border-b border-gray-100 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                     <th className="px-4 py-2.5">Empresa</th>

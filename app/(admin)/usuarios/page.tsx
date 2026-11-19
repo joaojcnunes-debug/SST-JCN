@@ -61,6 +61,7 @@ import {
   type GradeModulos,
 } from "@/lib/acesso/permissoes-modulo";
 import { telasParaGravar } from "@/lib/acesso/telas-modulo";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 const PERFIS: PerfilUsuario[] = ["Admin", "Tecnico", "Visualizador", "Cliente"];
 
@@ -184,7 +185,7 @@ export default function UsuariosPage() {
         ) : (
           <div className="overflow-x-auto">
             <AvisoBuscaAproximada aproximado={buscaAproximada} busca={busca} total={filtrados.length} className="m-3" />
-            <table className="w-full text-sm">
+            <table className={cn(TABELA_GRADE, "w-full text-sm")}>
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/70">
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Nome</th>

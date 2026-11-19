@@ -17,6 +17,8 @@ import { useCanCreate, useCanDelete } from "@/lib/hooks/useUsuario";
 import { useUnidadeAtiva } from "@/lib/store";
 import { fmtData } from "@/lib/utils";
 import type { DrpsRelatorio, StatusRelatorio } from "@/lib/drps/types";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
+import { cn } from "@/lib/utils";
 
 const STATUS_LABEL: Record<StatusRelatorio, string> = {
   RASCUNHO: "Rascunho",
@@ -125,7 +127,7 @@ export default function DrpsListaPage() {
                 <strong>Novo Relatório</strong> para começar.
               </div>
             ) : (
-              <table className="w-full text-sm">
+              <table className={cn(TABELA_GRADE, "w-full text-sm")}>
                 <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                   <tr>
                     <th className="px-4 py-2.5 text-left font-medium">

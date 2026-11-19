@@ -42,6 +42,7 @@ import {
   type IntervencaoCatalogo,
 } from "@/lib/hooks/useComercial";
 import { cn } from "@/lib/utils";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 const inputCls =
   "w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20";
@@ -118,7 +119,7 @@ export default function IntervencoesPage() {
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-        <table className="w-full min-w-[760px] text-sm">
+        <table className={cn(TABELA_GRADE, "w-full min-w-[760px] text-sm")}>
           <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-600">
             <tr>
               <th className="px-3 py-2">

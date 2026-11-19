@@ -22,6 +22,7 @@ import {
 import { COMPLEXIDADES_DESC, COMPLEXIDADE_INFO, type ComplexidadeInspecao } from "@/lib/inspecoes/complexidade";
 import { fmtDuracao } from "@/lib/inspecoes/sessoes";
 import { cn } from "@/lib/utils";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 /**
  * Dashboard › Tempo nos documentos (v0.3.183, 30/10/2026) — fase 3 do apontamento de tempo (v311).
@@ -226,7 +227,7 @@ export default function TempoDocumentosPage() {
           <p className="py-4 text-center text-sm text-gray-500">Ainda não há documento entregue com tempo apontado.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className={cn(TABELA_GRADE, "w-full text-sm")}>
               <thead>
                 <tr className="border-b border-gray-100 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                   <th className="px-3 py-2">Complexidade</th>

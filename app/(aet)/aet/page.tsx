@@ -19,6 +19,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TabelaSkeleton } from "@/components/ui/PageSkeletons";
 import { cn } from "@/lib/utils";
 import type { AetRelatorio, ClassificacaoRiscoAET } from "@/lib/supabase/types";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 const CLASS_ORDER: ClassificacaoRiscoAET[] = [
   "Trivial",
@@ -133,7 +134,7 @@ export default function AetListPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className={cn(TABELA_GRADE, "w-full text-sm")}>
               <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">Empresa</th>

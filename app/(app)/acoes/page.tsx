@@ -32,6 +32,7 @@ import type {
   AcaoStatus,
 } from "@/lib/supabase/types";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 const STATUS_CFG: Record<
   AcaoStatus,
@@ -198,7 +199,8 @@ export default function AcoesPage() {
 
       {/* Filtros */}
       <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-        <div className="grid gap-3 md:grid-cols-[1fr_220px_180px_160px]">
+        {/* 0.3.313: coluna da empresa com 16rem — o EmpresaSelect tem min-w-64 e invadia o filtro de status. */}
+        <div className="grid gap-3 md:grid-cols-[1fr_16rem_180px_160px]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
             <input
@@ -260,7 +262,7 @@ export default function AcoesPage() {
         ) : (
           <div className="overflow-x-auto">
             <AvisoBuscaAproximada aproximado={aproximado} busca={busca} total={filtradas.length} className="m-3" />
-            <table className="w-full text-sm">
+            <table className={cn(TABELA_GRADE, "w-full text-sm")}>
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/70">
                   <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Ação (O quê)</th>
