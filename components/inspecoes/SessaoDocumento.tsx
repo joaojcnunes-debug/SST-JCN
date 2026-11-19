@@ -21,6 +21,7 @@ import {
   type SessaoDocumento,
 } from "@/lib/inspecoes/sessoes";
 import { cn } from "@/lib/utils";
+import { MOTIVOS_PAUSA_CAMPO } from "@/lib/inspecoes/campo";
 
 export function ControleSessao({
   idInspecao,
@@ -109,7 +110,8 @@ export function BotaoPausar({
       </button>
       {aberto && (
         <span className="absolute right-0 z-20 mt-1 block w-60 rounded-lg border border-gray-200 bg-white py-1 text-left shadow-lg">
-          {MOTIVOS_PAUSA.map((m) => (
+          {/* 0.3.314: no tempo de campo, os motivos do campo (com o deslocamento). */}
+          {(fonte === "campo" ? MOTIVOS_PAUSA_CAMPO : MOTIVOS_PAUSA).map((m) => (
             <button
               key={m.valor}
               type="button"
@@ -120,7 +122,9 @@ export function BotaoPausar({
               className="block w-full px-3 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-50"
             >
               {m.rotulo}
-              {m.valor === "AGUARDANDO_CLIENTE" && <span className="block text-[10px] text-gray-400">conta à parte, fora do tempo trabalhado</span>}
+              {(m.valor === "AGUARDANDO_CLIENTE" || m.valor === "DESLOCAMENTO") && (
+                <span className="block text-[10px] text-gray-400">conta à parte, fora do tempo trabalhado</span>
+              )}
             </button>
           ))}
         </span>

@@ -19,7 +19,7 @@ export const CHAVE_SESSOES = "documento-sessoes";
  * De onde vêm as sessões: o documento da inspeção (v311) ou o atendimento de Consolidação ›
  * Liberar para o Comercial (v321, por empresa). As contas e a tela são as mesmas.
  */
-export type FonteSessao = "documento" | "comercial" | "comercial-grupo";
+export type FonteSessao = "documento" | "comercial" | "comercial-grupo" | "campo";
 const RPC_SESSAO: Record<FonteSessao, { iniciar: string; pausar: string; atividade: string; param: string }> = {
   documento: { iniciar: "documento_sessao_iniciar", pausar: "documento_sessao_pausar", atividade: "documento_sessao_atividade", param: "p_id_inspecao" },
   comercial: { iniciar: "comercial_sessao_iniciar", pausar: "comercial_sessao_pausar", atividade: "comercial_sessao_atividade", param: "p_id_empresa" },
@@ -30,6 +30,8 @@ const RPC_SESSAO: Record<FonteSessao, { iniciar: string; pausar: string; ativida
     atividade: "comercial_grupo_sessao_atividade",
     param: "p_id_grupo",
   },
+  // 0.3.314 (banco v364): o tempo de campo do técnico na inspeção (campo_sessoes).
+  campo: { iniciar: "campo_sessao_iniciar", pausar: "campo_sessao_pausar", atividade: "campo_sessao_atividade", param: "p_id_inspecao" },
 };
 /** O atendimento do Comercial (da empresa ou do grupo): os textos falam da conciliação, não de documento. */
 export const ehFonteComercial = (f: FonteSessao) => f === "comercial" || f === "comercial-grupo";
@@ -156,7 +158,7 @@ export function useMinhasSessoesHoje(idUsuario: string | null | undefined) {
 function useInvalidar() {
   const qc = useQueryClient();
   return () => {
-    for (const k of [CHAVE_SESSOES, "inspecao", "inspecoes-atribuidas", "inspecoes-lista", "inspecoes-counts", "comercial-dados"]) {
+    for (const k of [CHAVE_SESSOES, "campo-sessoes", "inspecao", "inspecoes-atribuidas", "inspecoes-lista", "inspecoes-counts", "comercial-dados"]) {
       qc.invalidateQueries({ queryKey: [k] });
     }
   };
@@ -180,7 +182,7 @@ export function usePausarSessao(fonte: FonteSessao = "documento") {
   const invalidar = useInvalidar();
   const rpc = RPC_SESSAO[fonte];
   return useMutation({
-    mutationFn: async ({ idInspecao, motivo }: { idInspecao: string; motivo: MotivoPausa }) => {
+    mutationFn: async ({ idInspecao, motivo }: { idInspecao: string; motivo: MotivoPausa | "DESLOCAMENTO" }) => {
       const { error } = await sb().rpc(rpc.pausar, { [rpc.param]: idInspecao, p_motivo: motivo });
       if (error) throw error;
     },

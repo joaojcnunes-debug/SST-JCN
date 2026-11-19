@@ -18,7 +18,8 @@
 export const MINUTOS_INATIVIDADE = 30;
 
 export type MotivoPausa = "PAUSA" | "AGUARDANDO_CLIENTE" | "AGUARDANDO_TECNICO" | "OUTRA_PRIORIDADE" | "FIM_EXPEDIENTE";
-export type MotivoFim = MotivoPausa | "TROCA" | "INATIVIDADE" | "CONCLUIDO" | "LIBERADO";
+// DESLOCAMENTO: só no tempo de campo (v364, 0.3.314).
+export type MotivoFim = MotivoPausa | "DESLOCAMENTO" | "TROCA" | "INATIVIDADE" | "CONCLUIDO" | "LIBERADO";
 
 export const MOTIVOS_PAUSA: { valor: MotivoPausa; rotulo: string }[] = [
   { valor: "PAUSA", rotulo: "Pausa" },
@@ -30,6 +31,7 @@ export const MOTIVOS_PAUSA: { valor: MotivoPausa; rotulo: string }[] = [
 
 export const ROTULO_MOTIVO: Record<MotivoFim, string> = {
   ...(Object.fromEntries(MOTIVOS_PAUSA.map((m) => [m.valor, m.rotulo])) as Record<MotivoPausa, string>),
+  DESLOCAMENTO: "Deslocamento",
   TROCA: "Iniciou outro documento",
   INATIVIDADE: `Pausa automática (${MINUTOS_INATIVIDADE} min sem atividade)`,
   CONCLUIDO: "Documento concluído",
@@ -122,11 +124,24 @@ export function esperasDoCliente(
   agora: number,
   ate?: number,
 ): { intervalos: [number, number][]; agora: boolean } {
+  return esperasPorMotivo(sessoes, "AGUARDANDO_CLIENTE", agora, ate);
+}
+
+/**
+ * O mesmo cálculo para qualquer pausa que conta à parte (0.3.314): "aguardando cliente" e, no tempo de campo, o
+ * "deslocamento" — do fim da pausa com esse motivo até o próximo início, ou até `ate`/agora.
+ */
+export function esperasPorMotivo(
+  sessoes: readonly SessaoDocumento[],
+  motivo: MotivoFim,
+  agora: number,
+  ate?: number,
+): { intervalos: [number, number][]; agora: boolean } {
   const ordem = [...sessoes].sort((a, b) => ms(a.inicio) - ms(b.inicio));
   const esperas: [number, number][] = [];
   let aguardandoAgora = false;
   for (const s of ordem) {
-    if (s.motivo_fim !== "AGUARDANDO_CLIENTE" || !s.fim) continue;
+    if (s.motivo_fim !== motivo || !s.fim) continue;
     const de = ms(s.fim);
     const volta = ordem.find((o) => ms(o.inicio) >= de);
     const fimEspera = volta ? ms(volta.inicio) : (ate ?? agora);

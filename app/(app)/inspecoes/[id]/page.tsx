@@ -43,6 +43,9 @@ import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
 import DocumentosEmpresaPainel from "@/components/empresas/DocumentosEmpresaPainel";
 import { useCanEdit, useCurrentUser, useIsSupervisor } from "@/lib/hooks/useUsuario";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
+import TempoCampo from "@/components/inspecoes/TempoCampo";
+import TravaCampo from "@/components/inspecoes/TravaCampo";
+import { useCampoDaInspecao } from "@/lib/hooks/useCampoSessoes";
 import { DetalheSkeleton } from "@/components/ui/PageSkeletons";
 import { cn, fmtData } from "@/lib/utils";
 import SetoresTab from "@/components/inspecoes/editor/tabs/SetoresTab";
@@ -113,6 +116,15 @@ export default function InspecaoEditorPage({ params }: Props) {
   const { data: aepDaInspecao } = useLaudoErgoDaInspecao("aep", id);
   const { data: aetDaInspecao } = useLaudoErgoDaInspecao("aet", id);
   const { data: empresa } = useEmpresa(data?.inspecao?.id_empresa);
+  // 0.3.314 (banco v364): tempo de campo do técnico — o painel no cabeçalho e a trava da edição usam o mesmo.
+  const campo = useCampoDaInspecao({
+    idInspecao: id,
+    inspecao: data?.inspecao,
+    responsaveis: data?.responsaveis ?? [],
+    usuario: currentUser,
+    supervisor: isAdmin,
+    podeEditar: canEdit,
+  });
 
   // A aba ativa mora na URL (`?aba=riscos`), não em useState. Com useState,
   // recarregar a página, duplicar a aba do navegador ou voltar depois jogava o
@@ -489,6 +501,16 @@ export default function InspecaoEditorPage({ params }: Props) {
             <PrioridadeSelo valor={inspecao.prioridade} />
           </div>
         </div>
+        {/* 0.3.314 (banco v364): tempo de campo do técnico — o mesmo painel do tempo do documento no relatório
+            (Iniciar/Retomar, Pausar com motivo, Detalhes, levar para o canto); a supervisão vê o de todos. */}
+        <TempoCampo
+          idInspecao={id}
+          campo={campo}
+          idUsuario={currentUser?.id_usuario}
+          supervisor={isAdmin}
+          podeEditar={canEdit}
+          concluidaEm={inspecao.concluida_em}
+        />
       </div>
 
       {isRenovacao && (
@@ -575,7 +597,8 @@ export default function InspecaoEditorPage({ params }: Props) {
         </nav>
         </div>
 
-        <div className="p-4">
+        {/* 0.3.314: sem o play do tempo de campo, o técnico não inclui, edita nem exclui (aviso para dar o play). */}
+        <TravaCampo ativa={campo.trava} className="p-4">
           {tab === "setores" && (
             <SetoresTab
               idInspecao={id}
@@ -706,7 +729,7 @@ export default function InspecaoEditorPage({ params }: Props) {
               readOnly={readOnly}
             />
           )}
-        </div>
+        </TravaCampo>
       </div>
 
       <CopiarParaEmpresaModal
