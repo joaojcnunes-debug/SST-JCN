@@ -29,6 +29,7 @@ import { useUserStore } from "@/lib/store";
 import { PRIORIDADES_DESC, PRIORIDADE_INFO, diasEntre, hojeSP, textoEspera, type PrioridadeInspecao } from "@/lib/inspecoes/prioridade";
 import { ROTULO_PERIODO, intervaloDoPeriodo, type Periodo } from "@/lib/inspecoes/filtros-url";
 import { cn, fmtData } from "@/lib/utils";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 type Papel = "tecnico" | "associado";
 type StatusFiltro = "RASCUNHO" | "EM_ANDAMENTO" | "CONCLUIDA";
@@ -296,7 +297,7 @@ function MinhasInner() {
           // 28/10: tabela com a linha de títulos no topo, como a lista de Inspeções (antes cada
           // cartão repetia "Prioridade"/"Complexidade" em cima dos seletores).
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className={cn(TABELA_GRADE, "w-full text-sm")}>
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/70">
                   {["Prioridade", "Complexidade", "Empresa", "Status", "Espera"].map((t) => (

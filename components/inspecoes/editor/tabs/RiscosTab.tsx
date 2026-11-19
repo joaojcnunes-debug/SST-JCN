@@ -17,6 +17,7 @@ import { useTipoIcone, useTiposRisco } from "@/lib/hooks/useV3";
 import { NIVEIS_QUE_VIRAM_ACAO, riscosElegiveis } from "@/lib/acoes/de-risco";
 import { cn } from "@/lib/utils";
 import type { Cargo, Risco, Setor, TipoRisco } from "@/lib/supabase/types";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 interface Props {
   idInspecao: string;
@@ -244,7 +245,7 @@ export default function RiscosTab({
               </button>
               {isOpen && (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className={cn(TABELA_GRADE, "w-full text-sm")}>
                     <thead className="bg-white text-xs uppercase text-gray-500 border-b border-gray-100">
                       <tr>
                         <th className="px-4 py-2 text-left font-medium">Agente</th>
@@ -402,7 +403,7 @@ function QuadroRiscoSetor({
 
             {isOpen && (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className={cn(TABELA_GRADE, "w-full text-sm")}>
                   <thead className="bg-white text-xs uppercase text-gray-500 border-b border-gray-100">
                     <tr>
                       <th className="px-4 py-2 text-left font-medium">Agente</th>
@@ -483,7 +484,7 @@ function QuadroRiscoSetor({
             </span>
           </div>
           <div className="overflow-x-auto border-t border-amber-100">
-            <table className="w-full text-sm">
+            <table className={cn(TABELA_GRADE, "w-full text-sm")}>
               <thead className="bg-amber-50 text-xs uppercase text-amber-600 border-b border-amber-100">
                 <tr>
                   <th className="px-4 py-2 text-left font-medium">Agente</th>

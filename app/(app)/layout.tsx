@@ -10,9 +10,9 @@ import { cn } from "@/lib/utils";
 
 // Tela de preenchimento da inspeção (/inspecoes/INS-…) usa a largura toda
 // (2026-10-05): as abas e tabelas têm muita coluna. A lista de Inspeções (/inspecoes) também,
-// desde a 0.3.312 (19/11, pedido do João: aproveitar as laterais vazias). As demais telas seguem
-// limitadas a 1400px.
-const TELA_LARGA = /^\/inspecoes(\/(?!nova$|ficha$)[^/]+)?$/;
+// desde a 0.3.312 (19/11, pedido do João: aproveitar as laterais vazias); Plano de Ação, Relatórios e
+// Certificados, que também são tabelas largas, desde a 0.3.313. As demais telas seguem limitadas a 1400px.
+const TELA_LARGA = /^\/(inspecoes(\/(?!nova$|ficha$)[^/]+)?|acoes|relatorios|certificados)$/;
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   useAuth();

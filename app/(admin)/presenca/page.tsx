@@ -36,6 +36,7 @@ import { useAgora } from "@/lib/hooks/useAgora";
 import { useUserStore } from "@/lib/store";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { cn } from "@/lib/utils";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 /**
  * Sistema › Presença (v218/v219). A lista inteira do dia, com filtro por status
@@ -282,7 +283,7 @@ function TabelaPessoas({
   }
   return (
     <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-      <table className="w-full text-sm">
+      <table className={cn(TABELA_GRADE, "w-full text-sm")}>
         <thead className="bg-gray-50 text-left text-[10px] font-semibold uppercase tracking-wide text-gray-500">
           <tr>
             <th className="px-4 py-2">Nome</th>

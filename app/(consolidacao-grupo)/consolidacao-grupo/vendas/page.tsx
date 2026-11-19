@@ -13,6 +13,8 @@ import { useVendasComercial, type VendaComDetalhe } from "@/lib/hooks/useComerci
 import { NOME_PRODUTO } from "@/lib/comercial/oportunidades";
 import { buscar } from "@/lib/busca/texto";
 import { fmtData, formatCNPJ } from "@/lib/utils";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
+import { cn } from "@/lib/utils";
 
 export default function VendasPage() {
   const { data: vendas = [], isLoading, error } = useVendasComercial();
@@ -61,7 +63,7 @@ export default function VendasPage() {
         <p className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-10 text-center text-sm text-gray-500">Nenhuma venda registrada.</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-          <table className="w-full text-sm">
+          <table className={cn(TABELA_GRADE, "w-full text-sm")}>
             <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-600">
               <tr>
                 <th className="w-8 px-2 py-2" />
@@ -147,7 +149,7 @@ function DetalheDaVenda({ v }: { v: VendaComDetalhe }) {
       </p>
       {intervencoes.length > 0 ? (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[48rem] text-xs">
+          <table className={cn(TABELA_GRADE, "w-full min-w-[48rem] text-xs")}>
             <thead className="text-left font-semibold text-gray-500">
               <tr>
                 <th className="py-1 pr-3">Setor</th>

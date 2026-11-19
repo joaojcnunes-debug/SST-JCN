@@ -31,6 +31,7 @@ import { ConfirmHost, confirmar } from "@/components/ui/confirm";
 import PessoaComFoto from "@/components/ui/PessoaComFoto";
 import { buscar } from "@/lib/busca/texto";
 import { cn, fmtData, formatCPF } from "@/lib/utils";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 // A tabela é nova (v258) e ainda não está no tipo `Database`.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -367,7 +368,7 @@ export default function CertificadosPage() {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[820px] text-sm">
+              <table className={cn(TABELA_GRADE, "w-full min-w-[820px] text-sm")}>
                 <thead>
                   <tr className="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-400">
                     <th className="py-2 pr-3 font-medium">Trabalhador</th>

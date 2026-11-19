@@ -37,6 +37,7 @@ import { empresasFora } from "@/lib/psico-consolidacao/selecao-grupo";
 import type { FechamentoGrupo } from "@/lib/psico-consolidacao/carregar-conciliacao";
 import { hojeSP } from "@/lib/inspecoes/prioridade";
 import { cn, fmtData } from "@/lib/utils";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 type Filtro = "todas" | "divergencia" | "parecer" | "falta" | "revisao";
 
@@ -236,7 +237,7 @@ export default function ConciliacaoGrupoListaPage() {
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-          <table className="w-full text-sm">
+          <table className={cn(TABELA_GRADE, "w-full text-sm")}>
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/70 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                 <th className="px-4 py-3">Grupo</th>

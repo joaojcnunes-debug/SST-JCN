@@ -37,6 +37,7 @@ import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { buscar } from "@/lib/busca/texto";
 import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import { cn, fmtData, formatCNPJ } from "@/lib/utils";
+import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 const selectCls =
   "w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20";
@@ -447,7 +448,7 @@ function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial
 
           {/* Um serviço por linha, com a origem da indicação. */}
           <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-            <table className="w-full min-w-[64rem] text-sm [&_td+td]:border-l [&_td]:border-gray-200 [&_th+th]:border-l [&_th]:border-gray-200">
+            <table className={cn(TABELA_GRADE, "w-full min-w-[64rem] text-sm")}>
               <thead className={CLS_THEAD}>
                 <FaixaGrupos indicacao="O que indicamos" colunas={4} />
                 <tr>
@@ -666,7 +667,7 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
           <Venda idEmpresa={idEmpresa} produto={o.produto} nome="O serviço Intervenção psicossocial" venda={o.venda} podeVender={false} />
         </div>
       )}
-      <table className="w-full min-w-[72rem] text-sm [&_td]:border-l [&_td]:border-gray-200 [&_th+th]:border-l [&_th]:border-gray-200">
+      <table className={cn(TABELA_GRADE, "w-full min-w-[72rem] text-sm")}>
         <thead className={CLS_THEAD}>
           <FaixaGrupos indicacao="Indicado na Conciliação" colunas={6} />
           <tr>

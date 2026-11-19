@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "tabelas-grade-pontilhada",
+    data: "2026-11-19",
+    tipo: "melhoria",
+    titulo: "Tabelas com grade pontilhada e colunas centralizadas",
+    texto:
+      "As tabelas de lista do sistema (Minhas inspeções, Dashboard, Relatórios, Certificados, Plano de Ação, aba " +
+      "Riscos, AET, DRPS, QPS, Usuários, Comercial, Vendas e outras) ganharam a grade pontilhada e os títulos " +
+      "centralizados da lista de Inspeções. Plano de Ação, Relatórios e Certificados passam a usar a largura toda.",
+    onde: "Várias telas",
+    versoes: ["0.3.313"],
+  },
+  {
     id: "inspecoes-grade-centralizada",
     data: "2026-11-19",
     tipo: "melhoria",
