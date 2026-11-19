@@ -9,9 +9,10 @@ import { useRequireModule } from "@/lib/hooks/useRequireModule";
 import { cn } from "@/lib/utils";
 
 // Tela de preenchimento da inspeção (/inspecoes/INS-…) usa a largura toda
-// (2026-10-05): as abas e tabelas têm muita coluna. As demais telas seguem
+// (2026-10-05): as abas e tabelas têm muita coluna. A lista de Inspeções (/inspecoes) também,
+// desde a 0.3.312 (19/11, pedido do João: aproveitar as laterais vazias). As demais telas seguem
 // limitadas a 1400px.
-const TELA_LARGA = /^\/inspecoes\/(?!nova$|ficha$)[^/]+$/;
+const TELA_LARGA = /^\/inspecoes(\/(?!nova$|ficha$)[^/]+)?$/;
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   useAuth();
