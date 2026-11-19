@@ -93,6 +93,8 @@ const VISOES: { value: Visao; label: string; icone: typeof ClipboardList; dica: 
 const GRADE_CENTRALIZADA =
   "w-full border-collapse text-sm [&_th]:border [&_td]:border [&_th]:border-dashed [&_td]:border-dashed " +
   "[&_th]:border-gray-300 [&_td]:border-gray-300 " +
+  // A borda lisa e clarinha das linhas (<tr>) ganhava da tracejada nas horizontais e elas sumiam.
+  "[&_tr]:!border-0 " +
   "[&_th]:!text-center [&_td]:!text-center [&_td>*]:mx-auto";
 
 export default function InspecoesPage() {
