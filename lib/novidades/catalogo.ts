@@ -44,10 +44,10 @@ export const CATALOGO: Novidade[] = [
     id: "inspecoes-grade-centralizada",
     data: "2026-11-19",
     tipo: "melhoria",
-    titulo: "Inspeções: tabela com grade e colunas centralizadas",
+    titulo: "Inspeções: lista mais larga, com grade e colunas centralizadas",
     texto:
-      "A lista de Inspeções ganhou linhas de grade entre as células, e cada título fica centralizado com as " +
-      "informações da coluna, para ler a linha inteira com mais facilidade.",
+      "A lista de Inspeções usa a largura toda da tela, ganhou linhas de grade pontilhadas entre as células, e cada " +
+      "título fica centralizado com as informações da coluna, para ler a linha inteira com mais facilidade.",
     onde: "Inspeções › lista",
     versoes: ["0.3.312"],
   },

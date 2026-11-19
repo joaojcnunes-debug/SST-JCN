@@ -80,9 +80,12 @@ export default function InspecaoRow({
       </td>
       {/* v308: a prioridade se edita AQUI; dentro da inspeção ela só aparece. */}
       <td className="px-3 py-3">
-        <PrioridadeCelula id={insp.id_inspecao} valor={insp.prioridade} podeEditar={!!podeEditarPrioridade} />
-        {/* 28/10: a calculada (quando passa a marcada), a espera e o prazo — mesma regra de quem edita. */}
-        <PrioridadeCalculada insp={insp} podeEditarPrazo={!!podeEditarPrioridade} />
+        {/* 0.3.312: empilhado e centralizado — com a lista larga, a seleção e a calculada ficavam lado a lado em umas linhas e não em outras. */}
+        <div className="flex flex-col items-center gap-1">
+          <PrioridadeCelula id={insp.id_inspecao} valor={insp.prioridade} podeEditar={!!podeEditarPrioridade} />
+          {/* 28/10: a calculada (quando passa a marcada), a espera e o prazo — mesma regra de quem edita. */}
+          <PrioridadeCalculada insp={insp} podeEditarPrazo={!!podeEditarPrioridade} />
+        </div>
       </td>
       {/* v308 (JCN): complexidade — mesma mecânica e mesma regra de quem edita da prioridade. */}
       <td className="px-3 py-3">
