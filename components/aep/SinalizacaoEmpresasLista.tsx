@@ -26,6 +26,7 @@ import {
   type FiltrosSinalizacao,
 } from "@/lib/aep/sinalizacao-filtros";
 import SeloNivelAiha from "@/components/aep/SeloNivelAiha";
+import PessoaComFoto from "@/components/ui/PessoaComFoto";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { buscar } from "@/lib/busca/texto";
 import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
@@ -387,14 +388,11 @@ export default function SinalizacaoEmpresasLista({
                       <Necessario sim={e.precisaAet} />
                     </Bloco>
                     <Bloco rotulo="Realizada por">
-                      <div className="truncate" title={e.realizadaPor ?? undefined}>
-                        {e.realizadaPor ?? "—"}
-                      </div>
+                      {/* 0.3.306: foto (ou iniciais) antes do nome, como no resto do sistema. */}
+                      <PessoaComFoto nome={e.realizadaPor} />
                     </Bloco>
                     <Bloco rotulo="Enviada por">
-                      <div className="truncate" title={e.enviadoPor ?? undefined}>
-                        {e.temInspecao ? (e.enviadoPor ?? "—") : <span className="font-normal text-gray-500">Sem inspeção</span>}
-                      </div>
+                      {e.temInspecao ? <PessoaComFoto nome={e.enviadoPor} /> : <span className="font-normal text-gray-500">Sem inspeção</span>}
                     </Bloco>
                     <Bloco rotulo="Alertas">{e.totalAlertas}</Bloco>
                     <Bloco rotulo="Setores">{e.totalSetores}</Bloco>

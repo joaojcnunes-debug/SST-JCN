@@ -16,6 +16,7 @@ import { useUnidades } from "@/lib/hooks/useUnidades";
 import { leituraQuestionario, montarSinalizacao, piorNivel } from "@/lib/aep/sinalizacao";
 import { COR_NIVEL_AIHA } from "@/lib/aep/aiha-organizacional";
 import SeloNivelAiha from "@/components/aep/SeloNivelAiha";
+import PessoaComFoto from "@/components/ui/PessoaComFoto";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import BotaoExportarExcelEmpresa from "@/components/ui/BotaoExportarExcelEmpresa";
@@ -202,9 +203,9 @@ export default function SinalizacaoEmpresaDetalhe({
                   {a.data ? fmtData(a.data) : STATUS_ROTULO[a.status] ?? a.status}
                 </BlocoAep>
                 <BlocoAep rotulo="Inspeção">{a.idInspecao ?? <span className="font-normal text-gray-500">Sem inspeção</span>}</BlocoAep>
-                <BlocoAep rotulo="Realizada por">{a.responsavel ?? "—"}</BlocoAep>
+                <BlocoAep rotulo="Realizada por"><PessoaComFoto nome={a.responsavel} /></BlocoAep>
                 <BlocoAep rotulo="Enviada por">
-                  {a.idInspecao ? (a.enviadoPor ?? "—") : <span className="font-normal text-gray-500">Sem inspeção</span>}
+                  {a.idInspecao ? <PessoaComFoto nome={a.enviadoPor} /> : <span className="font-normal text-gray-500">Sem inspeção</span>}
                 </BlocoAep>
                 {(() => {
                   // Concluído antes desta AEP = revisão recomendada (2026-10-05).
