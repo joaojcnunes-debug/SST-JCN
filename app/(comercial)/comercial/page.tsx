@@ -8,6 +8,7 @@
 // 0.3.246: primeiro a lista de empresas, recolhida; ao abrir, cada serviço numa linha com a origem
 // (Inspeção, AEP, Conciliação), o que justifica, a situação e a venda.
 
+import PessoaComFoto from "@/components/ui/PessoaComFoto";
 import { useId, useMemo, useState, type ReactNode } from "react";
 import { BadgeCheck, Building2, ChevronDown, ChevronRight, ClipboardCheck, Download, FilterX, Handshake, Info, Loader2, Mail, MapPin, Phone, Search, Undo2 } from "lucide-react";
 import { useComercial, useDesfazerVenda, useRegistrarVenda } from "@/lib/hooks/useComercial";
@@ -527,10 +528,11 @@ function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial
       <div className="mt-2 flex flex-wrap gap-x-4 text-[11px] text-gray-500">
         {c.temAep && (
           <span>
-            AEP realizada por <strong className="text-gray-700">{e.realizadaPor ?? "—"}</strong>
+            {/* 0.3.310: foto (ou iniciais) antes de cada nome, como no resto do sistema. */}
+            AEP realizada por <PessoaComFoto nome={e.realizadaPor} tamanho="size-4 text-[7px]" className="align-middle font-semibold text-gray-700" />
             {e.temInspecao ? (
               <>
-                {" "}· enviada por <strong className="text-gray-700">{e.enviadoPor ?? "—"}</strong>
+                {" "}· enviada por <PessoaComFoto nome={e.enviadoPor} tamanho="size-4 text-[7px]" className="align-middle font-semibold text-gray-700" />
               </>
             ) : (
               " · sem inspeção"
@@ -539,19 +541,19 @@ function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial
         )}
         {c.inspecao && (
           <span>
-            Inspeção feita por <strong className="text-gray-700">{c.inspecao.responsavel ?? "—"}</strong>
+            Inspeção feita por <PessoaComFoto nome={c.inspecao.responsavel} tamanho="size-4 text-[7px]" className="align-middle font-semibold text-gray-700" />
           </span>
         )}
         {c.inspecao?.liberadoEm && (
           <span>
             Inspeção liberada para o Comercial em {fmtData(c.inspecao.liberadoEm)}
-            {c.inspecao.liberadoPor ? ` por ${c.inspecao.liberadoPor}` : ""}
+            {c.inspecao.liberadoPor && <> por <PessoaComFoto nome={c.inspecao.liberadoPor} tamanho="size-4 text-[7px]" className="align-middle" /></>}
           </span>
         )}
         {c.temAep && c.aepLiberadaEm && (
           <span>
             AEP liberada em {fmtData(c.aepLiberadaEm)}
-            {c.aepLiberadaPor ? ` por ${c.aepLiberadaPor}` : ""}
+            {c.aepLiberadaPor && <> por <PessoaComFoto nome={c.aepLiberadaPor} tamanho="size-4 text-[7px]" className="align-middle" /></>}
           </span>
         )}
       </div>
@@ -839,7 +841,8 @@ function Venda({
     return (
       <div className="text-xs text-violet-900">
         <p className="flex items-center gap-1 font-semibold">
-          <BadgeCheck className="size-3.5 shrink-0" /> Vendido em {fmtData(venda.em)} por {venda.por}
+          <BadgeCheck className="size-3.5 shrink-0" /> Vendido em {fmtData(venda.em)} por{" "}
+          <PessoaComFoto nome={venda.por} email={venda.porEmail} tamanho="size-4 text-[7px]" />
         </p>
         {venda.observacao && <p className="mt-0.5">{venda.observacao}</p>}
         {podeDesfazer && (

@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "comercial-pessoas-foto",
+    data: "2026-11-19",
+    tipo: "melhoria",
+    titulo: "Comercial e Vendas: foto de quem fez, liberou e vendeu",
+    texto:
+      "Nos cartões das Oportunidades comerciais, quem realizou, enviou, liberou e vendeu aparece com a foto ou as " +
+      "iniciais antes do nome. Na lista de Vendas, a coluna Vendido por também.",
+    onde: "Comercial › Oportunidades e Consolidação › Vendas",
+    versoes: ["0.3.310"],
+  },
+  {
     id: "caixinha-pessoas-no-lugar",
     data: "2026-11-19",
     tipo: "correcao",

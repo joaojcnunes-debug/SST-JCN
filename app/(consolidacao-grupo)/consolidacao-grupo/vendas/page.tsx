@@ -8,6 +8,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { BadgeCheck, ChevronDown, ChevronRight, Search } from "lucide-react";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import PessoaComFoto from "@/components/ui/PessoaComFoto";
 import { useVendasComercial, type VendaComDetalhe } from "@/lib/hooks/useComercial";
 import { NOME_PRODUTO } from "@/lib/comercial/oportunidades";
 import { buscar } from "@/lib/busca/texto";
@@ -102,7 +103,8 @@ export default function VendasPage() {
                     {NOME_PRODUTO[v.produto] ?? v.produto}
                     {v.id_item && <span className="block text-xs font-semibold text-gray-900">{item ?? "Intervenção que saiu da Conciliação"}</span>}
                   </td>
-                  <td className="px-3 py-2.5 text-gray-700">{v.vendido_por}</td>
+                  {/* 0.3.310: foto (ou iniciais) antes do nome, como no resto do sistema. */}
+                  <td className="px-3 py-2.5 text-gray-700"><PessoaComFoto nome={v.vendido_por} /></td>
                   <td className="px-3 py-2.5 text-xs text-gray-600">{fmtData(v.vendido_em)}</td>
                   <td className="px-3 py-2.5 text-xs text-gray-600">{v.observacao || "—"}</td>
                 </tr>
