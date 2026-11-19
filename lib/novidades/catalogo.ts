@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "relatorio-sumario-margem",
+    data: "2026-11-19",
+    tipo: "correcao",
+    titulo: "Relatório: Sumário e capítulos antes do corpo com margem",
+    texto:
+      "No relatório da inspeção, o Sumário, a Identificação da Empresa e os capítulos de texto padrão que vêm logo " +
+      "depois da capa ficavam colados na borda da folha. Agora têm a mesma margem do resto do relatório (a impressão " +
+      "não muda).",
+    onde: "Inspeção › Relatório",
+    versoes: ["0.3.316"],
+  },
+  {
     id: "inspecao-tempo-campo-etapa2",
     data: "2026-11-19",
     tipo: "novidade",

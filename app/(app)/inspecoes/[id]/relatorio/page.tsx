@@ -714,8 +714,13 @@ export default function RelatorioChabraPage({ params }: Props) {
           </p>
         </section>
 
-        {/* Textos Padrão — editáveis antes do corpo do relatório (ordem unificada) */}
-        {antesSst}
+        {/* Textos Padrão — editáveis antes do corpo do relatório (ordem unificada).
+            0.3.316: com a mesma margem das outras páginas (Sumário e Identificação ficavam colados na borda);
+            na impressão quem dá a margem é o @page. A margem vai em cada bloco (não no recipiente): o capítulo
+            sem texto, que só traz o <style>, continua sem ocupar espaço. */}
+        <div className="[&>*]:px-8 md:[&>*]:px-12 [&>div:first-child]:pt-8 print:[&>*]:!px-0 print:[&>div:first-child]:!pt-0">
+          {antesSst}
+        </div>
 
         {/* ============================================================
             PÁGINA 2: Identificação + Resumo Geral
