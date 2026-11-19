@@ -34,7 +34,8 @@ export default function TempoCampo({
       sessoes={sessoes}
       idUsuario={idUsuario}
       podeApontar={campo.tecnico && podeEditar && !campo.concluida}
-      podeCorrigir={false}
+      // 0.3.315 (banco v365): o supervisor corrige a sessão de campo, com justificativa (como no documento).
+      podeCorrigir={supervisor}
       concluidaEm={concluidaEm}
       entregue={campo.concluida}
     />

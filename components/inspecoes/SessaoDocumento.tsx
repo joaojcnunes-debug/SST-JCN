@@ -21,7 +21,7 @@ import {
   type SessaoDocumento,
 } from "@/lib/inspecoes/sessoes";
 import { cn } from "@/lib/utils";
-import { MOTIVOS_PAUSA_CAMPO } from "@/lib/inspecoes/campo";
+import { MOTIVOS_PAUSA_CAMPO, rotuloMotivoCampo } from "@/lib/inspecoes/campo";
 
 export function ControleSessao({
   idInspecao,
@@ -152,16 +152,19 @@ export function ListaSessoes({
   sessoes,
   agora,
   podeCorrigir,
+  fonte = "documento",
 }: {
   idInspecao: string;
   sessoes: readonly SessaoDocumento[];
   agora: number;
   podeCorrigir: boolean;
+  /** 0.3.315: no tempo de campo, as correções são as do campo (campo_sessoes_correcoes / campo_sessao_corrigir). */
+  fonte?: FonteSessao;
 }) {
   const [aberta, setAberta] = useState(false);
   const [corrigindo, setCorrigindo] = useState<SessaoDocumento | null>(null);
   // O atendimento do Comercial não tem correção de sessão (podeCorrigir = false).
-  const correcoes = useCorrecoesSessoes(idInspecao, aberta && podeCorrigir);
+  const correcoes = useCorrecoesSessoes(idInspecao, aberta && podeCorrigir, fonte);
   if (sessoes.length === 0) return null;
   const ordem = [...sessoes].sort((a, b) => b.inicio.localeCompare(a.inicio));
   return (
@@ -194,7 +197,7 @@ export function ListaSessoes({
                     </td>
                     <td className="py-1 pr-3 font-medium text-gray-700">{fmtDuracao(duracao(s, agora))}</td>
                     <td className="py-1 pr-3 text-gray-500">
-                      {s.motivo_fim ? ROTULO_MOTIVO[s.motivo_fim] : "—"}
+                      {s.motivo_fim ? (fonte === "campo" ? rotuloMotivoCampo(s.motivo_fim) : ROTULO_MOTIVO[s.motivo_fim]) : "—"}
                       {s.corrigida && (
                         <span
                           className="ml-1 rounded bg-amber-50 px-1 text-[10px] font-medium text-amber-700"
@@ -218,13 +221,13 @@ export function ListaSessoes({
           </table>
         </div>
       )}
-      {corrigindo && <CorrigirSessaoModal sessao={corrigindo} agora={agora} onClose={() => setCorrigindo(null)} />}
+      {corrigindo && <CorrigirSessaoModal sessao={corrigindo} agora={agora} fonte={fonte} onClose={() => setCorrigindo(null)} />}
     </div>
   );
 }
 
-function CorrigirSessaoModal({ sessao, agora, onClose }: { sessao: SessaoDocumento; agora: number; onClose: () => void }) {
-  const corrigir = useCorrigirSessao();
+function CorrigirSessaoModal({ sessao, agora, onClose, fonte = "documento" }: { sessao: SessaoDocumento; agora: number; onClose: () => void; fonte?: FonteSessao }) {
+  const corrigir = useCorrigirSessao(fonte);
   const [inicio, setInicio] = useState(paraInput(sessao.inicio));
   const [fim, setFim] = useState(paraInput(new Date(fimEfetivo(sessao, agora)).toISOString()));
   const [justificativa, setJustificativa] = useState("");

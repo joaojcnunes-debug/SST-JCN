@@ -23,6 +23,8 @@ import { COMPLEXIDADES_DESC, COMPLEXIDADE_INFO, type ComplexidadeInspecao } from
 import { fmtDuracao } from "@/lib/inspecoes/sessoes";
 import { cn } from "@/lib/utils";
 import { TABELA_GRADE } from "@/components/ui/tabela-grade";
+import { useTempoCampo } from "@/lib/hooks/useCampoSessoes";
+import { campoPorPessoa } from "@/lib/inspecoes/campo";
 
 /**
  * Dashboard › Tempo nos documentos (v0.3.183, 30/10/2026) — fase 3 do apontamento de tempo (v311).
@@ -41,6 +43,8 @@ export default function TempoDocumentosPage() {
   const supervisor = useIsSupervisor();
   const { data, isLoading: carregandoDados } = useTempoDocumentos(12);
   const unidade = useFiltroUnidadeDashboard();
+  // 0.3.315 (banco v365): o tempo de campo dos técnicos, no mesmo recorte de unidade.
+  const { data: sessoesCampo } = useTempoCampo(12);
   const agora = useAgora(60_000);
   const mesAtual = mesAbsAgoraSP();
   const [mesSel, setMesSel] = useState<number | null>(mesAtual);
@@ -261,6 +265,54 @@ export default function TempoDocumentosPage() {
           </div>
         )}
       </div>
+
+      {/* 0.3.315 (banco v365): tempo de campo por técnico — o painel de campo da inspeção, somado. */}
+      <TempoCampoPorTecnico sessoes={(sessoesCampo ?? []).filter((x) => !x.inspecoes || unidade.naUnidade(x.inspecoes.id_empresa))} agora={agora} />
+    </div>
+  );
+}
+
+function TempoCampoPorTecnico({ sessoes, agora }: { sessoes: Parameters<typeof campoPorPessoa>[0]; agora: number }) {
+  const inicioMes = new Date(new Date(agora).getFullYear(), new Date(agora).getMonth(), 1).getTime();
+  const linhas = campoPorPessoa(sessoes, agora, inicioMes);
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+      <h2 className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
+        <Clock className="size-4 text-marca-primary" /> Tempo de campo por técnico
+      </h2>
+      <p className="mt-0.5 text-xs text-gray-400">
+        Horas apontadas pelos técnicos (Iniciar/Pausar) na tela da inspeção, nos últimos 12 meses. Deslocamento conta à parte.
+      </p>
+      {linhas.length === 0 ? (
+        <p className="py-6 text-center text-sm text-gray-500">Ainda não há tempo de campo apontado.</p>
+      ) : (
+        <div className="mt-3 overflow-x-auto">
+          <table className={cn(TABELA_GRADE, "w-full text-sm")}>
+            <thead>
+              <tr className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <th className="px-3 py-2">Técnico</th>
+                <th className="px-3 py-2">No mês</th>
+                <th className="px-3 py-2">12 meses</th>
+                <th className="px-3 py-2">Deslocamento</th>
+                <th className="px-3 py-2">Inspeções</th>
+                <th className="px-3 py-2">Sessões</th>
+              </tr>
+            </thead>
+            <tbody>
+              {linhas.map((l) => (
+                <tr key={l.idUsuario}>
+                  <td className="px-3 py-2 font-medium text-gray-800">{l.nome}</td>
+                  <td className="px-3 py-2 font-semibold tabular-nums">{l.mesMs > 0 ? fmtDuracao(l.mesMs) : "—"}</td>
+                  <td className="px-3 py-2 tabular-nums">{fmtDuracao(l.trabalhadoMs)}</td>
+                  <td className="px-3 py-2 tabular-nums text-cyan-700">{l.deslocamentoMs > 0 ? fmtDuracao(l.deslocamentoMs) : "—"}</td>
+                  <td className="px-3 py-2 tabular-nums">{l.inspecoes}</td>
+                  <td className="px-3 py-2 tabular-nums text-gray-600">{l.sessoes}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
