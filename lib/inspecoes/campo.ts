@@ -3,8 +3,8 @@
  * temos o contador de tempo?"). Mesmo modelo do tempo do documento (lib/inspecoes/sessoes.ts): sessões de uma
  * pessoa, pausa sozinha com 30 min parada. Decisões dele (19/11):
  *   - conta o TÉCNICO DE CAMPO (responsável, quem lançou ou quem está na aba Responsáveis);
- *   - começa pelo botão "Iniciar campo" e também sozinho na primeira alteração (só se a pessoa nunca contou campo
- *     nesta inspeção — quem pausou de propósito não volta a contar sozinho);
+ *   - começa pelo botão Iniciar/Retomar (o mesmo painel do tempo do documento); sem o play, o técnico não inclui,
+ *     edita nem exclui na inspeção (travaEdicaoCampo) — isso substituiu o "começa sozinho na primeira alteração";
  *   - DESLOCAMENTO conta à parte, como o "aguardando cliente" (do fim da pausa até o próximo início);
  *   - concluir a inspeção fecha as sessões abertas;
  *   - o técnico vê o próprio tempo; a supervisão vê o de todos.
@@ -75,7 +75,19 @@ export function ehTecnicoDeCampo(
   );
 }
 
-/** A primeira alteração abre a sessão sozinha só se a pessoa nunca contou campo nesta inspeção. */
-export function deveIniciarSozinho(sessoes: readonly SessaoDocumento[], idUsuario: string | null | undefined): boolean {
-  return !!idUsuario && !sessoes.some((s) => s.id_usuario === idUsuario);
+/**
+ * Trava da edição (0.3.314, pedido do João: "só com o play ligado o colaborador pode inserir, editar e excluir, como
+ * na parte do relatório, para contabilizar o tempo de trabalho"). Vale para o técnico de campo que não é supervisor
+ * (a mesma exceção do tempo do documento), com permissão de editar, na inspeção não concluída e sem a sessão de campo
+ * dele correndo. Enquanto as sessões carregam, não trava.
+ */
+export function travaEdicaoCampo(p: {
+  carregando: boolean;
+  tecnico: boolean;
+  supervisor: boolean;
+  podeEditar: boolean;
+  concluida: boolean;
+  sessaoAberta: boolean;
+}): boolean {
+  return !p.carregando && p.tecnico && !p.supervisor && p.podeEditar && !p.concluida && !p.sessaoAberta;
 }

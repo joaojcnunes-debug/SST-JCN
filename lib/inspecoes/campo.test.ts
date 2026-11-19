@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { deveIniciarSozinho, ehTecnicoDeCampo, resumirCampo, rotuloMotivoCampo } from "./campo";
+import { ehTecnicoDeCampo, resumirCampo, rotuloMotivoCampo } from "./campo";
 import type { SessaoDocumento } from "./sessoes";
 
 const H = 3_600_000;
@@ -51,10 +51,19 @@ test("ehTecnicoDeCampo: responsável, quem lançou ou aba Responsáveis", () => 
   assert.equal(ehTecnicoDeCampo({ responsavel: "João Silva" }, [], null), false);
 });
 
-test("deveIniciarSozinho só na primeira vez; rótulos do campo", () => {
-  assert.equal(deveIniciarSozinho([], "U1"), true);
-  assert.equal(deveIniciarSozinho([sessao({ de: t0, ate: t0 + H })], "U1"), false);
-  assert.equal(deveIniciarSozinho([sessao({ de: t0, ate: t0 + H })], "U2"), true);
+test("rótulos do campo", () => {
   assert.equal(rotuloMotivoCampo("CONCLUIDO"), "Inspeção concluída");
   assert.equal(rotuloMotivoCampo("DESLOCAMENTO"), "Deslocamento");
+});
+
+test("travaEdicaoCampo: técnico sem o play trava; supervisor, concluída, play ligado ou carregando não", async () => {
+  const { travaEdicaoCampo } = await import("./campo");
+  const base = { carregando: false, tecnico: true, supervisor: false, podeEditar: true, concluida: false, sessaoAberta: false };
+  assert.equal(travaEdicaoCampo(base), true);
+  assert.equal(travaEdicaoCampo({ ...base, sessaoAberta: true }), false);
+  assert.equal(travaEdicaoCampo({ ...base, supervisor: true }), false);
+  assert.equal(travaEdicaoCampo({ ...base, concluida: true }), false);
+  assert.equal(travaEdicaoCampo({ ...base, tecnico: false }), false);
+  assert.equal(travaEdicaoCampo({ ...base, podeEditar: false }), false);
+  assert.equal(travaEdicaoCampo({ ...base, carregando: true }), false);
 });

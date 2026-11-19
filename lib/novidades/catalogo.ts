@@ -46,9 +46,10 @@ export const CATALOGO: Novidade[] = [
     tipo: "novidade",
     titulo: "Inspeção: contador do tempo de campo",
     texto:
-      "No cabeçalho da inspeção, o técnico de campo tem o cronômetro do trabalho: Iniciar campo, Pausar (com motivo) " +
-      "e Retomar. A primeira alteração na inspeção já começa a contar, e ele pausa sozinho depois de 30 minutos sem " +
-      "atividade. Deslocamento e aguardando cliente contam à parte. A supervisão vê o tempo de todos, por pessoa.",
+      "No topo da inspeção, o técnico de campo tem o mesmo painel de tempo do relatório: Iniciar, Pausar (com motivo) " +
+      "e Retomar, com a janelinha no canto da tela. Sem o play ligado, não dá para incluir, editar nem excluir — " +
+      "aparece o aviso para dar o play. Pausa sozinho com 30 minutos sem atividade; deslocamento e aguardando " +
+      "cliente contam à parte. A supervisão vê o tempo de todos, por pessoa.",
     onde: "Inspeção › cabeçalho",
     versoes: ["0.3.314"],
   },

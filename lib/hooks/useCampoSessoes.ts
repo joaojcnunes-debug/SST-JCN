@@ -1,14 +1,15 @@
 "use client";
 
-// Tempo de campo da inspeção (0.3.314, banco v364): lê as sessões e chama as funções do banco
-// (campo_sessao_iniciar / _pausar / _atividade). As regras estão em lib/inspecoes/campo.ts.
+// Tempo de campo da inspeção (0.3.314, banco v364): lê as sessões de campo e avisa a atividade. Iniciar e Pausar
+// são os do painel de tempo (useIniciarSessao/usePausarSessao com a fonte "campo", em useDocumentoSessoes.ts).
+// As regras estão em lib/inspecoes/campo.ts.
 
 import { useEffect, useRef } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import type { SessaoDocumento } from "@/lib/inspecoes/sessoes";
-import type { MotivoPausaCampo } from "@/lib/inspecoes/campo";
+import { minhaSessaoAberta, type SessaoDocumento } from "@/lib/inspecoes/sessoes";
+import { ehTecnicoDeCampo, travaEdicaoCampo } from "@/lib/inspecoes/campo";
+import { useAgora } from "@/lib/hooks/useDocumentoSessoes";
 
 export const CHAVE_CAMPO = "campo-sessoes";
 const CAMPOS = "id_sessao, id_inspecao, id_usuario, nome, inicio, ultima_atividade, fim, motivo_fim, fechada_auto";
@@ -31,60 +32,17 @@ export function useSessoesCampo(idInspecao: string) {
   });
 }
 
-export function useIniciarCampo() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ idInspecao, origem = "BOTAO" }: { idInspecao: string; origem?: "BOTAO" | "AUTOMATICO" }) => {
-      const { data, error } = await sb().rpc("campo_sessao_iniciar", { p_id_inspecao: idInspecao, p_origem: origem });
-      if (error) throw error;
-      return { id: data as string | null, origem };
-    },
-    onSuccess: (r) => {
-      qc.invalidateQueries({ queryKey: [CHAVE_CAMPO] });
-      if (r.id && r.origem === "AUTOMATICO") toast.success("Tempo de campo iniciado (primeira alteração)");
-    },
-    onError: (e: Error, v) => {
-      // O automático falhar não pode atrapalhar quem está preenchendo.
-      if (v.origem !== "AUTOMATICO") toast.error(e.message);
-    },
-  });
-}
-
-export function usePausarCampo() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ idInspecao, motivo }: { idInspecao: string; motivo: MotivoPausaCampo }) => {
-      const { error } = await sb().rpc("campo_sessao_pausar", { p_id_inspecao: idInspecao, p_motivo: motivo });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [CHAVE_CAMPO] });
-      toast.success("Tempo de campo pausado");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-}
-
 /**
- * Na tela da inspeção, para o técnico de campo:
- *   - com a sessão aberta, cada interação avisa "ainda estou aqui" (no máximo a cada 2 min) — sem isso ela pausa
- *     sozinha com 30 min parada;
- *   - sem sessão e sem nunca ter contado campo nesta inspeção, a PRIMEIRA ALTERAÇÃO (digitar ou mudar um campo)
- *     abre a sessão sozinha (origem AUTOMATICO). Quem pausou de propósito não volta a contar sozinho.
+ * "Ainda estou aqui": com a minha sessão de campo aberta, cada interação avisa o banco (no máximo a cada 2 min).
+ * Sem isso a sessão pausa sozinha depois de 30 min.
  */
-export function useAtividadeCampo(
-  idInspecao: string,
-  opcoes: { ativa: boolean; podeIniciarSozinho: boolean },
-) {
+export function useAtividadeCampo(idInspecao: string, ativa: boolean) {
   const qc = useQueryClient();
-  const iniciar = useIniciarCampo();
   const ultimo = useRef(0);
-  const tentouIniciar = useRef(false);
-  const refs = useRef({ qc, iniciar });
-  refs.current = { qc, iniciar };
-
+  const qcRef = useRef(qc);
+  qcRef.current = qc;
   useEffect(() => {
-    if (!idInspecao || !opcoes.ativa) return;
+    if (!idInspecao || !ativa) return;
     const avisar = () => {
       const agora = Date.now();
       if (agora - ultimo.current < 120_000) return;
@@ -92,7 +50,7 @@ export function useAtividadeCampo(
       sb()
         .rpc("campo_sessao_atividade", { p_id_inspecao: idInspecao })
         .then(({ data, error }: { data: boolean | null; error: unknown }) => {
-          if (!error && data === false) refs.current.qc.invalidateQueries({ queryKey: [CHAVE_CAMPO] });
+          if (!error && data === false) qcRef.current.invalidateQueries({ queryKey: [CHAVE_CAMPO] });
         });
     };
     const eventos = ["mousemove", "keydown", "scroll", "click", "touchstart"] as const;
@@ -101,20 +59,48 @@ export function useAtividadeCampo(
     return () => {
       for (const e of eventos) window.removeEventListener(e, avisar);
     };
-  }, [idInspecao, opcoes.ativa]);
+  }, [idInspecao, ativa]);
+}
 
-  useEffect(() => {
-    if (!idInspecao || opcoes.ativa || !opcoes.podeIniciarSozinho || tentouIniciar.current) return;
-    const alterou = () => {
-      if (tentouIniciar.current) return;
-      tentouIniciar.current = true;
-      refs.current.iniciar.mutate({ idInspecao, origem: "AUTOMATICO" });
-    };
-    window.addEventListener("input", alterou, true);
-    window.addEventListener("change", alterou, true);
-    return () => {
-      window.removeEventListener("input", alterou, true);
-      window.removeEventListener("change", alterou, true);
-    };
-  }, [idInspecao, opcoes.ativa, opcoes.podeIniciarSozinho]);
+export interface CampoDaInspecao {
+  carregando: boolean;
+  sessoes: SessaoDocumento[];
+  tecnico: boolean;
+  concluida: boolean;
+  /** A minha sessão de campo está correndo. */
+  correndo: boolean;
+  /** Sem o play, o técnico não inclui, edita nem exclui (TravaCampo). */
+  trava: boolean;
+}
+
+/** Tudo o que a tela da inspeção precisa do tempo de campo (o painel e a trava usam o mesmo). */
+export function useCampoDaInspecao(p: {
+  idInspecao: string;
+  inspecao: { status?: string | null; responsavel?: string | null; usuario?: string | null } | null | undefined;
+  responsaveis: readonly { id_usuario?: string | null; tecnico_responsavel?: string | null }[];
+  usuario: { id_usuario?: string | null; nome?: string | null; email?: string | null } | null | undefined;
+  supervisor: boolean;
+  podeEditar: boolean;
+}): CampoDaInspecao {
+  const { data: sessoes = [], isLoading } = useSessoesCampo(p.idInspecao);
+  const agora = useAgora();
+  const tecnico = !!p.inspecao && ehTecnicoDeCampo(p.inspecao, p.responsaveis, p.usuario);
+  const concluida = p.inspecao?.status === "CONCLUIDA";
+  const correndo = !!minhaSessaoAberta(sessoes, p.usuario?.id_usuario, agora);
+  useAtividadeCampo(p.idInspecao, correndo);
+  return {
+    carregando: isLoading || !p.inspecao,
+    sessoes,
+    tecnico,
+    concluida,
+    correndo,
+    trava: travaEdicaoCampo({
+      carregando: isLoading || !p.inspecao,
+      tecnico,
+      supervisor: p.supervisor,
+      podeEditar: p.podeEditar,
+      concluida,
+      sessaoAberta: correndo,
+    }),
+  };
 }

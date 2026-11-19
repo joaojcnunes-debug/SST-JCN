@@ -16,11 +16,14 @@
 //    painel saiu da tela (rolagem) — o cronômetro e o Pausar ficam sempre à vista.
 //  • a janelinha se arrasta pelo ícone/cronômetro (começa abaixo dos botões da página).
 //  A escolha (painel/canto), a posição e o "Detalhes" aberto ficam guardados no navegador.
+// 0.3.314 (banco v364): o mesmo painel conta o TEMPO DE CAMPO na tela da inspeção (fonte "campo"), com o
+//  deslocamento à parte (estado, indicador e faixa na linha do tempo) e as preferências guardadas à parte.
 // As contas são as de lib/inspecoes/sessoes.ts.
 
 import { useEffect, useRef, useState } from "react";
 import {
   CalendarClock,
+  Car,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -41,6 +44,7 @@ import {
   MINUTOS_INATIVIDADE,
   ROTULO_MOTIVO,
   esperasDoCliente,
+  esperasPorMotivo,
   estaAberta,
   fimEfetivo,
   fmtCronometro,
@@ -50,14 +54,16 @@ import {
   type SessaoDocumento,
 } from "@/lib/inspecoes/sessoes";
 import { cn } from "@/lib/utils";
+import { rotuloMotivoCampo } from "@/lib/inspecoes/campo";
 
-type Estado = "minha" | "outros" | "cliente" | "pausado" | "novo" | "entregue";
+type Estado = "minha" | "outros" | "cliente" | "deslocamento" | "pausado" | "novo" | "entregue";
 type Modo = "painel" | "canto";
 
 const FAIXA: Record<Estado, string> = {
   minha: "from-emerald-600 via-emerald-500 to-teal-500",
   outros: "from-sky-600 via-sky-500 to-cyan-500",
   cliente: "from-amber-500 via-amber-400 to-orange-400",
+  deslocamento: "from-cyan-600 via-cyan-500 to-teal-400",
   pausado: "from-slate-600 via-slate-500 to-slate-400",
   novo: "from-slate-500 via-slate-400 to-slate-300",
   entregue: "from-indigo-600 via-indigo-500 to-violet-500",
@@ -67,6 +73,7 @@ const CURTO: Record<Estado, string> = {
   minha: "Seu tempo",
   outros: "Trabalhando agora",
   cliente: "Aguardando cliente",
+  deslocamento: "Em deslocamento",
   pausado: "Pausado",
   novo: "Não iniciado",
   entregue: "Entregue",
@@ -94,6 +101,7 @@ const gravar = (k: string, v: string) => {
 
 /** Na Conciliação, os motivos falam dela, não de documento. */
 const rotuloMotivo = (motivo: keyof typeof ROTULO_MOTIVO, fonte: FonteSessao) => {
+  if (fonte === "campo") return rotuloMotivoCampo(motivo);
   if (!ehFonteComercial(fonte)) return ROTULO_MOTIVO[motivo];
   if (motivo === "CONCLUIDO") return "Liberado para o Comercial";
   if (motivo === "TROCA") return "Iniciou outra conciliação";
@@ -128,6 +136,10 @@ export default function PainelTempoDocumento({
   fonte?: FonteSessao;
 }) {
   const conciliacao = ehFonteComercial(fonte);
+  const campo = fonte === "campo";
+  // Onde o painel está: textos das dicas e chaves das preferências (o do campo guarda as suas, à parte).
+  const ondeTexto = conciliacao ? "a conciliação" : campo ? "a inspeção" : "o documento";
+  const sufixo = campo ? ".campo" : "";
   // O cronômetro anda de segundo em segundo só enquanto há alguém trabalhando.
   const algumAberto = sessoes.some((s) => !s.fim);
   const agora = useAgora(algumAberto ? 1000 : 30_000);
@@ -138,15 +150,15 @@ export default function PainelTempoDocumento({
   const [detalhes, setDetalhes] = useState(false);
   const [posicao, setPosicao] = useState(POSICAO_PADRAO);
   useEffect(() => {
-    if (ler(CHAVE_MODO) === "canto") setModo("canto");
-    if (ler(CHAVE_DETALHES) === "1") setDetalhes(true);
+    if (ler(CHAVE_MODO + sufixo) === "canto") setModo("canto");
+    if (ler(CHAVE_DETALHES + sufixo) === "1") setDetalhes(true);
     try {
-      const p = JSON.parse(ler(CHAVE_POSICAO) ?? "null");
+      const p = JSON.parse(ler(CHAVE_POSICAO + sufixo) ?? "null");
       if (p && Number.isFinite(p.top) && Number.isFinite(p.right)) setPosicao(p);
     } catch {
       /* posição salva inválida: fica a padrão */
     }
-  }, []);
+  }, [sufixo]);
 
   // Arrastar a janelinha pelo ícone/cronômetro; a posição fica guardada (dentro da tela).
   const arrasto = useRef<{ x: number; y: number; top: number; right: number } | null>(null);
@@ -165,17 +177,17 @@ export default function PainelTempoDocumento({
     if (!arrasto.current) return;
     arrasto.current = null;
     setPosicao((p) => {
-      gravar(CHAVE_POSICAO, JSON.stringify(p));
+      gravar(CHAVE_POSICAO + sufixo, JSON.stringify(p));
       return p;
     });
   };
   const mudarModo = (m: Modo) => {
     setModo(m);
-    gravar(CHAVE_MODO, m);
+    gravar(CHAVE_MODO + sufixo, m);
   };
   const alternarDetalhes = () =>
     setDetalhes((v) => {
-      gravar(CHAVE_DETALHES, v ? "0" : "1");
+      gravar(CHAVE_DETALHES + sufixo, v ? "0" : "1");
       return !v;
     });
 
@@ -192,6 +204,8 @@ export default function PainelTempoDocumento({
 
   const ate = entregue && concluidaEm ? ms(concluidaEm) : undefined;
   const r = resumirSessoes(sessoes, agora, ate);
+  const desloc = campo ? esperasPorMotivo(sessoes, "DESLOCAMENTO", agora, ate) : { intervalos: [] as [number, number][], agora: false };
+  const deslocamentoMs = desloc.intervalos.reduce((t, [de, a]) => t + (a - de), 0);
   const minha = minhaSessaoAberta(sessoes, idUsuario, agora);
   const outras = sessoes.filter((s) => estaAberta(s, agora) && s.id_usuario !== idUsuario);
   const fechadas = sessoes.filter((s) => s.fim).sort((a, b) => ms(b.fim!) - ms(a.fim!));
@@ -211,7 +225,9 @@ export default function PainelTempoDocumento({
         ? "outros"
         : r.aguardandoClienteAgora
           ? "cliente"
-          : sessoes.length > 0
+          : desloc.agora
+            ? "deslocamento"
+            : sessoes.length > 0
             ? "pausado"
             : "novo";
 
@@ -236,6 +252,12 @@ export default function PainelTempoDocumento({
     grande = fmtDuracao(agora - desde);
     sub = `Pausado em ${diaHora(desde)} · esse tempo não conta como trabalhado`;
     Icone = Hourglass;
+  } else if (estado === "deslocamento") {
+    const desde = ultima?.fim ? ms(ultima.fim) : agora;
+    titulo = "Em deslocamento";
+    grande = fmtDuracao(agora - desde);
+    sub = `Desde ${diaHora(desde)} · conta à parte, fora do tempo trabalhado`;
+    Icone = Car;
   } else if (estado === "pausado") {
     titulo = "Pausado";
     grande = fmtDuracao(r.trabalhadoMs);
@@ -249,9 +271,9 @@ export default function PainelTempoDocumento({
     sub = podeApontar ? "Aperte Iniciar para começar a contar o seu tempo" : "Nenhuma sessão de trabalho ainda";
     Icone = CalendarClock;
   } else {
-    titulo = conciliacao ? "Liberado para o Comercial" : "Documento entregue";
+    titulo = conciliacao ? "Liberado para o Comercial" : campo ? "Inspeção concluída" : "Documento entregue";
     grande = fmtDuracao(r.trabalhadoMs);
-    const palavra = conciliacao ? "Liberado" : "Concluído";
+    const palavra = conciliacao ? "Liberado" : campo ? "Concluída" : "Concluído";
     sub = `${concluidaEm ? `${palavra} em ${diaHora(ms(concluidaEm))}` : palavra} · tempo trabalhado no total`;
     Icone = CheckCircle2;
   }
@@ -312,7 +334,7 @@ export default function PainelTempoDocumento({
           mudarModo("painel");
           setTimeout(() => raiz.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
         }}
-        title={`Mostrar o painel de tempo ${conciliacao ? "na conciliação" : "no documento"}`}
+        title={`Mostrar o painel de tempo n${ondeTexto}`}
         className="flex size-7 items-center justify-center rounded-full text-white/90 hover:bg-white/20"
       >
         <Maximize2 className="size-3.5" />
@@ -329,7 +351,7 @@ export default function PainelTempoDocumento({
         >
           <span className="inline-flex items-center gap-1.5">
             <PictureInPicture2 className="size-3.5 text-gray-400" />
-            Tempo {conciliacao ? "da conciliação" : "do documento"} no canto da tela · {titulo.toLowerCase()} · trabalhado {fmtDuracao(r.trabalhadoMs)}
+            Tempo {conciliacao ? "da conciliação" : campo ? "de campo" : "do documento"} no canto da tela · {titulo.toLowerCase()} · trabalhado {fmtDuracao(r.trabalhadoMs)}
           </span>
           <button type="button" onClick={() => mudarModo("painel")} className="font-medium text-marca-primary hover:underline">
             Mostrar aqui
@@ -373,7 +395,7 @@ export default function PainelTempoDocumento({
                 <button
                   type="button"
                   onClick={() => mudarModo("canto")}
-                  title={`Levar para o canto da tela (janelinha que não cobre ${conciliacao ? "a conciliação" : "o documento"})`}
+                  title={`Levar para o canto da tela (janelinha que não cobre ${ondeTexto})`}
                   className="flex size-8 items-center justify-center rounded-lg text-white/90 hover:bg-white/20"
                 >
                   <PictureInPicture2 className="size-4" />
@@ -385,7 +407,7 @@ export default function PainelTempoDocumento({
 
         {/* Indicadores + Detalhes */}
         <div className={cn("flex flex-wrap items-stretch bg-white", detalhes && sessoes.length > 0 ? "border-b border-gray-100" : "rounded-b-xl")}>
-          <div className="grid flex-1 grid-cols-2 divide-gray-100 sm:grid-cols-4 sm:divide-x">
+          <div className={cn("grid flex-1 grid-cols-2 divide-gray-100 sm:divide-x", campo ? "sm:grid-cols-5" : "sm:grid-cols-4")}>
             <Indicador rotulo="Trabalhado" valor={fmtDuracao(r.trabalhadoMs)} destaque />
             <Indicador rotulo="Você hoje" valor={idUsuario && euHojeMs > 0 ? fmtDuracao(euHojeMs) : "—"} />
             <Indicador
@@ -394,6 +416,14 @@ export default function PainelTempoDocumento({
               alerta={r.aguardandoClienteAgora}
               dica="Fora do tempo trabalhado"
             />
+            {campo && (
+              <Indicador
+                rotulo="Deslocamento"
+                valor={deslocamentoMs > 0 ? fmtDuracao(deslocamentoMs) : "—"}
+                alerta={desloc.agora}
+                dica="Fora do tempo trabalhado"
+              />
+            )}
             <Indicador rotulo="Sessões · pessoas" valor={`${sessoes.length} · ${r.porPessoa.length}`} />
           </div>
           {sessoes.length > 0 && (
@@ -427,6 +457,14 @@ export default function PainelTempoDocumento({
                     style={{ left: `${pct(de)}%`, width: `${Math.max(0.5, pct(a) - pct(de))}%` }}
                   />
                 ))}
+                {desloc.intervalos.map(([de, a]) => (
+                  <span
+                    key={`d${de}`}
+                    title={`Deslocamento: ${fmtDuracao(a - de)}`}
+                    className="absolute inset-y-0 bg-[repeating-linear-gradient(45deg,#22d3ee_0,#22d3ee_4px,#a5f3fc_4px,#a5f3fc_8px)]"
+                    style={{ left: `${pct(de)}%`, width: `${Math.max(0.5, pct(a) - pct(de))}%` }}
+                  />
+                ))}
                 {sessoes.map((s) => {
                   const fim = fimEfetivo(s, agora);
                   return (
@@ -442,6 +480,11 @@ export default function PainelTempoDocumento({
               {esperas.length > 0 && (
                 <p className="mt-1 inline-flex items-center gap-1 text-[10px] text-gray-500">
                   <span className="size-2 rounded-sm bg-[repeating-linear-gradient(45deg,#fbbf24_0,#fbbf24_2px,#fde68a_2px,#fde68a_4px)]" /> Aguardando cliente
+                </p>
+              )}
+              {desloc.intervalos.length > 0 && (
+                <p className="ml-3 mt-1 inline-flex items-center gap-1 text-[10px] text-gray-500">
+                  <span className="size-2 rounded-sm bg-[repeating-linear-gradient(45deg,#22d3ee_0,#22d3ee_2px,#a5f3fc_2px,#a5f3fc_4px)]" /> Deslocamento
                 </p>
               )}
             </div>
