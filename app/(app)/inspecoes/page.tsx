@@ -89,6 +89,11 @@ const VISOES: { value: Visao; label: string; icone: typeof ClipboardList; dica: 
   { value: "associados", label: "Associados (documento)", icone: FileText, dica: "Quem está no documento e a situação dele" },
 ];
 
+/** Tabela com grade e colunas centralizadas (0.3.312): borda em cada célula; título e conteúdo no centro. */
+const GRADE_CENTRALIZADA =
+  "w-full border-collapse text-sm [&_th]:border [&_td]:border [&_th]:border-gray-200 [&_td]:border-gray-200 " +
+  "[&_th]:!text-center [&_td]:!text-center [&_td>*]:mx-auto";
+
 export default function InspecoesPage() {
   return (
     <Suspense fallback={null}>
@@ -496,7 +501,9 @@ function InspecoesInner() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            {/* 0.3.312 (19/11/2026, pedido do João): linhas de grade em todas as células e cada título centralizado com o
+                conteúdo da coluna. Vale para a tabela inteira (cabeçalho e InspecaoRow), por isso fica aqui. */}
+            <table className={GRADE_CENTRALIZADA}>
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/70">
                   <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">ID</th>
