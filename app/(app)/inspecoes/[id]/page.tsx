@@ -43,6 +43,7 @@ import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
 import DocumentosEmpresaPainel from "@/components/empresas/DocumentosEmpresaPainel";
 import { useCanEdit, useCurrentUser, useIsSupervisor } from "@/lib/hooks/useUsuario";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
+import TempoCampo from "@/components/inspecoes/TempoCampo";
 import { DetalheSkeleton } from "@/components/ui/PageSkeletons";
 import { cn, fmtData } from "@/lib/utils";
 import SetoresTab from "@/components/inspecoes/editor/tabs/SetoresTab";
@@ -489,6 +490,16 @@ export default function InspecaoEditorPage({ params }: Props) {
             <PrioridadeSelo valor={inspecao.prioridade} />
           </div>
         </div>
+        {/* 0.3.314 (banco v364): tempo de campo do técnico — cronômetro, Iniciar/Pausar; a supervisão vê o de todos.
+            Linha própria, para não empurrar os botões do cabeçalho. */}
+        <TempoCampo
+          idInspecao={id}
+          inspecao={inspecao}
+          responsaveis={responsaveis}
+          usuario={currentUser}
+          supervisor={isAdmin}
+          podeEditar={canEdit}
+        />
       </div>
 
       {isRenovacao && (
