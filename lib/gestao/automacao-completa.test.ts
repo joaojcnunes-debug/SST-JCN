@@ -3,6 +3,11 @@ import assert from "node:assert/strict";
 import { acaoCompleta, acoesCompletas, acoesDaRegra, agendaValida, regraCompleta } from "./automacao-completa";
 
 describe("automação completa (mesma regra do banco, v297)", () => {
+  test("v367: subtarefas dos Produtos é sempre completa; o alvo subtarefas não muda a regra da ação", () => {
+    assert.equal(acaoCompleta({ tipo: "criar_subtarefas_produtos" }), true);
+    assert.equal(acaoCompleta({ tipo: "adicionar_etiqueta", alvo: "subtarefas" } as never), false);
+    assert.equal(acaoCompleta({ tipo: "adicionar_etiqueta", valor: "x", alvo: "subtarefas" } as never), true);
+  });
   test("sem tipo ou tipo desconhecido não roda", () => {
     assert.equal(acaoCompleta(null), false);
     assert.equal(acaoCompleta({}), false);

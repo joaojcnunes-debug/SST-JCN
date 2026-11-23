@@ -55,6 +55,7 @@ export function acaoCompleta(acao: AcaoMin | null | undefined): boolean {
     case "solicitar_aprovacao":
     case "concluir":
     case "duplicar_tarefa":
+    case "criar_subtarefas_produtos": // v367: o campo tem padrão (Produtos)
       return true;
     default:
       return false;

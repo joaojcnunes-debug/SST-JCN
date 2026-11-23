@@ -4,6 +4,7 @@
 // Puro (sem React): testado em receitas-automacao.test.ts.
 
 import type { AcaoAutomacao, CondicaoAutomacao, GatilhoAutomacao } from "@/lib/hooks/useGestao";
+import { CAMPO_PRODUTOS_ID } from "@/lib/gestao/regiao-produtos";
 
 export interface StatusMin { slug: string; nome: string; tipo?: string | null; ordem?: number }
 
@@ -19,7 +20,7 @@ export interface Receita {
 const id = (n: number) => `r${n}`;
 
 /** As receitas para um quadro (usa os status dele: o 1º "não iniciado", o 1º "concluído", um de revisão). */
-export function receitasDoQuadro(statuses: readonly StatusMin[]): Receita[] {
+export function receitasDoQuadro(statuses: readonly StatusMin[], opts: { temProdutos?: boolean } = {}): Receita[] {
   const ord = [...statuses].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
   const inicial = ord.find((s) => s.tipo === "nao_iniciado") ?? ord[0];
   const concluido = ord.find((s) => s.tipo === "concluido");
@@ -168,6 +169,24 @@ export function receitasDoQuadro(statuses: readonly StatusMin[]): Receita[] {
         modelo_tarefa: { titulo: "Renovar documento: {empresa} (vence {validade})", prioridade: "Alta", prazo_dias: "20", prazo_uteis: "true" },
       },
       acoes: [{ id: id(1), tipo: "notificar", valor: "Documento de {empresa} vence em {dias_para_vencer} dias" }],
+    },
+    // v367 (pedido do João, 23/11): "tudo que for produto vira subtarefa". Duas, porque o cartão pode nascer com os
+    // Produtos (formulário, roteamento para a unidade) ou ganhar os Produtos depois. Não repetem subtarefa.
+    opts.temProdutos && {
+      id: "produtos-subtarefas-nova",
+      titulo: "Produtos viram subtarefas (cartão novo)",
+      descricao: "Quando o cartão é criado com Produtos (formulário ou roteamento), cada produto vira uma subtarefa.",
+      gatilho: "tarefa_criada",
+      condicao: { all: [{ campo: `campo:${CAMPO_PRODUTOS_ID}`, op: "nao_vazio", valor: "" }] },
+      acoes: [{ id: id(1), tipo: "criar_subtarefas_produtos" }],
+    },
+    opts.temProdutos && {
+      id: "produtos-subtarefas-muda",
+      titulo: "Produtos viram subtarefas (ao marcar Produtos)",
+      descricao: "Quando alguém marca Produtos no cartão, cada produto novo vira uma subtarefa (as que já existem ficam).",
+      gatilho: "campo_muda",
+      condicao: { all: [{ campo: "campo_alterado", op: "=", valor: CAMPO_PRODUTOS_ID }] },
+      acoes: [{ id: id(1), tipo: "criar_subtarefas_produtos" }],
     },
     {
       id: "botao-urgente",

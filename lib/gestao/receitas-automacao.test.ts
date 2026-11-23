@@ -23,6 +23,12 @@ describe("receitas de automação (v300)", () => {
       assert.equal(regraCompleta(x.gatilho, x.condicao, x.acoes), x.id !== "rodizio-novas", x.id);
     }
   });
+  test("v367: Produtos viram subtarefas só no quadro com o campo Produtos, e nascem completas", () => {
+    assert.equal(receitasDoQuadro(STATUS).some((x) => x.id.startsWith("produtos-subtarefas")), false);
+    const r = receitasDoQuadro(STATUS, { temProdutos: true }).filter((x) => x.id.startsWith("produtos-subtarefas"));
+    assert.deepEqual(r.map((x) => x.gatilho), ["tarefa_criada", "campo_muda"]);
+    for (const x of r) assert.equal(regraCompleta(x.gatilho, x.condicao, x.acoes), true, x.id);
+  });
   test("quadro sem status de revisão ou concluído não oferece as receitas que dependem deles", () => {
     const ids = receitasDoQuadro([{ slug: "X", nome: "Aberta", tipo: "ativo", ordem: 0 }]).map((x) => x.id);
     assert.equal(ids.includes("concluida-avisar"), false);

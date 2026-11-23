@@ -42,6 +42,14 @@ describe("automação em português (11/11)", () => {
     assert.equal(descreverAcao({ tipo: "mover_status_se_completo", valor: "AG_APROVACAO" }, n),
       'Se todas as subtarefas estiverem concluídas, move o cartão para "Aguardando Aprovação"');
   });
+  test("v367: subtarefas dos Produtos e ações em cada subtarefa", () => {
+    assert.equal(descreverAcao({ tipo: "criar_subtarefas_produtos" }, n), "Cria uma subtarefa para cada Produto marcado");
+    assert.equal(descreverAcao({ tipo: "criar_subtarefas_produtos", produtos: ["PGR", "PCMSO"], responsavel_email: "isabela.esteves@chabra.com.br" }, n),
+      'Cria uma subtarefa para cada Produto marcado (só PGR ou PCMSO), com Isabela Esteves como responsável');
+    assert.equal(descreverAcao({ tipo: "concluir", alvo: "subtarefas" }, n), "Em cada subtarefa: conclui a subtarefa");
+    assert.equal(descreverAcao({ tipo: "comentar", texto: "Oi", alvo: "subtarefas", condicao: { all: [{ campo: "subtarefa", op: "contains", valor: "PGR" }] } }, n),
+      'Em cada subtarefa: comenta na subtarefa: "Oi" — só se o nome da subtarefa contém "PGR"');
+  });
   test("regra inteira numa frase", () => {
     const r = { gatilho: "subtarefa_concluida", condicao: { all: [{ op: "in", campo: "status", valor: ["EMPRESAS_NOVAS"] }] },
       acoes: [{ tipo: "mover_status", valor: "AG_AGENDAMENTO" }] };
