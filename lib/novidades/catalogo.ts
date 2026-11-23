@@ -48,7 +48,8 @@ export const CATALOGO: Novidade[] = [
     texto:
       "O \"Então\" das automações tem agora dois tópicos: Tarefa (todas as ações juntas) e Subtarefas (as mesmas ações, " +
       "rodando em cada subtarefa do cartão — o \"só se…\" é testado em cada uma, ex.: o nome da subtarefa contém PGR). " +
-      "E a ação nova \"Criar subtarefas a partir dos Produtos\" cria uma subtarefa para cada produto marcado, sem repetir, " +
+      "E a ação nova \"Criar subtarefas a partir dos Produtos\" cria, para cada produto marcado, as subtarefas do modelo dele " +
+      "(ou uma com o nome do produto, quando não há modelo), sem repetir, " +
       "com o responsável do \"Funcionários por produto\". Há duas receitas prontas: Produtos viram subtarefas (cartão novo " +
       "e ao marcar Produtos).",
     onde: "Gestão › Automações",

@@ -175,7 +175,7 @@ export function receitasDoQuadro(statuses: readonly StatusMin[], opts: { temProd
     opts.temProdutos && {
       id: "produtos-subtarefas-nova",
       titulo: "Produtos viram subtarefas (cartão novo)",
-      descricao: "Quando o cartão é criado com Produtos (formulário ou roteamento), cada produto vira uma subtarefa.",
+      descricao: "Quando o cartão é criado com Produtos (formulário ou roteamento), cada produto vira subtarefa (as do modelo do produto, se houver).",
       gatilho: "tarefa_criada",
       condicao: { all: [{ campo: `campo:${CAMPO_PRODUTOS_ID}`, op: "nao_vazio", valor: "" }] },
       acoes: [{ id: id(1), tipo: "criar_subtarefas_produtos" }],

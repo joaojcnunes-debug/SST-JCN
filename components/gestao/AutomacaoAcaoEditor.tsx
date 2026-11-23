@@ -260,7 +260,7 @@ export default function AutomacaoAcaoEditor({
                   className={`${sel} w-full`}
                 />
               </div>
-              <span className="w-full text-[11px] text-gray-400">Não repete: produto que já tem subtarefa com o mesmo nome fica como está. Desmarcar um produto não apaga a subtarefa.</span>
+              <span className="w-full text-[11px] text-gray-400">Se o quadro tem um modelo de subtarefas com o nome do produto, cria os itens dele; senão, uma subtarefa com o título acima. Não repete subtarefa com o mesmo nome, e desmarcar um produto não apaga a subtarefa. Uma regra assim substitui as regras de checklist por produto.</span>
             </>
           );
         })()}

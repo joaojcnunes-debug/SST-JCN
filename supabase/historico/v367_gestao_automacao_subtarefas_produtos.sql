@@ -12,9 +12,11 @@
 --      cartão). Não vale para: aguardar, criar subtarefas (modelo/produtos) e mover para outro quadro.
 --   3. gestao_automacao_executar: ação com "alvo": "subtarefas" vai para a função do item 2 (o "só se…" dela
 --      deixa de ser testado no cartão).
---   4. gestao_automacao_acao: nova ação 'criar_subtarefas_produtos' — uma subtarefa por valor do campo (padrão:
---      Produtos), título "{produto}" (aceita variáveis), sem repetir a que já existe (mesmo nome), opcionalmente
---      só alguns produtos; responsável: o da ação ou, sem ele, o "Funcionários por produto" do quadro (por produto).
+--   4. gestao_automacao_acao: nova ação 'criar_subtarefas_produtos' — para cada valor marcado no campo (padrão:
+--      Produtos; opcionalmente só alguns): se o quadro tem um modelo de subtarefas com o nome do produto, cria os
+--      itens dele (com etapa e tipo, como o "[SST] Checklist <produto>"); senão, uma subtarefa com o título da ação
+--      ("{produto}", aceita variáveis). Não repete subtarefa com o mesmo nome. Responsável: o da ação ou, sem ele,
+--      o "Funcionários por produto" do quadro (daquele produto). Uma regra só substitui as regras por produto.
 --   5. gestao_automacao_completa: a ação nova é sempre completa (o campo tem padrão).
 --
 -- REAPLICAR: idempotente (cada troca confere o marcador 'v367'). ROLLBACK: scripts/sql/v367_gestao_automacao_subtarefas_produtos_rollback.sql
@@ -146,7 +148,7 @@ begin
       '      declare\n'
       '        v_campo text := coalesce(nullif(v_acao->>''campo_id'', ''''), ''eb5d9daf-9b81-4903-bfd5-4fea654225e7'');\n'
       '        v_val jsonb := coalesce(p_tarefa.campos, ''{}''::jsonb) -> coalesce(nullif(v_acao->>''campo_id'', ''''), ''eb5d9daf-9b81-4903-bfd5-4fea654225e7'');\n'
-      '        v_prods text[]; v_so text[]; v_p text; v_resp text; v_t text;\n'
+      '        v_prods text[]; v_so text[]; v_p text; v_resp text; v_t text; v_mod public.gestao_subtarefa_modelos;\n'
       '      begin\n'
       '        v_prods := case jsonb_typeof(v_val)\n'
       '          when ''array'' then array(select btrim(x) from jsonb_array_elements_text(v_val) x where btrim(x) <> '''')\n'
@@ -160,10 +162,7 @@ begin
       '          select coalesce(max(ordem), -1) + 1 into v_ordem from public.gestao_subtarefas where id_tarefa = p_tarefa.id_tarefa;\n'
       '          foreach v_p in array v_prods loop\n'
       '            if cardinality(v_so) > 0 and not (v_p = any (v_so)) then continue; end if;\n'
-      '            v_t := left(btrim(public.gestao_automacao_texto(coalesce(nullif(v_acao->>''titulo_template'', ''''), ''{produto}''), p_tarefa,\n'
-      '                     coalesce(p_ctx, ''{}''::jsonb) || jsonb_build_object(''vars'', coalesce(p_ctx->''vars'', ''{}''::jsonb) || jsonb_build_object(''produto'', v_p)))), 500);\n'
-      '            if v_t = '''' then continue; end if;\n'
-      '            if exists (select 1 from public.gestao_subtarefas where id_tarefa = p_tarefa.id_tarefa and lower(btrim(texto)) = lower(v_t)) then continue; end if;\n'
+      '            v_resp := null;\n'
       '            select lower(u.email) into v_resp from public.usuarios u\n'
       '             where lower(u.email) = lower(btrim(coalesce(v_acao->>''responsavel_email'', '''')))\n'
       '               and coalesce(u.ativo_sistema, true) and u.perfil <> ''Cliente'';\n'
@@ -175,9 +174,26 @@ begin
       '                 and coalesce(u.ativo_sistema, true) and u.perfil <> ''Cliente''\n'
       '               order by r.ordem, r.created_at limit 1;\n'
       '            end if;\n'
-      '            insert into public.gestao_subtarefas (id, id_tarefa, texto, ordem, responsavel_email)\n'
-      '            values (''SUB-'' || upper(substring(replace(gen_random_uuid()::text, ''-'', '''') from 1 for 8)), p_tarefa.id_tarefa, v_t, v_ordem, v_resp);\n'
-      '            v_ordem := v_ordem + 1; v_ins := v_ins + 1;\n'
+      '            -- o quadro tem modelo de subtarefas com o nome do produto? usa os itens dele (etapa e tipo); senão, uma\n'
+      '            -- subtarefa com o título da ação ({produto}).\n'
+      '            v_mod := null;\n'
+      '            select * into v_mod from public.gestao_subtarefa_modelos m\n'
+      '             where m.id_quadro = p_tarefa.id_quadro and lower(btrim(m.titulo)) = lower(v_p)\n'
+      '               and jsonb_typeof(m.itens) = ''array'' and jsonb_array_length(m.itens) > 0\n'
+      '             order by m.slug limit 1;\n'
+      '            for v_item in\n'
+      '              select value from jsonb_array_elements(coalesce(v_mod.itens, jsonb_build_array(jsonb_build_object(''texto'',\n'
+      '                public.gestao_automacao_texto(coalesce(nullif(v_acao->>''titulo_template'', ''''), ''{produto}''), p_tarefa,\n'
+      '                  coalesce(p_ctx, ''{}''::jsonb) || jsonb_build_object(''vars'', coalesce(p_ctx->''vars'', ''{}''::jsonb) || jsonb_build_object(''produto'', v_p)))))))\n'
+      '            loop\n'
+      '              v_t := left(btrim(coalesce(v_item->>''texto'', '''')), 500);\n'
+      '              if v_t = '''' then continue; end if;\n'
+      '              if exists (select 1 from public.gestao_subtarefas where id_tarefa = p_tarefa.id_tarefa and lower(btrim(texto)) = lower(v_t)) then continue; end if;\n'
+      '              insert into public.gestao_subtarefas (id, id_tarefa, texto, ordem, etapa, tipo, responsavel_email)\n'
+      '              values (''SUB-'' || upper(substring(replace(gen_random_uuid()::text, ''-'', '''') from 1 for 8)), p_tarefa.id_tarefa, v_t, v_ordem,\n'
+      '                      nullif(v_item->>''etapa'', ''''), nullif(v_item->>''tipo'', ''''), v_resp);\n'
+      '              v_ordem := v_ordem + 1; v_ins := v_ins + 1;\n'
+      '            end loop;\n'
       '          end loop;\n'
       '          if v_ins = 0 then\n'
       '            v_res := ''skip''; v_det := ''as subtarefas dos produtos já existiam'';\n'
