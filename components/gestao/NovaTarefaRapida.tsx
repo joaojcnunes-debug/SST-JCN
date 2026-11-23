@@ -4,8 +4,9 @@ import { useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Plus, X, Loader2 } from "lucide-react";
 import { useUserStore } from "@/lib/store";
-import { useSalvarTarefa, useRegistrarAtividade, type PrioridadeTarefa, type StatusTarefa } from "@/lib/hooks/useGestao";
-import { REGIOES, comRegiao } from "@/lib/gestao/regiao-produtos";
+import { useSalvarTarefa, useRegistrarAtividade, useCamposQuadro, type PrioridadeTarefa, type StatusTarefa } from "@/lib/hooks/useGestao";
+import { CAMPO_PRODUTOS_ID, REGIOES, comRegiao } from "@/lib/gestao/regiao-produtos";
+import ListaSuspensaMultipla from "@/components/gestao/ListaSuspensaMultipla";
 
 // 17/11/2026 (pedido do usuário): Região obrigatória em toda tarefa. A última escolhida fica lembrada neste navegador,
 // para criar várias da mesma unidade em sequência sem escolher de novo.
@@ -32,6 +33,8 @@ const guardarRegiao = (r: string) => {
  * Grava do mesmo jeito que a janela "Nova tarefa" (useSalvarTarefa + "criada" no histórico), então as
  * automações de tarefa criada rodam no banco igual. Os outros campos ficam para quando abrir a tarefa.
  * 17/11/2026: a Região é obrigatória também aqui (seletor embaixo do título).
+ * 0.3.318 (23/11/2026, pedido do João): no quadro que tem o campo Produtos (o Comercial), pede também os Produtos,
+ * como o formulário — as automações de roteamento dependem deles. Ficam escolhidos para a próxima, como a Região.
  */
 export default function NovaTarefaRapida({ idQuadro, status, prioridade, ordem }: {
   idQuadro: string;
@@ -49,6 +52,9 @@ export default function NovaTarefaRapida({ idQuadro, status, prioridade, ordem }
   const registrarAtiv = useRegistrarAtividade();
   const userNome = useUserStore((s) => s.user?.nome ?? null);
   const caixaRef = useRef<HTMLTextAreaElement>(null);
+  const { data: campos = [] } = useCamposQuadro(aberto ? idQuadro : null);
+  const campoProdutos = campos.find((c) => c.id === CAMPO_PRODUTOS_ID) ?? null;
+  const [produtos, setProdutos] = useState<string[]>([]);
 
   function fechar() {
     setTitulo("");
@@ -64,7 +70,10 @@ export default function NovaTarefaRapida({ idQuadro, status, prioridade, ordem }
       return;
     }
     try {
-      const id = await salvar.mutateAsync({ id_quadro: idQuadro, titulo: t, status, prioridade: prioridade ?? "Media", ordem, etiquetas: comRegiao([], regiao) });
+      const id = await salvar.mutateAsync({
+        id_quadro: idQuadro, titulo: t, status, prioridade: prioridade ?? "Media", ordem, etiquetas: comRegiao([], regiao),
+        ...(campoProdutos && produtos.length ? { campos: { [CAMPO_PRODUTOS_ID]: produtos } } : {}),
+      });
       registrarAtiv.mutate({ id_tarefa: id, ator: userNome, eventos: [{ acao: "criada" }] });
       setTitulo("");
       toast.success("Tarefa criada");
@@ -128,6 +137,12 @@ export default function NovaTarefaRapida({ idQuadro, status, prioridade, ordem }
         <option value="">Região (obrigatória)…</option>
         {REGIOES.map((r) => <option key={r.tag} value={r.tag}>{r.label}</option>)}
       </select>
+      {campoProdutos && (
+        <div title="Produtos (as automações de roteamento usam este campo)">
+          <ListaSuspensaMultipla opcoes={campoProdutos.opcoes ?? []} valor={produtos} onChange={setProdutos} disabled={salvar.isPending} />
+          {!produtos.length && <p className="mt-0.5 text-[11px] text-amber-700">Sem Produtos, o roteamento para a unidade não roda ao concluir.</p>}
+        </div>
+      )}
       <div className="flex items-center gap-1.5">
         <button
           type="button"

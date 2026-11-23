@@ -13,7 +13,7 @@ import {
   useSalvarVinculados, useRegistrarAtividade, DIAS_LIXEIRA,
   useMinhasTarefas, useNomesEmpresas, useVinculadosQuadro, buscarTarefa, useTodosStatus, useNotificacoes, useMarcarLida, useLimparNotificacoes,
   usePreferenciaVisao, useSalvarPreferenciaVisao,
-  useStatusQuadro, statusPadrao, useCamposQuadro, useEtiquetasQuadro,
+  useStatusQuadro, statusPadrao, useCamposQuadro, useEtiquetasQuadro, useAutomacoes,
   useEspacos, usePastas, useTodasDependencias, useAutomacaoTick, useSyncGoogleAgenda, useTempoQuadro, useAnexosCountQuadro,
   useEtapasAvisadas, useAlternarAvisoEtapa, useSlaTarefas,
   corAvatar, formatarDuracao,
@@ -44,6 +44,9 @@ import AtalhoPopover from "@/components/gestao/AtalhoPopover";
 import AtalhosAjuda from "@/components/gestao/AtalhosAjuda";
 import { acaoDaTecla } from "@/lib/gestao/atalhos";
 import { avisoAoMover, contarWip, estadoWip } from "@/lib/gestao/wip";
+import { avisoRoteamento } from "@/lib/gestao/aviso-roteamento";
+import { acoesDaRegra } from "@/lib/gestao/automacao-completa";
+import { CAMPO_PRODUTOS_ID } from "@/lib/gestao/regiao-produtos";
 import { ShieldCheck as IconeRequisito, Timer as IconePrazo } from "lucide-react";
 import StatusManagerModal from "@/components/gestao/StatusManagerModal";
 import CamposManagerModal from "@/components/gestao/CamposManagerModal";
@@ -160,6 +163,8 @@ export default function GestaoChabraPage() {
   const salvarPref = useSalvarPreferenciaVisao();
   const { data: statusList = VAZIA, isLoading: loadingStatus } = useStatusQuadro(quadro?.id_quadro);
   const { data: campos = [] } = useCamposQuadro(quadro?.id_quadro);
+  // 0.3.318: as automações do quadro, para avisar antes de concluir um cartão que o roteamento não vai levar.
+  const { data: automacoesQuadro = [] } = useAutomacoes(quadro?.id_quadro);
   const { data: etiquetasCat = [] } = useEtiquetasQuadro(quadro?.id_quadro);
   useAutomacaoTick();  // fallback de agendamento sem pg_cron (.107): scan de prazos 1x/dia
   useSyncGoogleAgenda();  // F3.A: tarefas com prazo → Agenda Google (ao abrir e após cada gravação)
@@ -694,6 +699,20 @@ export default function GestaoChabraPage() {
     if (colunaAlvo && dragged.status !== targetStatus) {
       const aviso = avisoAoMover(colunaAlvo, contarWip(items, targetStatus, responsaveisDe), responsaveisDe(dragged.id_tarefa), false, nomeDoEmail);
       if (aviso && !(await confirmar({ title: "Limite de cartões da coluna", description: `${aviso} Mover mesmo assim?`, confirmLabel: "Mover" }))) return;
+      // 0.3.318 (pedido do João, 23/11): o cartão vai entrar numa coluna que dispara roteamento, mas falta o campo da
+      // condição (ex.: Produtos) ou a Região — avisa antes, em vez de a automação não fazer nada calada.
+      const avisoRota = avisoRoteamento(
+        dragged,
+        targetStatus,
+        automacoesQuadro.map((a) => ({ nome: a.nome, ativo: a.ativo, gatilho: a.gatilho, condicao: a.condicao as never, acoes: acoesDaRegra(a) as never })),
+        (id) => campos.find((c) => c.id === id)?.nome ?? (id === CAMPO_PRODUTOS_ID ? "Produtos" : "o campo da condição"),
+      );
+      if (avisoRota && !(await confirmar({
+        title: "Este cartão não vai ser encaminhado",
+        description: `${avisoRota} Abra o cartão e preencha antes, ou mova mesmo assim.`,
+        confirmLabel: "Mover mesmo assim",
+        variant: "primary",
+      }))) return;
     }
     const rest = items.filter((t) => t.id_tarefa !== dragId);
     const col = rest.filter((t) => t.status === targetStatus).sort((a, b) => a.ordem - b.ordem);

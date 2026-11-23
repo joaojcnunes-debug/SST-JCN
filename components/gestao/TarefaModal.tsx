@@ -25,7 +25,7 @@ import {
   useSubtarefas, useSalvarSubtarefas, useAbrirSubtarefa, useTarefaMae, useComentariosDasSubtarefas, buscarTarefa,
   useAddComentario, useExcluirComentario,
   useDependencias, useAddDependencia, useExcluirDependencia,
-  useUsuarios, gerarIaGestao, useRegistrarAtividade, useCamposDeOrigem, useProdutosCatalogo, useQuadros, useChecklist, useAddChecklist,
+  useUsuarios, gerarIaGestao, useRegistrarAtividade, useCamposDeOrigem, useProdutosCatalogo, useQuadros, useChecklist, useAddChecklist, useAutomacoes,
   PRIORIDADES, useEmpresaSugerida, useNomesEmpresas,
   useAnexos, useExcluirAnexo,
   useResolverComentario, useMoverForcandoRequisito, ehErroRequisito, useSlaTarefas, useTempoTarefa, totalSegundos, formatarDuracao,
@@ -47,6 +47,8 @@ import { criadorDoFormulario } from "@/lib/gestao/filtros";
 import { linkTarefa } from "@/lib/gestao/link-tarefa";
 import ListaSuspensaMultipla from "@/components/gestao/ListaSuspensaMultipla";
 import { CAMPO_PRODUTOS_ID, REGIOES, comRegiao, opcoesComMarcados, regiaoDasEtiquetas } from "@/lib/gestao/regiao-produtos";
+import { avisoRoteamento } from "@/lib/gestao/aviso-roteamento";
+import { acoesDaRegra } from "@/lib/gestao/automacao-completa";
 import { situacaoResposta, situacaoResolucao, fmtPrazo, fmtMeta, type SituacaoSla } from "@/lib/gestao/sla";
 import { entrouNaColunaEm, formatarTempoLongo } from "@/lib/gestao/tempo-etapas";
 import { BotaoTempo, RegistroTempo } from "@/components/gestao/TempoTracker";
@@ -298,6 +300,8 @@ export default function TarefaModal({
   // 0.3.281 (= Painel 0.3.941): também a Nova subtarefa (novaSubDe = a tarefa-mãe).
   const idPai = tarefa?.id_tarefa_pai ?? (tarefa ? null : novaSubDe?.id_tarefa ?? null);
   const ehSub = !!idPai;
+  // 0.3.318: automações do quadro, para o aviso de roteamento ao mudar a coluna e salvar.
+  const { data: automacoesQuadro = [] } = useAutomacoes(open && !ehSub ? quadroDaTarefa : null);
   // Lista de subtarefas de tarefa já salva: grava cada mudança na hora. Na Nova tarefa é rascunho até "Criar tarefa".
   const subAoVivo = !!tarefa && !ehSub;
   // Região e Produtos em toda tarefa (0.3.269 = Painel 0.3.908), como no formulário do Comercial — não na janela de
@@ -673,6 +677,36 @@ export default function TarefaModal({
     return pendenciasParaConcluir(deps.dependeDe.map((d) => d.tarefa), tarefaMap, (s) => statusMap.get(s)?.tipo);
   }
 
+  /** Campos personalizados que mudaram nesta janela e ainda não foram gravados (campo limpo vai como null). */
+  function camposMudadosNaJanela(): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    if (!tarefa?.id_tarefa) return out;
+    const orig = camposCarregados.current;
+    for (const k of new Set([...Object.keys(orig), ...Object.keys(valoresCampos)])) {
+      if (JSON.stringify(valoresCampos[k] ?? null) !== JSON.stringify(orig[k] ?? null)) out[k] = valoresCampos[k] ?? null;
+    }
+    return out;
+  }
+
+  /** 0.3.318 (pedido do João, 23/11): a coluna nova dispara roteamento, mas falta o campo da condição (ex.: Produtos)
+   *  ou a Região — pergunta antes, em vez de a automação não fazer nada calada. true = pode seguir. */
+  async function confirmaRoteamento(novo: StatusTarefa, rotulo: string): Promise<boolean> {
+    if (ehSub) return true;
+    const aviso = avisoRoteamento(
+      { etiquetas, campos: valoresCampos },
+      novo,
+      automacoesQuadro.map((a) => ({ nome: a.nome, ativo: a.ativo, gatilho: a.gatilho, condicao: a.condicao as never, acoes: acoesDaRegra(a) as never })),
+      (id) => campos.find((c) => c.id === id)?.nome ?? (id === CAMPO_PRODUTOS_ID ? "Produtos" : "o campo da condição"),
+    );
+    if (!aviso) return true;
+    return confirmar({
+      title: "Este cartão não vai ser encaminhado",
+      description: `${aviso} Preencha antes, ou siga mesmo assim.`,
+      confirmLabel: rotulo,
+      variant: "primary",
+    });
+  }
+
   /** Escolher outro status numa tarefa existente grava na hora e o cartão muda de coluna (como no Runrun).
    *  Tarefa nova (ainda sem id) ou de outro quadro que não o desta janela: vale só no "Salvar". */
   async function mudarStatus(novo: StatusTarefa) {
@@ -684,10 +718,24 @@ export default function TarefaModal({
       setStatus(statusSalvo);
       return;
     }
+    if (!(await confirmaRoteamento(novo, "Mudar mesmo assim"))) {
+      setStatus(statusSalvo);
+      return;
+    }
     const anterior = statusSalvo;
     setStatusSalvo(novo);
+    // 0.3.318: o status grava na hora, mas Produtos/Região/campos só no Salvar — a automação da coluna nova rodava com
+    // o cartão ainda sem o que a pessoa acabou de escolher (ex.: Produtos marcado e logo depois "Concluído"). Agora o
+    // que mudou nesses campos vai JUNTO com o status, no mesmo update (o gatilho já enxerga).
+    const camposPend = camposMudadosNaJanela();
+    const etiquetasMudaram = JSON.stringify([...etiquetas].sort()) !== JSON.stringify([...(tarefa.etiquetas ?? [])].sort());
     try {
-      await salvar.mutateAsync({ id_tarefa: tarefa.id_tarefa, id_quadro: tarefa.id_quadro, status: novo });
+      await salvar.mutateAsync({
+        id_tarefa: tarefa.id_tarefa, id_quadro: tarefa.id_quadro, status: novo,
+        ...(Object.keys(camposPend).length ? { camposAlterados: camposPend } : {}),
+        ...(etiquetasMudaram ? { etiquetas } : {}),
+      });
+      if (Object.keys(camposPend).length) camposCarregados.current = { ...camposCarregados.current, ...camposPend };
       registrarAtiv.mutate({ id_tarefa: tarefa.id_tarefa, ator: userNome, eventos: [{ acao: "status", payload: { de: nomeStatus(anterior), para: nomeStatus(novo) } }] });
       toast.success(`Status: ${nomeStatus(novo)}`);
     } catch (e) {
@@ -734,6 +782,8 @@ export default function TarefaModal({
       toast.error(mensagemPendencias(pendentes));
       return;
     }
+    // 0.3.318: tarefa nova (ou de outro quadro) muda de coluna só no Salvar — mesmo aviso de roteamento.
+    if (status !== statusSalvo && !(await confirmaRoteamento(status, "Salvar mesmo assim"))) return;
     // Imagem do cartão que a pessoa tirou da descrição (12/11/2026): como toda imagem do cartão fica dentro da descrição,
     // ela voltaria sozinha na próxima abertura. Pergunta antes de gravar qualquer coisa: Excluir tira do cartão (e da
     // aba Anexos) depois que o texto estiver salvo; Cancelar põe de volta no fim da descrição e salva o resto.
@@ -764,13 +814,7 @@ export default function TarefaModal({
       .filter((s) => s.texto.trim());
     // Campos personalizados: na edição, só as chaves que mudaram nesta janela (o hook mescla com o
     // valor atual do banco). Campo limpo vai como null — undefined sumiria do JSON e não limparia.
-    const camposAlterados: Record<string, unknown> = {};
-    if (tarefa?.id_tarefa) {
-      const orig = camposCarregados.current;
-      for (const k of new Set([...Object.keys(orig), ...Object.keys(valoresCampos)])) {
-        if (JSON.stringify(valoresCampos[k] ?? null) !== JSON.stringify(orig[k] ?? null)) camposAlterados[k] = valoresCampos[k] ?? null;
-      }
-    }
+    const camposAlterados = camposMudadosNaJanela();
     const estimadoMin = estH.trim() === "" && estM.trim() === "" ? null : Math.max(0, (parseInt(estH || "0", 10) || 0) * 60 + (parseInt(estM || "0", 10) || 0));
     const dados: Partial<GestaoTarefa> & { id_quadro: string } = {
       id_quadro: idQuadro,
