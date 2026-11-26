@@ -46,7 +46,7 @@ export const CATALOGO: Novidade[] = [
     tipo: "novidade",
     titulo: "Comercial: método de cada intervenção e Plano de intervenções",
     texto:
-      "Na tela de Oportunidades, cada intervenção psicossocial traz embaixo do nome a forma de realização, a avaliação de " +
+      "Na tela de Oportunidades, cada intervenção psicossocial traz embaixo, numa faixa, a forma de realização, a avaliação de " +
       "aprendizado, a duração e o certificado, como a equipe descreveu na Conciliação. E abaixo da tabela vem o Plano de " +
       "intervenções: o planejamento, o mês de cada intervenção e o cronograma. Assim o vendedor tem tudo para montar a proposta.",
     onde: "Comercial › Oportunidades",
