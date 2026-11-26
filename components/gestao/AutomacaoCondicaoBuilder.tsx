@@ -50,8 +50,10 @@ function clausulaVazia(sst = false): ClausulaCondicao {
 }
 
 export default function AutomacaoCondicaoBuilder({
-  condicao, statuses, campos, quadros, etiquetas = [], unidades = [], sst = false, disabled, onAplicar,
+  condicao, statuses, campos, quadros, etiquetas = [], unidades = [], sst = false, subtarefa = false, disabled, onAplicar,
 }: {
+  /** v367: gatilho de subtarefa ou ação do tópico Subtarefas — oferece o nome, o tipo e a etapa da subtarefa. */
+  subtarefa?: boolean;
   condicao: CondicaoAutomacao;
   etiquetas?: { id: string; nome: string }[];
   /** v301: para a condição "Unidade (SST)". */
@@ -95,6 +97,11 @@ export default function AutomacaoCondicaoBuilder({
     { value: "responsavel_email", label: "E-mail do responsável adicionado (gatilho)" },
     { value: "prioridade_de", label: "Prioridade anterior (gatilho)" },
     ...campos.map((c) => ({ value: `campo:${c.id}`, label: `Campo: ${c.nome}` })),
+    ...(subtarefa ? [
+      { value: "subtarefa", label: "Nome da subtarefa" },
+      { value: "subtarefa_tipo", label: "Tipo da subtarefa" },
+      { value: "subtarefa_etapa", label: "Etapa da subtarefa" },
+    ] : []),
   ];
   const camposCond = sst ? camposSst : camposTarefa;
 

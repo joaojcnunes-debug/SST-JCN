@@ -15,6 +15,7 @@ import { AgendaEditor, ModeloTarefaEditor, ParadaEditor } from "@/components/ges
 import { acoesDaRegra, regraCompleta, GATILHOS_SST } from "@/lib/gestao/automacao-completa";
 import { useUnidades } from "@/lib/hooks/useUnidades";
 import { receitasDoQuadro } from "@/lib/gestao/receitas-automacao";
+import { CAMPO_PRODUTOS_ID } from "@/lib/gestao/regiao-produtos";
 import { GATILHOS, GRUPOS_GATILHO, DIAS_PADRAO, descreverAcao, descreverRegra, ehGatilhoSubtarefa } from "@/lib/gestao/automacao-descricao";
 import { nomesDoQuadro, useNomesAutomacao, useReordenarAutomacoes } from "@/lib/hooks/useAutomacoesTodas";
 import {
@@ -77,7 +78,7 @@ export default function AutomacoesManagerModal({
   // ação com o "só se…" aberto (chave: id da regra + id da ação)
   const [condAberta, setCondAberta] = useState<string | null>(null);
   const [receitasAbertas, setReceitasAbertas] = useState(false);
-  const receitas = receitasDoQuadro(statuses);
+  const receitas = receitasDoQuadro(statuses, { temProdutos: campos.some((c) => c.id === CAMPO_PRODUTOS_ID) });
   // 11/11: cada regra recolhida mostra só número, nome e resumo; abre ao clicar.
   const [abertas, setAbertas] = useState<Set<string>>(() => new Set(focoId ? [focoId] : []));
   const alternar = (id: string) => setAbertas((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -251,7 +252,10 @@ export default function AutomacoesManagerModal({
           const completa = regraCompleta(a.gatilho, a.condicao, acoes);
           const ehSst = (GATILHOS_SST as readonly string[]).includes(a.gatilho);
           const criaTarefa = ehSst || (a.gatilho === "agendado" && a.condicao?.modo === "criar_tarefa");
-          const variaveis = [...(VARIAVEIS.sempre ?? []), ...(VARIAVEIS[a.gatilho] ?? []), ...(ehGatilhoSubtarefa(a.gatilho) ? VARIAVEIS_SUBTAREFA : [])];
+          const variaveis = [...(VARIAVEIS.sempre ?? []), ...(VARIAVEIS[a.gatilho] ?? []), ...(ehGatilhoSubtarefa(a.gatilho) ? VARIAVEIS_SUBTAREFA : []),
+            // v367: {subtarefa} nas ações do tópico Subtarefas; {produto} no nome das subtarefas dos Produtos.
+            ...(!ehGatilhoSubtarefa(a.gatilho) && acoes.some((x) => x.alvo === "subtarefas") ? ["{subtarefa}"] : []),
+            ...(acoes.some((x) => x.tipo === "criar_subtarefas_produtos") ? ["{produto}"] : [])];
           const trocarAcao = (i: number, patch: Partial<AcaoAutomacao> | null, substituir = false) => {
             const nova = acoes.map((x, j) => (j === i ? (substituir ? { id: x.id ?? novoId(), ...patch } : { ...x, ...patch }) : x));
             setAcoes(a, nova);
@@ -436,7 +440,7 @@ export default function AutomacoesManagerModal({
               </label>
               {usaEou && (
                 <AutomacaoCondicaoBuilder key={a.id} condicao={a.condicao} statuses={statuses} campos={campos} quadros={quadros}
-                  etiquetas={etiquetas} unidades={unidades} sst={ehSst} disabled={!podeEditar} onAplicar={(cond) => setCondFull(a, cond)} />
+                  etiquetas={etiquetas} unidades={unidades} sst={ehSst} subtarefa={ehGatilhoSubtarefa(a.gatilho)} disabled={!podeEditar} onAplicar={(cond) => setCondFull(a, cond)} />
               )}
             </div>}
 
@@ -455,7 +459,7 @@ export default function AutomacoesManagerModal({
                         <AutomacaoAcaoEditor
                           acao={x}
                           onChange={(patch) => trocarAcao(i, patch)}
-                          onTrocarTipo={(tipo) => trocarAcao(i, { tipo, ...(x.condicao ? { condicao: x.condicao } : {}) }, true)}
+                          onTrocarTipo={(tipo, alvo) => trocarAcao(i, { tipo, ...(alvo ? { alvo } : {}), ...(x.condicao ? { condicao: x.condicao } : {}) }, true)}
                           statuses={statuses} campos={campos} etiquetas={etiquetas} quadros={quadros} outrosQuadros={outrosQuadros}
                           modelos={modelos} usuarios={usuarios} usuariosFull={usuariosFull} disabled={!podeEditar}
                         />
@@ -471,13 +475,15 @@ export default function AutomacoesManagerModal({
                       )}
                     </div>
                     {temCond && condAberta !== chave && (
-                      <p className="mt-1 pl-7 text-[11px] text-marca-primary">Só executa se a condição da ação casar.</p>
+                      <p className="mt-1 pl-7 text-[11px] text-marca-primary">{x.alvo === "subtarefas" ? "Só nas subtarefas em que a condição casar." : "Só executa se a condição da ação casar."}</p>
                     )}
                     {condAberta === chave && (
                       <div className="mt-2 space-y-1 pl-7">
-                        <p className="text-[11px] text-gray-500">Só executa esta ação se… (as outras ações seguem normalmente). Para um “senão”, crie outra ação com a condição oposta.</p>
+                        <p className="text-[11px] text-gray-500">{x.alvo === "subtarefas"
+                          ? "Testado em cada subtarefa: ela só entra se a condição casar (ex.: Nome da subtarefa contém PGR). As condições do cartão também valem."
+                          : "Só executa esta ação se… (as outras ações seguem normalmente). Para um “senão”, crie outra ação com a condição oposta."}</p>
                         <AutomacaoCondicaoBuilder key={chave} condicao={x.condicao ?? {}} statuses={statuses} campos={campos} quadros={quadros}
-                          etiquetas={etiquetas} disabled={!podeEditar}
+                          etiquetas={etiquetas} disabled={!podeEditar} subtarefa={x.alvo === "subtarefas" || ehGatilhoSubtarefa(a.gatilho)}
                           onAplicar={(cond) => trocarAcao(i, { condicao: (cond.all?.length || cond.any?.length) ? cond : undefined })} />
                       </div>
                     )}

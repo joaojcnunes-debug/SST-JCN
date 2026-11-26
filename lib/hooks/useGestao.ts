@@ -1462,6 +1462,9 @@ export interface AcaoAutomacao {
   unidade?: "horas" | "dias";                 // aguardar (v299)
   modo?: "rodizio" | "menor_carga";           // atribuir_rodizio (v300); emails = a lista de pessoas
   substituir?: string;                        // atribuir_rodizio: 'true' = tira os outros responsáveis
+  /** v367: "subtarefas" = a ação roda em CADA subtarefa do cartão (o "só se…" é testado por subtarefa). */
+  alvo?: "subtarefas";
+  produtos?: string[];                        // criar_subtarefas_produtos (v367): só estes valores (vazio = todos)
   /** Só executa esta ação se a condição casar (E/OU) — o "se/senão" da regra. */
   condicao?: CondicaoAutomacao;
 }

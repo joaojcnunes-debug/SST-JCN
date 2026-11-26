@@ -68,6 +68,8 @@ export interface AcaoDesc {
   id_quadro_destino?: string; status_destino?: string; modelo_slug?: string; responsavel_email?: string;
   texto?: string; assunto?: string; para?: string; dias?: string; quantidade?: string; unidade?: string;
   modo?: string; aprovador_email?: string; titulo_template?: string; condicao?: CondMin;
+  /** v367 */
+  alvo?: string; produtos?: string[];
 }
 export interface RegraDesc { gatilho: string; condicao?: CondMin | null; acoes: AcaoDesc[] }
 
@@ -210,6 +212,12 @@ export function descreverAcao(a: AcaoDesc, n: Nomes = {}): string {
       t = `Cria as subtarefas do modelo ${aspas(m)}${a.responsavel_email ? `, com ${nomePessoa(a.responsavel_email, n)} como responsável` : ""}`;
       break;
     }
+    case "criar_subtarefas_produtos": {
+      const qual = a.campo_id ? `valor marcado em ${n.campos?.[a.campo_id] ?? "o campo"}` : "Produto marcado";
+      const so = a.produtos?.length ? ` (só ${listaOu(a.produtos)})` : "";
+      t = `Cria uma subtarefa para cada ${qual}${so}${a.responsavel_email ? `, com ${nomePessoa(a.responsavel_email, n)} como responsável` : ""}`;
+      break;
+    }
     case "adicionar_vinculados": {
       const papel = a.vinculo_tipo === "seguidor" ? (pessoas.length > 1 ? "seguidores" : "seguidor(a)") : (pessoas.length > 1 ? "responsáveis" : "responsável");
       t = pessoas.length ? `Coloca ${lista(pessoas)} como ${papel}` : `Coloca pessoas como ${papel}`;
@@ -237,9 +245,15 @@ export function descreverAcao(a: AcaoDesc, n: Nomes = {}): string {
     case "aguardar": t = `Espera ${a.quantidade ?? "?"} ${a.unidade === "horas" ? "hora(s)" : "dia(s)"} e segue com as próximas ações`; break;
     default: t = a.tipo ? `Ação ${a.tipo}` : "Ação sem tipo (incompleta)";
   }
+  // v367: ação do tópico Subtarefas — roda em cada subtarefa do cartão.
+  if (a.alvo === "subtarefas") t = `Em cada subtarefa: ${paraSubtarefa(t.charAt(0).toLowerCase() + t.slice(1))}`;
   const cond = descreverCondicao(a.condicao, n);
   return cond ? `${t} — só se ${cond}` : t;
 }
+
+/** "move o cartão para…" → "move a subtarefa para…" (a ação roda na subtarefa). */
+const paraSubtarefa = (t: string) =>
+  t.replace(/\bo cartão\b/g, "a subtarefa").replace(/\bno cartão\b/g, "na subtarefa").replace(/\bao cartão\b/g, "à subtarefa");
 
 /** Frase da regra inteira: "Quando …, se …: faz A; faz B." */
 export function descreverRegra(r: RegraDesc, n: Nomes = {}): string {
