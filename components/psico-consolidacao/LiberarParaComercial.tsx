@@ -119,6 +119,16 @@ export default function LiberarParaComercial({
   // 0.3.321 (pedido do João, 26/11): mostrar por setor (padrão) ou por risco — por risco, o tema vale para todos os setores.
   const [agrupar, setAgrupar] = useState<"setor" | "risco">("setor");
   const porFator = useMemo(() => agruparPorRisco(riscos, indicadas), [riscos, indicadas]);
+  // 0.3.325: os riscos já vêm por setor; junta os do mesmo setor.
+  const porSetor = useMemo(() => {
+    const out: { setorChave: string; setor: string; riscos: RiscoConciliado[] }[] = [];
+    for (const r of riscos) {
+      const g = out.find((x) => x.setorChave === r.setorChave);
+      if (g) g.riscos.push(r);
+      else out.push({ setorChave: r.setorChave, setor: r.setor, riscos: [r] });
+    }
+    return out;
+  }, [riscos]);
 
   async function sugerirParecer() {
     if (parecer.trim()) {
@@ -184,29 +194,39 @@ export default function LiberarParaComercial({
             <p className="text-sm text-gray-500">A conciliação fechada não tem risco confirmado. Nada vai para o Comercial.</p>
           ) : (
             <>
-              <p className="text-xs text-gray-500">
-                Riscos da conciliação fechada: os confirmados, os de AET e os convergentes (questionário e AEP concordam). As opções vêm do{" "}
-                <Link href="/consolidacao-grupo/intervencoes" className="font-medium text-indigo-700 underline">
-                  catálogo de intervenções
-                </Link>
-                , e cada alteração é gravada na hora. O que você inserir em &quot;+ Inserir novo&quot; também entra no catálogo.
-              </p>
-              <div className="mt-2 inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs font-medium" role="group" aria-label="Mostrar">
-                {(["setor", "risco"] as const).map((k) => (
-                  <button key={k} type="button" onClick={() => setAgrupar(k)} aria-pressed={agrupar === k}
-                    className={cn("rounded-md px-2.5 py-1", agrupar === k ? "bg-white text-indigo-700 shadow-sm" : "text-gray-600 hover:text-gray-900")}>
-                    {k === "setor" ? "Por setor" : "Por risco"}
-                  </button>
-                ))}
-              </div>
-              {agrupar === "risco" && (
-                <p className="mt-1 text-xs text-gray-500">Por risco, a intervenção escolhida vale para todos os setores com aquele risco: escolher, mudar ou retirar muda em todos.</p>
-              )}
-              <div className="mt-3 overflow-x-auto">
+              {/* 0.3.325 (pedido do João): o título da tabela (texto, Por setor | Por risco e as colunas) fica congelado e a
+                  tabela rola por dentro, com barra lateral. */}
+              <div className="max-h-[75vh] overflow-auto rounded-lg border border-gray-100">
                 <table className="w-full min-w-[48rem] text-sm">
-                  <thead className="border-b border-gray-200 text-left text-xs font-semibold text-gray-600">
+                  <thead className="sticky top-0 z-20 bg-white text-left text-xs font-semibold text-gray-600 shadow-[0_1px_0_0_rgb(229_231_235)]">
                     <tr>
-                      <th className="py-2 pr-2">Intervenção</th>
+                      <th colSpan={5} className="px-2 pb-1 pt-2 font-normal">
+                        <p className="text-xs text-gray-500">
+                          Riscos da conciliação fechada: os confirmados, os de AET e os convergentes (questionário e AEP concordam). As opções vêm do{" "}
+                          <Link href="/consolidacao-grupo/intervencoes" className="font-medium text-indigo-700 underline">
+                            catálogo de intervenções
+                          </Link>
+                          , e cada alteração é gravada na hora. O que você inserir em &quot;+ Inserir novo&quot; também entra no catálogo.
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs font-medium" role="group" aria-label="Mostrar">
+                            {(["setor", "risco"] as const).map((k) => (
+                              <button key={k} type="button" onClick={() => setAgrupar(k)} aria-pressed={agrupar === k}
+                                className={cn("rounded-md px-2.5 py-1", agrupar === k ? "bg-white text-indigo-700 shadow-sm" : "text-gray-600 hover:text-gray-900")}>
+                                {k === "setor" ? "Por setor" : "Por risco"}
+                              </button>
+                            ))}
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {agrupar === "risco"
+                              ? "Por risco, a intervenção escolhida vale para todos os setores com aquele risco: escolher, mudar ou retirar muda em todos."
+                              : "Por setor, cada setor com os seus riscos; a intervenção escolhida vale só para aquele setor."}
+                          </span>
+                        </div>
+                      </th>
+                    </tr>
+                    <tr>
+                      <th className="px-2 py-2">Intervenção</th>
                       <th className="w-32 py-2 pr-2">Modalidade</th>
                       <th className="w-72 py-2 pr-2">Responsável</th>
                       <th className="w-24 py-2 pr-2">Prazo (dias)</th>
@@ -217,14 +237,32 @@ export default function LiberarParaComercial({
                     {agrupar === "risco" && porFator.map((g) => (
                       <LinhasDoFator key={g.idFator} grupo={g} alvo={alvo} empresasDoRisco={empresasDoRisco} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar} />
                     ))}
-                    {/* 0.3.324: por setor, cada risco (setor × fator) é um bloco igual ao do por risco, com um setor só. */}
-                    {agrupar === "setor" && riscos.map((r) => (
-                      <LinhasDoFator key={r.chave} grupo={agruparPorRisco([r], indicadas)[0]} alvo={alvo} empresasDoRisco={empresasDoRisco} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar} />
-                    ))}
+                    {/* 0.3.325 (pedido do João): por setor, um título por setor e, embaixo, os riscos dele (cada um com as
+                        intervenções e o método). */}
+                    {agrupar === "setor" && porSetor.map((g) => {
+                      const emp = empresasDoRisco?.(g.riscos[0].chave) ?? [];
+                      return (
+                        <Fragment key={g.setorChave}>
+                          <tr className="bg-indigo-50/70">
+                            <td colSpan={5} className="border-t-2 border-indigo-200 px-2 py-2">
+                              <span className="text-xs font-semibold text-indigo-700">Setor:</span>{" "}
+                              <span className="font-bold text-gray-900">{g.setor}</span>
+                              <span className="ml-2 text-xs text-gray-500">
+                                {g.riscos.length === 1 ? "1 risco" : `${g.riscos.length} riscos`}
+                                {emp.length > 0 && ` · em ${emp.join(", ")}`}
+                              </span>
+                            </td>
+                          </tr>
+                          {g.riscos.map((r) => (
+                            <LinhasDoFator key={r.chave} grupo={agruparPorRisco([r], indicadas)[0]} alvo={alvo} empresasDoRisco={empresasDoRisco} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar} semSetores />
+                          ))}
+                        </Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
-              <PlanoIntervencoes alvo={alvo} indicadas={indicadas} podeAlterar={podeAlterar} />
+              <PlanoIntervencoes alvo={alvo} indicadas={indicadas} podeAlterar={podeAlterar} agrupar={agrupar} />
             </>
           )}
         </div>
@@ -325,7 +363,10 @@ function LinhasDoFator({
   catalogo,
   opcoes,
   podeAlterar,
+  semSetores = false,
 }: {
+  /** 0.3.325: no Por setor o setor está no título do grupo; a linha do risco não repete. */
+  semSetores?: boolean;
   grupo: RiscoPorFator;
   alvo: AlvoConciliacao;
   empresasDoRisco?: (chave: string) => string[];
@@ -357,16 +398,18 @@ function LinhasDoFator({
               </button>
             )}
           </div>
-          <p className="mt-1 text-xs text-gray-600">
-            <span className="font-semibold text-gray-700">{riscos.length === 1 ? "Setor" : `Setores (${riscos.length})`}: </span>
-            {riscos.map((r, k) => (
-              <Fragment key={r.chave}>
-                {k > 0 && ", "}
-                {r.setor}
-                {r.aet && <span className="ml-0.5 text-[10px] font-semibold text-indigo-700" title="Este setor pediu AET">AET</span>}
-              </Fragment>
-            ))}
-          </p>
+          {!semSetores && (
+            <p className="mt-1 text-xs text-gray-600">
+              <span className="font-semibold text-gray-700">{riscos.length === 1 ? "Setor" : `Setores (${riscos.length})`}: </span>
+              {riscos.map((r, k) => (
+                <Fragment key={r.chave}>
+                  {k > 0 && ", "}
+                  {r.setor}
+                  {r.aet && <span className="ml-0.5 text-[10px] font-semibold text-indigo-700" title="Este setor pediu AET">AET</span>}
+                </Fragment>
+              ))}
+            </p>
+          )}
         </td>
       </tr>
       {temas.map((t) => {

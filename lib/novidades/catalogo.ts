@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "conciliacao-intervencoes-por-setor-titulo-fixo",
+    data: "2026-11-26",
+    tipo: "melhoria",
+    titulo: "Intervenções: Por setor agrupa pelo setor, plano na mesma visão e título fixo",
+    texto:
+      "Na etapa Intervenções, a visão Por setor agora mostra um título para cada setor e, embaixo, os riscos dele com as " +
+      "intervenções; a Por risco mostra cada risco com todos os setores em que aparece. O Planejamento das ações segue a " +
+      "visão escolhida (temas agrupados por setor ou por risco, e o cronograma diz onde cada tema entra). E o título da " +
+      "tabela (texto, Por setor | Por risco e as colunas) fica fixo enquanto a tabela rola por dentro, com barra lateral.",
+    onde: "Consolidação › Conciliação DRPS/QPS × AEP",
+    versoes: ["0.3.325"],
+  },
+  {
     id: "conciliacao-intervencao-com-metodo-na-tabela",
     data: "2026-11-26",
     tipo: "melhoria",

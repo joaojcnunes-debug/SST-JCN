@@ -174,6 +174,23 @@ export function cronograma(plano: PlanoIntervencoes | null, temas: readonly Tema
   return { meses, continuos };
 }
 
+/**
+ * 0.3.325 (pedido do João): o planejamento na visão Por setor ou Por risco — os temas mensais agrupados pelo setor ou
+ * pelo risco em que entram (um tema em dois setores aparece nos dois; o mês é o mesmo, é do tema).
+ */
+export function gruposDoPlano(temas: readonly TemaPlano[], por: "setor" | "risco"): { nome: string; temas: TemaPlano[] }[] {
+  const grupos = new Map<string, { nome: string; temas: TemaPlano[] }>();
+  for (const t of temas) {
+    for (const nome of por === "setor" ? t.setores : t.riscos) {
+      const k = norm(nome);
+      const g = grupos.get(k) ?? { nome, temas: [] };
+      g.temas.push(t);
+      grupos.set(k, g);
+    }
+  }
+  return [...grupos.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+}
+
 export function planoVazio(idAlvo: string, tipo: "empresa" | "grupo"): PlanoIntervencoes {
   return { id_alvo: idAlvo, tipo_alvo: tipo, planejamento: "tema_por_mes", inicio: null, meses: null, temas: {}, metodos: {} };
 }
