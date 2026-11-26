@@ -30,7 +30,10 @@ export default function PlanoIntervencoes({
   indicadas,
   podeAlterar,
   agrupar = "risco",
+  onAgrupar,
 }: {
+  /** 0.3.326: o mesmo botão Por setor | Por risco no plano (troca a visão da tabela também). */
+  onAgrupar?: (v: "setor" | "risco") => void;
   /** 0.3.325: a visão escolhida no topo da tabela (Por setor | Por risco) vale também aqui. */
   agrupar?: "setor" | "risco";
   alvo: AlvoConciliacao;
@@ -52,7 +55,19 @@ export default function PlanoIntervencoes({
 
   return (
     <div className="mt-5 rounded-xl border border-indigo-100 bg-indigo-50/30 p-4">
-      <p className="text-base font-bold text-gray-900">Plano de intervenções</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-base font-bold text-gray-900">Plano de intervenções</p>
+        {onAgrupar && (
+          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs font-medium" role="group" aria-label="Mostrar o plano">
+            {(["setor", "risco"] as const).map((k) => (
+              <button key={k} type="button" onClick={() => onAgrupar(k)} aria-pressed={agrupar === k}
+                className={cn("rounded-md px-2.5 py-1", agrupar === k ? "bg-white text-indigo-700 shadow-sm" : "text-gray-600 hover:text-gray-900")}>
+                {k === "setor" ? "Por setor" : "Por risco"}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       {/* 0.3.324 (pedido do João): os itens 1 a 5 (setores, riscos, temas, método por tema e descrição dos métodos)
           saíram — repetiam o que a tabela acima já mostra. Fica o planejamento. */}
       <p className="text-xs text-gray-500">Como as intervenções da tabela acima se distribuem no tempo. Grava sozinho.</p>
