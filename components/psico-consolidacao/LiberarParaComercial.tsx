@@ -224,7 +224,7 @@ export default function LiberarParaComercial({
                   </tbody>
                 </table>
               </div>
-              <PlanoIntervencoes alvo={alvo} riscos={riscos} indicadas={indicadas} podeAlterar={podeAlterar} />
+              <PlanoIntervencoes alvo={alvo} indicadas={indicadas} podeAlterar={podeAlterar} />
             </>
           )}
         </div>

@@ -49,7 +49,8 @@ export const CATALOGO: Novidade[] = [
       "Na etapa Intervenções, cada risco vira um bloco: em cima o risco e o setor (ou os setores), e embaixo cada intervenção " +
       "com a modalidade e o responsável, seguida das linhas Forma de realização, Avaliação de aprendizado, Duração e " +
       "Certificado. O texto vem do catálogo da modalidade e pode ser ajustado ali mesmo, só para aquela intervenção. Vale " +
-      "nas visões Por setor e Por risco; no Plano de intervenções, o item 5 passa a ser o resumo.",
+      "nas visões Por setor e Por risco. O Plano de intervenções fica só com o planejamento das ações (os itens que " +
+      "repetiam a tabela saíram).",
     onde: "Consolidação › Conciliação DRPS/QPS × AEP",
     versoes: ["0.3.324"],
   },

@@ -1,30 +1,25 @@
 "use client";
 
-// 0.3.321 (pedido do João, 26/11/2026) — Plano de intervenções, abaixo da tabela da etapa 3. Os itens 1 a 4 saem da
-// conciliação e da tabela (setores, riscos, temas = intervenções indicadas, método = modalidade); o 5 é o texto padrão
-// de cada método (Catálogo › Métodos por modalidade) com o ajuste desta empresa; o 6 é o planejamento. Grava sozinho.
+// 0.3.321 (pedido do João, 26/11/2026) — Plano de intervenções, abaixo da tabela da etapa 3. Desde a 0.3.324 só o
+// planejamento das ações (um tema por mês, ou EAD o período todo; início, duração, mês de cada tema e cronograma):
+// setores, riscos, temas, método e a descrição dele já estão na tabela, em cada intervenção. Grava sozinho.
 
 import { useMemo, type ReactNode } from "react";
-import Link from "next/link";
 import type { AlvoConciliacao } from "@/lib/hooks/useConciliacaoParecer";
-import { useMetodosModalidade, usePlanoIntervencoes, useSalvarPlanoIntervencoes } from "@/lib/hooks/useComercial";
-import type { IntervencaoIndicada, RiscoConciliado } from "@/lib/comercial/liberacao";
+import { usePlanoIntervencoes, useSalvarPlanoIntervencoes } from "@/lib/hooks/useComercial";
+import type { IntervencaoIndicada } from "@/lib/comercial/liberacao";
 import {
-  CAMPOS_METODO, cronograma, ehEad, mesDoTema, mesesDoPlano, metodoDe, modalidadesEmUso, planoVazio, riscosDoPlano, rotuloMes,
-  rotuloModalidade, setoresDoPlano, temasDoPlano, temasMensais, type PlanoIntervencoes,
+  cronograma, ehEad, mesDoTema, mesesDoPlano, planoVazio, rotuloMes, rotuloModalidade, temasDoPlano, temasMensais,
+  type PlanoIntervencoes,
 } from "@/lib/comercial/plano";
 import { cn } from "@/lib/utils";
 
 const campo = "rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none disabled:bg-gray-50 disabled:text-gray-600";
-const chip = "rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700";
 
-function Item({ n, titulo, children }: { n: number; titulo: string; children: ReactNode }) {
+function Item({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
-    <div className="border-t border-gray-100 py-3 first:border-t-0">
-      <p className="mb-1.5 text-sm font-semibold text-gray-800">
-        <span className="mr-1.5 text-indigo-600">{n}.</span>
-        {titulo}
-      </p>
+    <div className="py-3">
+      <p className="mb-1.5 text-sm font-semibold text-gray-800">{titulo}</p>
       {children}
     </div>
   );
@@ -32,28 +27,18 @@ function Item({ n, titulo, children }: { n: number; titulo: string; children: Re
 
 export default function PlanoIntervencoes({
   alvo,
-  riscos,
   indicadas,
   podeAlterar,
 }: {
   alvo: AlvoConciliacao;
-  riscos: readonly RiscoConciliado[];
   indicadas: readonly IntervencaoIndicada[];
   podeAlterar: boolean;
 }) {
-  const { data: metodos = [] } = useMetodosModalidade();
   const { data: salvo } = usePlanoIntervencoes(alvo);
   const salvar = useSalvarPlanoIntervencoes();
   const plano: PlanoIntervencoes = salvo ?? planoVazio(alvo.id, alvo.tipo);
 
-  const setores = useMemo(() => setoresDoPlano(riscos.filter((r) => !r.foraDaConciliacao)), [riscos]);
-  const riscosLista = useMemo(() => riscosDoPlano(riscos.filter((r) => !r.foraDaConciliacao)), [riscos]);
   const temas = useMemo(() => temasDoPlano(indicadas), [indicadas]);
-  const modalidades = useMemo(() => modalidadesEmUso(temas, metodos), [temas, metodos]);
-  const ordenarModalidades = (lista: string[]) => {
-    const pos = (m: string) => (modalidades.indexOf(m) + 1 || 999);
-    return [...lista].sort((a, b) => pos(a) - pos(b));
-  };
   const crono = useMemo(() => cronograma(plano, temas), [plano, temas]);
   const mensais = temasMensais(plano.planejamento, temas);
   const totalMeses = mesesDoPlano(plano, temas);
@@ -63,81 +48,11 @@ export default function PlanoIntervencoes({
   return (
     <div className="mt-5 rounded-xl border border-indigo-100 bg-indigo-50/30 p-4">
       <p className="text-base font-bold text-gray-900">Plano de intervenções</p>
-      <p className="text-xs text-gray-500">
-        Os itens 1 a 4 vêm da conciliação e da tabela acima. A descrição dos métodos vem do{" "}
-        <Link href="/consolidacao-grupo/intervencoes" className="font-medium text-indigo-700 underline">catálogo</Link> e pode ser ajustada aqui só
-        para esta empresa. Tudo grava sozinho.
-      </p>
+      {/* 0.3.324 (pedido do João): os itens 1 a 5 (setores, riscos, temas, método por tema e descrição dos métodos)
+          saíram — repetiam o que a tabela acima já mostra. Fica o planejamento. */}
+      <p className="text-xs text-gray-500">Como as intervenções da tabela acima se distribuem no tempo. Grava sozinho.</p>
 
-      <Item n={1} titulo="Setores envolvidos">
-        <div className="flex flex-wrap gap-1.5">{setores.length ? setores.map((s) => <span key={s} className={chip}>{s}</span>) : <span className="text-sm text-gray-400">Nenhum.</span>}</div>
-      </Item>
-
-      <Item n={2} titulo="Riscos identificados">
-        <ul className="space-y-1 text-sm text-gray-700">
-          {riscosLista.map((r) => (
-            <li key={r.fator}>
-              <span className="font-medium">{r.fator}</span>
-              {r.aet && <span className="ml-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-800">Aprofundar com AET</span>}
-              <span className="text-gray-500"> — {r.setores.join(", ")}</span>
-            </li>
-          ))}
-        </ul>
-      </Item>
-
-      <Item n={3} titulo="Temas sugeridos">
-        {temas.length === 0 ? (
-          <p className="text-sm text-gray-400">Escolha as intervenções na tabela acima: cada uma é um tema.</p>
-        ) : (
-          <ul className="space-y-1 text-sm text-gray-700">
-            {temas.map((t) => (
-              <li key={t.chave}><span className="font-medium">{t.nome}</span><span className="text-gray-500"> — para {t.riscos.join(", ")} ({t.setores.join(", ")})</span></li>
-            ))}
-          </ul>
-        )}
-      </Item>
-
-      <Item n={4} titulo="Método por tema">
-        {temas.length === 0 ? <p className="text-sm text-gray-400">—</p> : (
-          <ul className="space-y-1 text-sm text-gray-700">
-            {temas.map((t) => (
-              <li key={t.chave}>
-                <span className="font-medium">{t.nome}:</span>{" "}
-                {t.modalidades.length ? t.modalidades.map(rotuloModalidade).join(" + ") : <span className="text-amber-700">sem modalidade (escolha na tabela)</span>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Item>
-
-      {/* 0.3.324 (pedido do João): a descrição se edita no tópico 3, embaixo de cada intervenção; aqui fica o resumo. */}
-      <Item n={5} titulo="Descrição dos métodos">
-        {temas.length === 0 ? <p className="text-sm text-gray-400">Aparece quando houver intervenções na tabela.</p> : (
-          <div className="space-y-2">
-            <p className="text-xs text-gray-500">Para mudar o texto, edite embaixo de cada intervenção, na tabela acima.</p>
-            {temas.map((t) => (
-              <div key={t.chave} className="text-sm text-gray-700">
-                <p className="font-semibold text-gray-900">{t.nome}</p>
-                {t.modalidades.length === 0 ? (
-                  <p className="text-xs text-amber-700">Sem modalidade (escolha na tabela).</p>
-                ) : ordenarModalidades(t.modalidades).map((m) => {
-                  const texto = metodoDe(m, metodos, plano, t.chave);
-                  return (
-                    <ul key={m} className="ml-3 list-none text-xs text-gray-600">
-                      <li className="font-semibold uppercase tracking-wide text-indigo-700">{rotuloModalidade(m)}</li>
-                      {CAMPOS_METODO.map(({ campo: c, rotulo }) => (
-                        <li key={c}><span className="font-medium text-gray-700">{rotulo}:</span> {texto[c] || <span className="text-gray-400">—</span>}</li>
-                      ))}
-                    </ul>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        )}
-      </Item>
-
-      <Item n={6} titulo="Planejamento das ações">
+      <Item titulo="Planejamento das ações">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-700">
           <label className="inline-flex items-center gap-1.5">
             <input type="radio" name={`plan-${alvo.id}`} disabled={!podeAlterar} checked={plano.planejamento === "tema_por_mes"} onChange={() => mudar({ planejamento: "tema_por_mes" })} />
