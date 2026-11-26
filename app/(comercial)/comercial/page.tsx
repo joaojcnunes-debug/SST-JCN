@@ -9,7 +9,8 @@
 // (Inspeção, AEP, Conciliação), o que justifica, a situação e a venda.
 
 import PessoaComFoto from "@/components/ui/PessoaComFoto";
-import { useId, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useId, useMemo, useState, type ReactNode } from "react";
+import { rotuloMes, type MetodoTexto, type PlanoDoVendedor } from "@/lib/comercial/plano";
 import { BadgeCheck, Building2, ChevronDown, ChevronRight, ClipboardCheck, Download, FilterX, Handshake, Info, Loader2, Mail, MapPin, Phone, Search, Undo2 } from "lucide-react";
 import { useComercial, useDesfazerVenda, useRegistrarVenda } from "@/lib/hooks/useComercial";
 import Modal from "@/components/ui/Modal";
@@ -610,13 +611,6 @@ function SetoresDoServico({ nomes }: { nomes: string[] }) {
   );
 }
 
-/** Quantas linhas seguidas, a partir de `inicio`, atendem `igual` (para mesclar células com rowSpan). */
-function contarSeguidas<T>(linhas: readonly T[], inicio: number, igual: (x: T) => boolean): number {
-  let k = inicio;
-  while (k < linhas.length && igual(linhas[k])) k++;
-  return k - inicio;
-}
-
 /** Observação sobre a situação (documento antigo, rascunho parado), não item a vender. */
 const ehNota = (d: string) => /antes da indicação|não conta como|^Há \d/.test(d);
 
@@ -669,14 +663,13 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
       )}
       <table className={cn(TABELA_GRADE, "w-full min-w-[72rem] text-sm")}>
         <thead className={CLS_THEAD}>
-          <FaixaGrupos indicacao="Indicado na Conciliação" colunas={6} />
+          <FaixaGrupos indicacao="Indicado na Conciliação" colunas={5} />
           <tr>
             <Titulo className="w-40" dica="Setor onde o risco foi confirmado">Setor</Titulo>
             <Titulo className="w-32" dica="Fator de risco psicossocial confirmado na Conciliação">Risco</Titulo>
             <Titulo dica="Ação indicada para o risco">Intervenção</Titulo>
             <Titulo className="w-28" dica="Como é feita: EAD, presencial ou ao vivo">Modalidade</Titulo>
             <Titulo className="w-48" dica="Quem executa a intervenção">Responsável</Titulo>
-            <Titulo className="w-20" dica="Prazo indicado para executar, em dias">Prazo</Titulo>
             <Titulo className="w-40" comercial dica="Aberta ou vendida, por intervenção">Situação</Titulo>
             <Titulo className="w-52" comercial dica="Cada intervenção se vende sozinha; quem marcou, ou um Admin, pode desfazer">Venda</Titulo>
           </tr>
@@ -686,11 +679,14 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
             const novoSetor = n === 0 || linhas[n - 1].setor !== l.setor;
             const novoRisco = novoSetor || linhas[n - 1].risco !== l.risco;
             // Setor e risco numa célula só para as linhas do mesmo grupo (as linhas vêm ordenadas por setor e risco).
-            const linhasSetor = novoSetor ? contarSeguidas(linhas, n, (x) => x.setor === l.setor) : 0;
-            const linhasRisco = novoRisco ? contarSeguidas(linhas, n, (x) => x.setor === l.setor && x.risco === l.risco) : 0;
+            // 0.3.328: a intervenção com método ocupa 2 linhas (a dela e a faixa do método embaixo).
+            const linhasSetor = novoSetor ? somarAltura(linhas, n, (x) => x.setor === l.setor) : 0;
+            const linhasRisco = novoRisco ? somarAltura(linhas, n, (x) => x.setor === l.setor && x.risco === l.risco) : 0;
+            const comMetodo = temMetodo(l);
             const st = SITUACAO[l.venda || o.venda ? "vendida" : "aberta"];
             return (
-              <tr key={l.idItem} className="align-top">
+              <Fragment key={l.idItem}>
+              <tr className="align-top">
                 {novoSetor && (
                   <td rowSpan={linhasSetor} className="border-l-0 px-3 py-2 font-semibold text-gray-900">
                     {l.setor}
@@ -704,7 +700,6 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
                 <td className="px-3 py-2 font-semibold text-gray-900">{l.intervencao}</td>
                 <td className="px-3 py-2">{l.modalidade ?? "—"}</td>
                 <td className="px-3 py-2">{l.responsavel ?? "—"}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{l.prazoDias ? `${l.prazoDias} ${l.prazoDias === 1 ? "dia" : "dias"}` : "—"}</td>
                 <td className={cn("px-3 py-2", CLS_COL_COMERCIAL)}>
                   <span title={st.dica} className={cn("inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold", st.cls)}>
                     {st.rotulo}
@@ -718,10 +713,87 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
                   )}
                 </td>
               </tr>
+              {comMetodo && (
+                // 0.3.328 (pedido do João): o método que a equipe descreveu, numa faixa embaixo da intervenção (largura toda,
+                // texto à esquerda), para o vendedor ter tudo na proposta.
+                <tr>
+                  <td colSpan={5} className="bg-gray-50/60 px-3 py-2 !text-left">
+                    <MetodoNaVenda m={l.metodo!} />
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             );
           })}
         </tbody>
       </table>
+      {o.plano && <PlanoNaVenda p={o.plano} />}
+    </div>
+  );
+}
+
+const LINHAS_METODO: { campo: keyof MetodoTexto; rotulo: string }[] = [
+  { campo: "forma", rotulo: "Forma de realização" },
+  { campo: "avaliacao", rotulo: "Avaliação de aprendizado" },
+  { campo: "duracao", rotulo: "Duração" },
+  { campo: "certificado", rotulo: "Certificado" },
+];
+
+const temMetodo = (l: { metodo?: MetodoTexto | null }) => !!l.metodo && LINHAS_METODO.some((x) => l.metodo![x.campo]);
+
+/** Quantas linhas da tabela as intervenções seguidas do mesmo grupo ocupam (com método, 2 cada). */
+function somarAltura<T extends { metodo?: MetodoTexto | null }>(linhas: readonly T[], inicio: number, igual: (x: T) => boolean): number {
+  let total = 0;
+  for (let k = inicio; k < linhas.length && igual(linhas[k]); k++) total += temMetodo(linhas[k]) ? 2 : 1;
+  return total;
+}
+
+/** 0.3.328: o método da intervenção (o que a equipe preparou na Conciliação), só leitura: os 4 campos lado a lado. */
+function MetodoNaVenda({ m }: { m: MetodoTexto }) {
+  return (
+    <dl className="grid gap-x-4 gap-y-2 text-left text-xs sm:grid-cols-2 xl:grid-cols-4 [&_*]:!text-left">
+      {LINHAS_METODO.map((x) => (
+        <div key={x.campo}>
+          <dt className="text-[10px] font-bold uppercase tracking-wide text-gray-500">{x.rotulo}</dt>
+          <dd className="mt-0.5 text-gray-800">{m[x.campo] || <span className="text-gray-400">—</span>}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** 0.3.328: o Plano de intervenções da Conciliação (planejamento e cronograma), só leitura. */
+function PlanoNaVenda({ p }: { p: PlanoDoVendedor }) {
+  return (
+    <div className="border-t border-indigo-100 px-3 py-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-indigo-900">Plano de intervenções</p>
+      <p className="mt-0.5 text-xs text-gray-600">
+        {p.planejamento === "ead_continuo" ? "EAD disponível o período todo, com ações online e presenciais todo mês" : "Um tema por mês"}
+        {" · "}
+        {p.meses} {p.meses === 1 ? "mês" : "meses"}
+        {p.inicio ? ` a partir de ${rotuloMes(p.inicio, 1)}` : ""}
+        {!p.gravado && <span className="text-gray-400"> (sugestão padrão: a equipe ainda não ajustou o plano)</span>}
+      </p>
+      {p.linhas.length > 0 && (
+        <table className="mt-2 w-full max-w-3xl text-sm">
+          <thead className="text-left text-xs font-semibold text-gray-600">
+            <tr><th className="py-1 pr-3">Intervenção</th><th className="w-40 py-1 pr-3">Método</th><th className="w-28 py-1">Mês</th></tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 text-gray-700">
+            {p.linhas.map((l) => (
+              <tr key={l.intervencao}><td className="py-1 pr-3 font-medium text-gray-900">{l.intervencao}</td><td className="py-1 pr-3">{l.metodo}</td><td className="py-1">{l.mes}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {p.continuos.length > 0 && (
+        <p className="mt-2 text-sm text-gray-700"><span className="font-medium">Todo o período (EAD):</span> {p.continuos.join(", ")}</p>
+      )}
+      <ul className="mt-2 grid gap-0.5 text-sm text-gray-700 sm:grid-cols-2 lg:grid-cols-3">
+        {p.cronograma.map((m) => (
+          <li key={m.rotulo}><span className="font-medium">{m.rotulo}:</span> {m.intervencoes.length ? m.intervencoes.join(", ") : <span className="text-gray-400">—</span>}</li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -4,7 +4,8 @@
 // planejamento das ações (um tema por mês, ou o EAD o período todo com as ações online/presenciais distribuídas nos meses).
 // Puro (sem React): testado em plano.test.ts.
 
-import type { IntervencaoIndicada, RiscoConciliado } from "@/lib/comercial/liberacao";
+import type { AtendimentoGrupo, IntervencaoIndicada, RiscoConciliado } from "@/lib/comercial/liberacao";
+import type { EmpresaComercial } from "@/lib/comercial/oportunidades";
 
 export type Planejamento = "tema_por_mes" | "ead_continuo";
 
@@ -210,4 +211,78 @@ export function linhasDoPlano(
 
 export function planoVazio(idAlvo: string, tipo: "empresa" | "grupo"): PlanoIntervencoes {
   return { id_alvo: idAlvo, tipo_alvo: tipo, planejamento: "tema_por_mes", inicio: null, meses: null, temas: {}, metodos: {} };
+}
+
+// ── 0.3.328 (pedido do João, 26/11/2026): o vendedor vê tudo o que a equipe preparou ──────────────────────────────
+
+/** O Plano de intervenções pronto para a tela do Comercial (só leitura). */
+export interface PlanoDoVendedor {
+  planejamento: Planejamento;
+  /** O plano foi gravado pela equipe; sem ele, é o padrão (um tema por mês, na ordem). */
+  gravado: boolean;
+  inicio: string | null;
+  meses: number;
+  /** Os temas que entram mês a mês, com o método e o mês. */
+  linhas: { intervencao: string; metodo: string; mes: string }[];
+  /** No "EAD o período todo": os temas só EAD. */
+  continuos: string[];
+  cronograma: { rotulo: string; intervencoes: string[] }[];
+}
+
+export function planoDoVendedor(plano: PlanoIntervencoes | null, indicadas: readonly IntervencaoIndicada[]): PlanoDoVendedor | null {
+  const temas = temasDoPlano(indicadas);
+  if (temas.length === 0) return null;
+  const p = plano ?? planoVazio("", "empresa");
+  const mensais = temasMensais(p.planejamento, temas);
+  const total = mesesDoPlano(p, temas);
+  const c = cronograma(p, temas);
+  const metodoDoTema = (t: TemaPlano) =>
+    (p.planejamento === "ead_continuo" ? t.modalidades.filter((m) => !ehEad(m)) : t.modalidades).map(rotuloModalidade).join(" + ") || "—";
+  return {
+    planejamento: p.planejamento,
+    gravado: !!plano,
+    inicio: p.inicio,
+    meses: total,
+    linhas: mensais.map((t) => ({ intervencao: t.nome, metodo: metodoDoTema(t), mes: rotuloMes(p.inicio, mesDoTema(p, mensais, t.chave, total)) })),
+    continuos: c.continuos.map((t) => t.nome),
+    cronograma: c.meses.map((m) => ({ rotulo: m.rotulo, intervencoes: m.temas.map((t) => t.nome) })),
+  };
+}
+
+/**
+ * Põe na oportunidade "Intervenção psicossocial" de cada empresa o método de cada intervenção e o plano. O plano é o do
+ * grupo liberado que cobre a empresa (o grupo substitui, como em `aplicarGrupos`) ou, sem grupo, o da própria empresa.
+ */
+export function anexarPlanos(
+  lista: readonly EmpresaComercial[],
+  indicadas: readonly IntervencaoIndicada[],
+  planos: readonly PlanoIntervencoes[],
+  metodos: readonly MetodoModalidade[],
+  grupos: readonly AtendimentoGrupo[],
+): EmpresaComercial[] {
+  const doGrupo = new Map<string, string>();
+  for (const g of grupos) if (g.status === "CONCLUIDO" && g.fechada) for (const e of g.empresas) doGrupo.set(e.id_empresa, g.id_grupo);
+  const plano = (tipo: "empresa" | "grupo", id: string) => planos.find((p) => p.tipo_alvo === tipo && p.id_alvo === id) ?? null;
+  return lista.map((c) => {
+    const id = c.empresa.idEmpresa;
+    if (!c.oportunidades.some((o) => o.produto === "Intervenção psicossocial" && o.intervencoes?.length)) return c;
+    const g = doGrupo.get(id);
+    const p = g ? plano("grupo", g) : plano("empresa", id);
+    const dela = indicadas.filter((i) => i.id_empresa === id);
+    return {
+      ...c,
+      oportunidades: c.oportunidades.map((o) =>
+        o.produto !== "Intervenção psicossocial" || !o.intervencoes?.length
+          ? o
+          : {
+              ...o,
+              plano: planoDoVendedor(p, dela),
+              intervencoes: o.intervencoes.map((l) => ({
+                ...l,
+                metodo: l.modalidade ? metodoDe(l.modalidade, metodos, p, chaveTema({ id_intervencao: l.idIntervencao ?? null, nome: l.intervencao })) : null,
+              })),
+            },
+      ),
+    };
+  });
 }

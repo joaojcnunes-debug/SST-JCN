@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { IntervencaoIndicada, RiscoConciliado } from "./liberacao";
-import { chaveMetodo, cronograma, linhasDoPlano, metodoDe, modalidadesEmUso, planoVazio, riscosDoPlano, rotuloMes, setoresDoPlano, temasDoPlano } from "./plano";
+import { anexarPlanos, chaveMetodo, cronograma, linhasDoPlano, planoDoVendedor, metodoDe, modalidadesEmUso, planoVazio, riscosDoPlano, rotuloMes, setoresDoPlano, temasDoPlano } from "./plano";
 
 const ind = (setor: string, fator: string, nome: string, modalidade: string | null, id: string | null = null) =>
   ({ id_item: `${setor}${fator}${nome}`, id_empresa: "E", setor_chave: setor, setor_nome: setor, id_fator: fator, fator_nome: fator,
@@ -61,4 +61,32 @@ test("planejamento em colunas: por setor (riscos ao lado) e por risco (setores a
   assert.deepEqual(txt("risco"), ["Assédio|Caixa+Loja|Tema A", "Sobrecarga|Caixa|Tema B"]);
   // só os temas pedidos (ex.: os mensais)
   assert.deepEqual(linhasDoPlano(ii, temas.filter((t) => t.nome === "Tema B"), "setor").map((l) => l.grupo), ["Caixa"]);
+});
+
+test("vendedor: plano com o mês de cada intervenção e o cronograma (padrão sem plano gravado)", () => {
+  const ii = [ind("Caixa", "Assédio", "Tema A", "EAD", "I1"), ind("Caixa", "Sobrecarga", "Tema B", "Presencial", "I2")];
+  const p = planoDoVendedor({ ...planoVazio("E", "empresa"), inicio: "2027-01-01", temas: { I2: 1, I1: 2 } }, ii)!;
+  assert.deepEqual(p.linhas.map((l) => `${l.intervencao}:${l.metodo}:${l.mes}`), ["Tema A:EAD:fev/2027", "Tema B:Presencial:jan/2027"]);
+  assert.deepEqual(p.cronograma.map((m) => `${m.rotulo}=${m.intervencoes.join(",")}`), ["jan/2027=Tema B", "fev/2027=Tema A"]);
+  assert.equal(p.gravado, true);
+  assert.equal(planoDoVendedor(null, ii)!.gravado, false);
+  assert.equal(planoDoVendedor(null, []), null);
+});
+
+test("vendedor: método e plano entram na oportunidade; o grupo liberado vale sobre a empresa", () => {
+  const m = [{ modalidade: "EAD", ordem: 1, forma: "Plataforma", duracao: "8h", avaliacao: "Prova", certificado: "Sim" }];
+  const ii = [ind("Caixa", "Assédio", "Tema A", "EAD", "I1")];
+  const emp = { empresa: { idEmpresa: "E" }, oportunidades: [{ produto: "Intervenção psicossocial", intervencoes: [{ idItem: "x", setor: "Caixa", risco: "Assédio", intervencao: "Tema A", modalidade: "EAD", responsavel: null, prazoDias: null, idIntervencao: "I1" }] }] } as never;
+  const planos = [
+    { ...planoVazio("E", "empresa"), metodos: { [chaveMetodo("I1", "EAD")]: { duracao: "da empresa" } } },
+    { ...planoVazio("G", "grupo"), metodos: { [chaveMetodo("I1", "EAD")]: { duracao: "do grupo" } } },
+  ];
+  const so = anexarPlanos([emp], ii, planos, m, []);
+  const op = (so[0] as { oportunidades: { intervencoes: { metodo: { duracao: string; forma: string } }[]; plano: unknown }[] }).oportunidades[0];
+  assert.equal(op.intervencoes[0].metodo.duracao, "da empresa");
+  assert.equal(op.intervencoes[0].metodo.forma, "Plataforma");
+  assert.ok(op.plano);
+  const g = [{ id_grupo: "G", status: "CONCLUIDO", fechada: true, empresas: [{ id_empresa: "E" }] }] as never;
+  const comGrupo = anexarPlanos([emp], ii, planos, m, g);
+  assert.equal((comGrupo[0] as { oportunidades: { intervencoes: { metodo: { duracao: string } }[] }[] }).oportunidades[0].intervencoes[0].metodo.duracao, "do grupo");
 });

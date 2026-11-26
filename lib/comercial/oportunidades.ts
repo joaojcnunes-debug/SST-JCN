@@ -28,6 +28,7 @@
 // para a empresa; andamento quando só parte tem.
 
 import { montarSinalizacao, type AepEntregue, type EmpresaSinalizada } from "@/lib/aep/sinalizacao";
+import type { MetodoTexto, PlanoDoVendedor } from "@/lib/comercial/plano";
 
 export type SituacaoOportunidade = "aberta" | "revisao" | "andamento" | "realizada" | "vendida";
 
@@ -123,6 +124,10 @@ export interface LinhaIntervencaoOferta {
   modalidade: string | null;
   responsavel: string | null;
   prazoDias: number | null;
+  /** 0.3.328: a intervenção do catálogo (chave do método e do plano). */
+  idIntervencao?: string | null;
+  /** 0.3.328: forma, duração, avaliação e certificado (catálogo da modalidade + ajuste da equipe). */
+  metodo?: MetodoTexto | null;
   /** 0.3.247: esta intervenção foi vendida sozinha. */
   venda?: VendaFeita;
 }
@@ -143,6 +148,8 @@ export interface Oportunidade {
   setoresIndicados?: string[];
   /** Intervenções psicossociais: uma linha por intervenção indicada na Conciliação (0.3.246). */
   intervencoes?: LinhaIntervencaoOferta[];
+  /** 0.3.328: o Plano de intervenções que a equipe montou (planejamento e cronograma). */
+  plano?: PlanoDoVendedor | null;
   /** v323: o vendedor marcou como vendido. Ainda sem documento, a situação vira "vendida". */
   venda?: VendaFeita;
 }

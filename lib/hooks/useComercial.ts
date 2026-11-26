@@ -15,7 +15,7 @@ import { normalizarRelatorio } from "@/lib/hooks/useAep";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import { perfilEscreveNaRls } from "@/lib/acesso/linha-por-unidade";
 import { useUserStore } from "@/lib/store";
-import type { MetodoModalidade, PlanoIntervencoes } from "@/lib/comercial/plano";
+import { anexarPlanos, type MetodoModalidade, type PlanoIntervencoes } from "@/lib/comercial/plano";
 import {
   montarComercial,
   type CertificadoEmpresa,
@@ -50,6 +50,9 @@ interface DadosComercial {
   vendas: VendaRegistrada[];
   /** v356: atendimentos da Conciliação por grupo (o vendedor só recebe os liberados). */
   grupos: AtendimentoGrupo[];
+  /** v372: o Plano de intervenções de cada empresa/grupo e o texto dos métodos, para o vendedor. */
+  planos: PlanoIntervencoes[];
+  metodos: MetodoModalidade[];
 }
 
 function useDadosComercial<T>(select: (d: DadosComercial) => T) {
@@ -68,6 +71,8 @@ function useDadosComercial<T>(select: (d: DadosComercial) => T) {
         intervencoes?: IntervencaoIndicada[];
         vendas?: VendaRegistrada[];
         grupos?: AtendimentoGrupo[];
+        planos?: PlanoIntervencoes[];
+        metodos?: MetodoModalidade[];
       };
       const aeps = (r.aeps ?? []).map((a) => {
         const x = a as { entregue_em?: string | null; enviado_por?: string | null };
@@ -81,6 +86,8 @@ function useDadosComercial<T>(select: (d: DadosComercial) => T) {
         indicadas: r.intervencoes ?? [],
         vendas: r.vendas ?? [],
         grupos: r.grupos ?? [],
+        planos: r.planos ?? [],
+        metodos: r.metodos ?? [],
       };
     },
     select,
@@ -96,7 +103,8 @@ function efetivos(d: DadosComercial) {
 export function useComercial() {
   return useDadosComercial<EmpresaComercial[]>((d) => {
     const e = efetivos(d);
-    return aplicarVendas(visaoDoVendedor(d.lista, e.atendimentos, e.indicadas, e.conciliacoes), d.vendas);
+    // 0.3.328: o método de cada intervenção e o Plano de intervenções vão junto para o vendedor.
+    return anexarPlanos(aplicarVendas(visaoDoVendedor(d.lista, e.atendimentos, e.indicadas, e.conciliacoes), d.vendas), e.indicadas, d.planos, d.metodos, d.grupos);
   });
 }
 
