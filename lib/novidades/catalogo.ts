@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "conciliacao-intervencao-com-metodo-na-tabela",
+    data: "2026-11-26",
+    tipo: "melhoria",
+    titulo: "Intervenções: cada uma com a descrição do método logo embaixo",
+    texto:
+      "Na etapa Intervenções, cada risco vira um bloco: em cima o risco e o setor (ou os setores), e embaixo cada intervenção " +
+      "com a modalidade e o responsável, seguida das linhas Forma de realização, Avaliação de aprendizado, Duração e " +
+      "Certificado. O texto vem do catálogo da modalidade e pode ser ajustado ali mesmo, só para aquela intervenção. Vale " +
+      "nas visões Por setor e Por risco; no Plano de intervenções, o item 5 passa a ser o resumo.",
+    onde: "Consolidação › Conciliação DRPS/QPS × AEP",
+    versoes: ["0.3.324"],
+  },
+  {
     id: "subtarefa-varias-responsaveis",
     data: "2026-11-26",
     tipo: "melhoria",

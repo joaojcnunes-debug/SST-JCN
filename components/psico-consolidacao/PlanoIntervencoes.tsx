@@ -6,13 +6,12 @@
 
 import { useMemo, type ReactNode } from "react";
 import Link from "next/link";
-import { RotateCcw } from "lucide-react";
 import type { AlvoConciliacao } from "@/lib/hooks/useConciliacaoParecer";
 import { useMetodosModalidade, usePlanoIntervencoes, useSalvarPlanoIntervencoes } from "@/lib/hooks/useComercial";
 import type { IntervencaoIndicada, RiscoConciliado } from "@/lib/comercial/liberacao";
 import {
-  CAMPOS_METODO, chaveMetodo, cronograma, ehEad, mesDoTema, mesesDoPlano, metodoDe, modalidadesEmUso, planoVazio, riscosDoPlano, rotuloMes,
-  rotuloModalidade, setoresDoPlano, temasDoPlano, temasMensais, type MetodoTexto, type PlanoIntervencoes,
+  CAMPOS_METODO, cronograma, ehEad, mesDoTema, mesesDoPlano, metodoDe, modalidadesEmUso, planoVazio, riscosDoPlano, rotuloMes,
+  rotuloModalidade, setoresDoPlano, temasDoPlano, temasMensais, type PlanoIntervencoes,
 } from "@/lib/comercial/plano";
 import { cn } from "@/lib/utils";
 
@@ -60,22 +59,6 @@ export default function PlanoIntervencoes({
   const totalMeses = mesesDoPlano(plano, temas);
 
   const mudar = (p: Partial<PlanoIntervencoes>) => podeAlterar && salvar.mutate({ ...plano, ...p });
-
-  // 0.3.322: o ajuste é da intervenção (tema) naquela modalidade; "padrão" tira o ajuste dela e o da modalidade
-  // inteira (como a 0.3.321 gravava), voltando ao texto do catálogo.
-  const ajustarMetodo = (tema: string, modalidade: string, c: keyof MetodoTexto, valor: string) => {
-    const atual = metodoDe(modalidade, metodos, plano, tema)[c] ?? "";
-    const t = valor.trim();
-    if (t === atual.trim()) return;
-    const k = chaveMetodo(tema, modalidade);
-    mudar({ metodos: { ...plano.metodos, [k]: { ...(plano.metodos[k] ?? {}), [c]: t || null } } });
-  };
-  const voltarAoPadrao = (tema: string, modalidade: string) => {
-    const resto = { ...plano.metodos };
-    delete resto[chaveMetodo(tema, modalidade)];
-    if (!temas.some((t) => t.chave !== tema && t.modalidades.includes(modalidade))) delete resto[modalidade];
-    mudar({ metodos: resto });
-  };
 
   return (
     <div className="mt-5 rounded-xl border border-indigo-100 bg-indigo-50/30 p-4">
@@ -127,45 +110,27 @@ export default function PlanoIntervencoes({
         )}
       </Item>
 
-      {/* 0.3.322 (pedido do João): a descrição vem embaixo de cada intervenção, e o ajuste é daquela intervenção. */}
+      {/* 0.3.324 (pedido do João): a descrição se edita no tópico 3, embaixo de cada intervenção; aqui fica o resumo. */}
       <Item n={5} titulo="Descrição dos métodos">
         {temas.length === 0 ? <p className="text-sm text-gray-400">Aparece quando houver intervenções na tabela.</p> : (
-          <div className="space-y-3">
+          <div className="space-y-2">
+            <p className="text-xs text-gray-500">Para mudar o texto, edite embaixo de cada intervenção, na tabela acima.</p>
             {temas.map((t) => (
-              <div key={t.chave} className="rounded-lg border border-gray-200 bg-white p-3">
-                <p className="text-sm font-semibold text-gray-900">{t.nome}</p>
+              <div key={t.chave} className="text-sm text-gray-700">
+                <p className="font-semibold text-gray-900">{t.nome}</p>
                 {t.modalidades.length === 0 ? (
-                  <p className="mt-1 text-xs text-amber-700">Sem modalidade: escolha na tabela para aparecer a descrição do método.</p>
-                ) : (
-                  <div className={cn("mt-2 grid gap-3", t.modalidades.length > 1 && "lg:grid-cols-2")}>
-                    {ordenarModalidades(t.modalidades).map((m) => {
-                      const texto = metodoDe(m, metodos, plano, t.chave);
-                      const ajustado = !!plano.metodos[chaveMetodo(t.chave, m)] || !!plano.metodos[m];
-                      return (
-                        <div key={m} className="space-y-1.5 rounded-md bg-gray-50/70 p-2.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">{rotuloModalidade(m)}</p>
-                            {ajustado && podeAlterar && (
-                              <button type="button" onClick={() => voltarAoPadrao(t.chave, m)} className="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-indigo-700" title="Volta ao texto do catálogo">
-                                <RotateCcw className="size-3" /> padrão
-                              </button>
-                            )}
-                          </div>
-                          <div className="grid gap-2 sm:grid-cols-2">
-                            {CAMPOS_METODO.map(({ campo: c, rotulo }) => (
-                              <label key={c} className="block text-xs font-medium text-gray-600">
-                                {rotulo}
-                                <textarea key={`${t.chave}:${m}:${c}:${texto[c] ?? ""}`} rows={2} defaultValue={texto[c] ?? ""} disabled={!podeAlterar}
-                                  placeholder={podeAlterar ? "Sem texto no catálogo — escreva aqui" : ""}
-                                  onBlur={(e) => ajustarMetodo(t.chave, m, c, e.target.value)} className={cn(campo, "w-full")} />
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                  <p className="text-xs text-amber-700">Sem modalidade (escolha na tabela).</p>
+                ) : ordenarModalidades(t.modalidades).map((m) => {
+                  const texto = metodoDe(m, metodos, plano, t.chave);
+                  return (
+                    <ul key={m} className="ml-3 list-none text-xs text-gray-600">
+                      <li className="font-semibold uppercase tracking-wide text-indigo-700">{rotuloModalidade(m)}</li>
+                      {CAMPOS_METODO.map(({ campo: c, rotulo }) => (
+                        <li key={c}><span className="font-medium text-gray-700">{rotulo}:</span> {texto[c] || <span className="text-gray-400">—</span>}</li>
+                      ))}
+                    </ul>
+                  );
+                })}
               </div>
             ))}
           </div>

@@ -30,6 +30,8 @@ import {
   type IntervencaoCatalogo,
 } from "@/lib/hooks/useComercial";
 import PlanoIntervencoes from "@/components/psico-consolidacao/PlanoIntervencoes";
+import MetodoDaIntervencao from "@/components/psico-consolidacao/MetodoDaIntervencao";
+import { chaveTema } from "@/lib/comercial/plano";
 import {
   acharIntervencao,
   acharNaLista,
@@ -37,7 +39,6 @@ import {
   chaveRisco,
   comOpcao,
   faltaParaConcluir,
-  intervencoesDoRisco,
   normalizarOpcao,
   opcoesDoCatalogo,
   type AtendimentoComercial,
@@ -202,15 +203,9 @@ export default function LiberarParaComercial({
                 <p className="mt-1 text-xs text-gray-500">Por risco, a intervenção escolhida vale para todos os setores com aquele risco: escolher, mudar ou retirar muda em todos.</p>
               )}
               <div className="mt-3 overflow-x-auto">
-                <table className={cn("w-full text-sm", agrupar === "setor" ? "min-w-[64rem]" : "min-w-[48rem]")}>
+                <table className="w-full min-w-[48rem] text-sm">
                   <thead className="border-b border-gray-200 text-left text-xs font-semibold text-gray-600">
                     <tr>
-                      {agrupar === "setor" && (
-                        <>
-                          <th className="w-40 py-2 pr-3">Setor</th>
-                          <th className="w-48 py-2 pr-3">Risco</th>
-                        </>
-                      )}
                       <th className="py-2 pr-2">Intervenção</th>
                       <th className="w-32 py-2 pr-2">Modalidade</th>
                       <th className="w-72 py-2 pr-2">Responsável</th>
@@ -222,18 +217,9 @@ export default function LiberarParaComercial({
                     {agrupar === "risco" && porFator.map((g) => (
                       <LinhasDoFator key={g.idFator} grupo={g} alvo={alvo} empresasDoRisco={empresasDoRisco} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar} />
                     ))}
-                    {agrupar === "setor" && riscos.map((r, n) => (
-                      <LinhasDoRisco
-                        key={r.chave}
-                        risco={r}
-                        primeiroDoSetor={n === 0 || riscos[n - 1].setor !== r.setor}
-                        alvo={alvo}
-                        empresas={empresasDoRisco?.(r.chave)}
-                        itens={intervencoesDoRisco(indicadas, r.chave)}
-                        catalogo={catalogo}
-                        opcoes={opcoes}
-                        podeAlterar={podeAlterar}
-                      />
+                    {/* 0.3.324: por setor, cada risco (setor × fator) é um bloco igual ao do por risco, com um setor só. */}
+                    {agrupar === "setor" && riscos.map((r) => (
+                      <LinhasDoFator key={r.chave} grupo={agruparPorRisco([r], indicadas)[0]} alvo={alvo} empresasDoRisco={empresasDoRisco} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar} />
                     ))}
                   </tbody>
                 </table>
@@ -325,94 +311,12 @@ export default function LiberarParaComercial({
   );
 }
 
-/** As linhas de um risco: uma por intervenção, a de adicionar e, sem nenhuma, o aviso. */
-function LinhasDoRisco({
-  risco,
-  primeiroDoSetor,
-  alvo,
-  empresas,
-  itens,
-  catalogo,
-  opcoes,
-  podeAlterar,
-}: {
-  risco: RiscoConciliado;
-  /** Os riscos vêm por setor: o nome do setor aparece só no primeiro de cada um (0.3.244). */
-  primeiroDoSetor: boolean;
-  alvo: AlvoConciliacao;
-  empresas?: string[];
-  itens: IntervencaoIndicada[];
-  catalogo: IntervencaoCatalogo[];
-  opcoes: OpcoesCatalogo;
-  podeAlterar: boolean;
-}) {
-  const [adicionando, setAdicionando] = useState(false);
-  const mostrarNova = podeAlterar && (adicionando || itens.length === 0);
-  const linhas = itens.length + (mostrarNova ? 1 : 0) || 1;
-
-  // 0.3.244: Setor e Risco em colunas separadas (antes, os dois na mesma célula).
-  const celulaRisco = (
-    <Fragment>
-      <td rowSpan={linhas} className="py-2 pr-3 align-top">
-        {primeiroDoSetor && <span className="font-medium text-gray-900">{risco.setor}</span>}
-      </td>
-      <td rowSpan={linhas} className="py-2 pr-3 align-top">
-      <span className="block text-gray-800">{risco.fator}</span>
-      <div className="mt-1 flex flex-wrap gap-1">
-        {risco.aet && (
-          <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-800">Aprofundar com AET</span>
-        )}
-        {risco.convergente && !risco.aet && (
-          <span title="O questionário e a AEP concordam que há este risco" className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">Convergente</span>
-        )}
-        {risco.foraDaConciliacao && (
-          <span className="rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">Fora da última conciliação</span>
-        )}
-      </div>
-      {podeAlterar && itens.length > 0 && !adicionando && (
-        <button type="button" onClick={() => setAdicionando(true)} className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-indigo-700 hover:underline">
-          <Plus className="size-3.5" /> Adicionar intervenção
-        </button>
-      )}
-      </td>
-    </Fragment>
-  );
-
-  return (
-    <Fragment>
-      {itens.map((i, n) => (
-        <LinhaIntervencao key={i.id_item} risco={risco} alvo={alvo} empresas={empresas} item={i} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar} celulaRisco={n === 0 ? celulaRisco : null} />
-      ))}
-      {mostrarNova && (
-        <LinhaIntervencao
-          risco={risco}
-          alvo={alvo}
-          empresas={empresas}
-          item={null}
-          catalogo={catalogo}
-          opcoes={opcoes}
-          podeAlterar
-          celulaRisco={itens.length === 0 ? celulaRisco : null}
-          onCriada={() => setAdicionando(false)}
-          onCancelar={itens.length > 0 ? () => setAdicionando(false) : undefined}
-        />
-      )}
-      {itens.length === 0 && !mostrarNova && (
-        <tr>
-          {celulaRisco}
-          <td colSpan={5} className="py-2 pr-2 text-xs text-gray-400">
-            Nenhuma intervenção indicada.
-          </td>
-        </tr>
-      )}
-    </Fragment>
-  );
-}
-
 /**
  * 0.3.321: as linhas de um risco agrupado (um fator em vários setores): um tema por linha, valendo para todos.
  * 0.3.322 (pedido do João): o risco e os setores ficam numa linha própria, em cima, e as intervenções vêm embaixo,
  * com a largura toda (antes, a lista de setores numa coluna esticava a linha da intervenção).
+ * 0.3.324 (pedido do João, desenho no Excel): vale também para o Por setor (um setor só), e embaixo de cada intervenção
+ * vêm as 4 linhas da descrição do método (MetodoDaIntervencao).
  */
 function LinhasDoFator({
   grupo,
@@ -435,15 +339,18 @@ function LinhasDoFator({
   const rotulo: RiscoConciliado = { ...riscos[0], setor: riscos.map((r) => r.setor).join(", "), fator: grupo.fator };
   const algumAet = riscos.some((r) => r.aet);
   const algumConvergente = riscos.some((r) => r.convergente);
+  const algumFora = riscos.some((r) => r.foraDaConciliacao);
 
   return (
     <Fragment>
       <tr className="border-t-2 border-gray-200 bg-gray-50/70">
         <td colSpan={5} className="px-2 py-2">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-xs font-semibold text-gray-500">Risco:</span>
             <span className="font-semibold text-gray-900">{grupo.fator}</span>
             {algumAet && <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-800">Aprofundar com AET</span>}
-            {algumConvergente && <span className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">Convergente</span>}
+            {algumConvergente && !algumAet && <span title="O questionário e a AEP concordam que há este risco" className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">Convergente</span>}
+            {algumFora && <span className="rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">Fora da última conciliação</span>}
             {podeAlterar && temas.length > 0 && !adicionando && (
               <button type="button" onClick={() => setAdicionando(true)} className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-indigo-700 hover:underline">
                 <Plus className="size-3.5" /> Adicionar intervenção
@@ -466,10 +373,19 @@ function LinhasDoFator({
         const representante = [...t.itens.values()][0];
         const faltam = riscos.length - t.itens.size;
         return (
-          <LinhaIntervencao key={t.chave} risco={rotulo} alvo={alvo} item={representante} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar}
-            celulaRisco={null}
-            grupo={{ riscos, itens: t.itens, empresasDe: empresasDoRisco }}
-            nota={faltam > 0 ? `Em ${t.itens.size} de ${riscos.length} setores — qualquer mudança aplica em todos.` : undefined} />
+          <Fragment key={t.chave}>
+            <LinhaIntervencao risco={rotulo} alvo={alvo} item={representante} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar}
+              celulaRisco={null}
+              grupo={{ riscos, itens: t.itens, empresasDe: empresasDoRisco }}
+              nota={faltam > 0 ? `Em ${t.itens.size} de ${riscos.length} setores — qualquer mudança aplica em todos.` : undefined} />
+            <tr>
+              <td colSpan={5} className="pb-3 pr-2">
+                <div className="overflow-hidden rounded-md border border-gray-200">
+                  <MetodoDaIntervencao alvo={alvo} tema={chaveTema(representante)} modalidade={representante.modalidade} podeAlterar={podeAlterar} />
+                </div>
+              </td>
+            </tr>
+          </Fragment>
         );
       })}
       {mostrarNova && (
