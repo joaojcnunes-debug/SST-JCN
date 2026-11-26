@@ -13,6 +13,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useUserStore } from "@/lib/store";
 import Modal from "@/components/ui/Modal";
 import AutomacoesManagerModal from "@/components/gestao/AutomacoesManagerModal";
+import { ConfirmHost } from "@/components/ui/confirm";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { mensagemErro } from "@/lib/errors";
 import { useCamposQuadro, useQuadros, useStatusQuadro, useUsuarios } from "@/lib/hooks/useGestao";
@@ -118,6 +119,8 @@ export default function AutomacoesPage() {
 
   return (
     <div className="min-h-screen bg-app-bg">
+      {/* 0.3.317: a confirmação do Excluir (e as outras da janela) no modal do sistema, não no confirm do navegador. */}
+      <ConfirmHost />
       <div className="mx-auto max-w-6xl px-5 py-7 sm:px-8">
         <Link href="/gestao" className="mb-4 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800">
           <ArrowLeft className="size-4" /> Gestão

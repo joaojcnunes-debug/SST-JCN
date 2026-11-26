@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "automacao-excluir",
+    data: "2026-11-23",
+    tipo: "melhoria",
+    titulo: "Automações: botão Excluir à vista, com confirmação",
+    texto:
+      "Na janela de Automações, cada regra tem agora o botão Excluir ao lado de Duplicar (antes era só uma lixeirinha " +
+      "dentro do Editar). Ele sempre pede confirmação e avisa que não dá para desfazer — para só parar uma regra, basta " +
+      "desmarcar Ativa.",
+    onde: "Gestão › Automações",
+    versoes: ["0.3.317"],
+  },
+  {
     id: "relatorio-sumario-margem",
     data: "2026-11-19",
     tipo: "correcao",

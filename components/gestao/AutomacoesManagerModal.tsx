@@ -87,6 +87,24 @@ export default function AutomacoesManagerModal({
   const refFoco = useRef<HTMLDivElement | null>(null);
 
   const outrosQuadros = quadros.filter((q) => q.id_quadro !== idQuadro);
+  // 0.3.317 (pedido do João, 23/11): "Excluir" à vista no cabeçalho de cada regra (antes era só uma lixeirinha
+  // apagada dentro do Editar), sempre com confirmação. Excluir não tem volta; para só parar, desliga-se a regra.
+  const excluirRegra = async (a: GestaoAutomacao) => {
+    const ok = await confirmar({
+      title: `Excluir a automação "${a.nome}"?`,
+      description: "Ela para de rodar e sai da lista. Não dá para desfazer. Se quiser só parar por um tempo, desmarque \"Ativa\" em vez de excluir.",
+      confirmLabel: "Excluir",
+      variant: "danger",
+    });
+    if (!ok) return;
+    excluir.mutate(a.id, {
+      onSuccess: () => {
+        setAbertas((s) => { const n = new Set(s); n.delete(a.id); return n; });
+        if (duplicando === a.id) setDuplicando(null);
+        toast.success(`Automação "${a.nome}" excluída`);
+      },
+    });
+  };
   // 0.3.299 (pedido do João, 18/11): duplicar uma automação nesta lista ou em outra. A cópia nasce DESLIGADA, para
   // revisar antes (em outra lista, status, campos e etiquetas podem ter outros nomes).
   const [duplicando, setDuplicando] = useState<string | null>(null);
@@ -273,6 +291,13 @@ export default function AutomacoesManagerModal({
                 </button>
               )}
               {podeEditar && (
+                <button type="button" onClick={() => excluirRegra(a)} disabled={excluir.isPending}
+                  title="Excluir esta automação (pede confirmação)"
+                  className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium text-red-600 ring-1 ring-red-200 hover:bg-red-50 disabled:opacity-50">
+                  <Trash2 className="size-3" /> Excluir
+                </button>
+              )}
+              {podeEditar && (
                 <span className="flex shrink-0 items-center">
                   <button type="button" title="Rodar antes" disabled={idx === 0 || reordenar.isPending} onClick={() => moverRegra(idx, -1)} className="rounded p-1 text-gray-300 hover:text-gray-600 disabled:opacity-30"><ArrowUp className="size-3.5" /></button>
                   <button type="button" title="Rodar depois" disabled={idx === ordenadas.length - 1 || reordenar.isPending} onClick={() => moverRegra(idx, 1)} className="rounded p-1 text-gray-300 hover:text-gray-600 disabled:opacity-30"><ArrowDown className="size-3.5" /></button>
@@ -319,7 +344,7 @@ export default function AutomacoesManagerModal({
               <label className="inline-flex items-center gap-1 text-xs text-gray-500" title={completa ? undefined : "Complete as ações para poder ativar"}>
                 <input type="checkbox" disabled={!podeEditar || !completa} checked={a.ativo && completa} onChange={(e) => setCampo(a, { ativo: e.target.checked })} className="size-3.5 rounded accent-marca-primary" /> <Dica texto={DICAS_GESTAO_AUTOMACAO.ativa}>Ativa</Dica>
               </label>
-              {podeEditar && <button type="button" onClick={async () => { if (await confirmar({ title: `Excluir automação "${a.nome}"?` })) excluir.mutate(a.id); }} className="rounded p-1 text-gray-300 hover:text-red-600"><Trash2 className="size-4" /></button>}
+              {podeEditar && <button type="button" title="Excluir esta automação" onClick={() => excluirRegra(a)} className="rounded p-1 text-gray-400 hover:text-red-600"><Trash2 className="size-4" /></button>}
             </div>
 
             {/* QUANDO — gatilho */}
