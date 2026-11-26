@@ -11,7 +11,7 @@ import type { AlvoConciliacao } from "@/lib/hooks/useConciliacaoParecer";
 import { useMetodosModalidade, usePlanoIntervencoes, useSalvarPlanoIntervencoes } from "@/lib/hooks/useComercial";
 import type { IntervencaoIndicada, RiscoConciliado } from "@/lib/comercial/liberacao";
 import {
-  CAMPOS_METODO, cronograma, ehEad, mesDoTema, mesesDoPlano, metodoDe, modalidadesEmUso, planoVazio, riscosDoPlano, rotuloMes,
+  CAMPOS_METODO, chaveMetodo, cronograma, ehEad, mesDoTema, mesesDoPlano, metodoDe, modalidadesEmUso, planoVazio, riscosDoPlano, rotuloMes,
   rotuloModalidade, setoresDoPlano, temasDoPlano, temasMensais, type MetodoTexto, type PlanoIntervencoes,
 } from "@/lib/comercial/plano";
 import { cn } from "@/lib/utils";
@@ -51,21 +51,29 @@ export default function PlanoIntervencoes({
   const riscosLista = useMemo(() => riscosDoPlano(riscos.filter((r) => !r.foraDaConciliacao)), [riscos]);
   const temas = useMemo(() => temasDoPlano(indicadas), [indicadas]);
   const modalidades = useMemo(() => modalidadesEmUso(temas, metodos), [temas, metodos]);
+  const ordenarModalidades = (lista: string[]) => {
+    const pos = (m: string) => (modalidades.indexOf(m) + 1 || 999);
+    return [...lista].sort((a, b) => pos(a) - pos(b));
+  };
   const crono = useMemo(() => cronograma(plano, temas), [plano, temas]);
   const mensais = temasMensais(plano.planejamento, temas);
   const totalMeses = mesesDoPlano(plano, temas);
 
   const mudar = (p: Partial<PlanoIntervencoes>) => podeAlterar && salvar.mutate({ ...plano, ...p });
 
-  const ajustarMetodo = (modalidade: string, c: keyof MetodoTexto, valor: string) => {
-    const atual = metodoDe(modalidade, metodos, plano)[c] ?? "";
+  // 0.3.322: o ajuste é da intervenção (tema) naquela modalidade; "padrão" tira o ajuste dela e o da modalidade
+  // inteira (como a 0.3.321 gravava), voltando ao texto do catálogo.
+  const ajustarMetodo = (tema: string, modalidade: string, c: keyof MetodoTexto, valor: string) => {
+    const atual = metodoDe(modalidade, metodos, plano, tema)[c] ?? "";
     const t = valor.trim();
     if (t === atual.trim()) return;
-    mudar({ metodos: { ...plano.metodos, [modalidade]: { ...(plano.metodos[modalidade] ?? {}), [c]: t || null } } });
+    const k = chaveMetodo(tema, modalidade);
+    mudar({ metodos: { ...plano.metodos, [k]: { ...(plano.metodos[k] ?? {}), [c]: t || null } } });
   };
-  const voltarAoPadrao = (modalidade: string) => {
+  const voltarAoPadrao = (tema: string, modalidade: string) => {
     const resto = { ...plano.metodos };
-    delete resto[modalidade];
+    delete resto[chaveMetodo(tema, modalidade)];
+    if (!temas.some((t) => t.chave !== tema && t.modalidades.includes(modalidade))) delete resto[modalidade];
     mudar({ metodos: resto });
   };
 
@@ -119,33 +127,47 @@ export default function PlanoIntervencoes({
         )}
       </Item>
 
+      {/* 0.3.322 (pedido do João): a descrição vem embaixo de cada intervenção, e o ajuste é daquela intervenção. */}
       <Item n={5} titulo="Descrição dos métodos">
-        {modalidades.length === 0 ? <p className="text-sm text-gray-400">Aparece quando os temas tiverem modalidade.</p> : (
-          <div className="grid gap-3 lg:grid-cols-3">
-            {modalidades.map((m) => {
-              const texto = metodoDe(m, metodos, plano);
-              const ajustado = !!plano.metodos[m];
-              return (
-                <div key={m} className="space-y-1.5 rounded-lg border border-gray-200 bg-white p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-gray-800">{rotuloModalidade(m)}</p>
-                    {ajustado && podeAlterar && (
-                      <button type="button" onClick={() => voltarAoPadrao(m)} className="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-indigo-700" title="Volta ao texto do catálogo">
-                        <RotateCcw className="size-3" /> padrão
-                      </button>
-                    )}
+        {temas.length === 0 ? <p className="text-sm text-gray-400">Aparece quando houver intervenções na tabela.</p> : (
+          <div className="space-y-3">
+            {temas.map((t) => (
+              <div key={t.chave} className="rounded-lg border border-gray-200 bg-white p-3">
+                <p className="text-sm font-semibold text-gray-900">{t.nome}</p>
+                {t.modalidades.length === 0 ? (
+                  <p className="mt-1 text-xs text-amber-700">Sem modalidade: escolha na tabela para aparecer a descrição do método.</p>
+                ) : (
+                  <div className={cn("mt-2 grid gap-3", t.modalidades.length > 1 && "lg:grid-cols-2")}>
+                    {ordenarModalidades(t.modalidades).map((m) => {
+                      const texto = metodoDe(m, metodos, plano, t.chave);
+                      const ajustado = !!plano.metodos[chaveMetodo(t.chave, m)] || !!plano.metodos[m];
+                      return (
+                        <div key={m} className="space-y-1.5 rounded-md bg-gray-50/70 p-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">{rotuloModalidade(m)}</p>
+                            {ajustado && podeAlterar && (
+                              <button type="button" onClick={() => voltarAoPadrao(t.chave, m)} className="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-indigo-700" title="Volta ao texto do catálogo">
+                                <RotateCcw className="size-3" /> padrão
+                              </button>
+                            )}
+                          </div>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {CAMPOS_METODO.map(({ campo: c, rotulo }) => (
+                              <label key={c} className="block text-xs font-medium text-gray-600">
+                                {rotulo}
+                                <textarea key={`${t.chave}:${m}:${c}:${texto[c] ?? ""}`} rows={2} defaultValue={texto[c] ?? ""} disabled={!podeAlterar}
+                                  placeholder={podeAlterar ? "Sem texto no catálogo — escreva aqui" : ""}
+                                  onBlur={(e) => ajustarMetodo(t.chave, m, c, e.target.value)} className={cn(campo, "w-full")} />
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  {CAMPOS_METODO.map(({ campo: c, rotulo }) => (
-                    <label key={c} className="block text-xs font-medium text-gray-600">
-                      {rotulo}
-                      <textarea key={`${m}:${c}:${texto[c] ?? ""}`} rows={2} defaultValue={texto[c] ?? ""} disabled={!podeAlterar}
-                        placeholder={podeAlterar ? "Sem texto no catálogo — escreva aqui" : ""}
-                        onBlur={(e) => ajustarMetodo(m, c, e.target.value)} className={cn(campo, "w-full")} />
-                    </label>
-                  ))}
-                </div>
-              );
-            })}
+                )}
+              </div>
+            ))}
           </div>
         )}
       </Item>

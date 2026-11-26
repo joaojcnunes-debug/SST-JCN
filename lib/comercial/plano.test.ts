@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { IntervencaoIndicada, RiscoConciliado } from "./liberacao";
-import { cronograma, metodoDe, modalidadesEmUso, planoVazio, riscosDoPlano, rotuloMes, setoresDoPlano, temasDoPlano } from "./plano";
+import { chaveMetodo, cronograma, metodoDe, modalidadesEmUso, planoVazio, riscosDoPlano, rotuloMes, setoresDoPlano, temasDoPlano } from "./plano";
 
 const ind = (setor: string, fator: string, nome: string, modalidade: string | null, id: string | null = null) =>
   ({ id_item: `${setor}${fator}${nome}`, id_empresa: "E", setor_chave: setor, setor_nome: setor, id_fator: fator, fator_nome: fator,
@@ -27,6 +27,13 @@ test("método: padrão do catálogo com o ajuste da empresa por cima", () => {
   assert.equal(metodoDe("EAD", m, null).duracao, "8h");
   assert.deepEqual(metodoDe("EAD", m, { metodos: { EAD: { duracao: "4h", certificado: null } } }), { forma: "Plataforma", duracao: "4h", avaliacao: "Prova", certificado: null });
   assert.equal(metodoDe("Presencial", m, null).forma, null);
+});
+
+test("método por intervenção: o ajuste do tema vale mais que o da modalidade", () => {
+  const m = [{ modalidade: "EAD", ordem: 1, forma: "Plataforma", duracao: "8h", avaliacao: "Prova", certificado: "Sim" }];
+  const plano = { metodos: { EAD: { duracao: "4h" }, [chaveMetodo("I1", "EAD")]: { duracao: "2h", avaliacao: null } } };
+  assert.deepEqual(metodoDe("EAD", m, plano, "I1"), { forma: "Plataforma", duracao: "2h", avaliacao: null, certificado: "Sim" });
+  assert.equal(metodoDe("EAD", m, plano, "I2").duracao, "4h");
 });
 
 test("um tema por mês: um em cada mês, na ordem, e o escolhido vale", () => {

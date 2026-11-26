@@ -202,11 +202,15 @@ export default function LiberarParaComercial({
                 <p className="mt-1 text-xs text-gray-500">Por risco, a intervenção escolhida vale para todos os setores com aquele risco: escolher, mudar ou retirar muda em todos.</p>
               )}
               <div className="mt-3 overflow-x-auto">
-                <table className="w-full min-w-[64rem] text-sm">
+                <table className={cn("w-full text-sm", agrupar === "setor" ? "min-w-[64rem]" : "min-w-[48rem]")}>
                   <thead className="border-b border-gray-200 text-left text-xs font-semibold text-gray-600">
                     <tr>
-                      <th className={cn("py-2 pr-3", agrupar === "setor" ? "w-40" : "w-48")}>{agrupar === "setor" ? "Setor" : "Risco"}</th>
-                      <th className={cn("py-2 pr-3", agrupar === "setor" ? "w-48" : "w-40")}>{agrupar === "setor" ? "Risco" : "Setores"}</th>
+                      {agrupar === "setor" && (
+                        <>
+                          <th className="w-40 py-2 pr-3">Setor</th>
+                          <th className="w-48 py-2 pr-3">Risco</th>
+                        </>
+                      )}
                       <th className="py-2 pr-2">Intervenção</th>
                       <th className="w-32 py-2 pr-2">Modalidade</th>
                       <th className="w-72 py-2 pr-2">Responsável</th>
@@ -405,7 +409,11 @@ function LinhasDoRisco({
   );
 }
 
-/** 0.3.321: as linhas de um risco agrupado (um fator em vários setores): um tema por linha, valendo para todos. */
+/**
+ * 0.3.321: as linhas de um risco agrupado (um fator em vários setores): um tema por linha, valendo para todos.
+ * 0.3.322 (pedido do João): o risco e os setores ficam numa linha própria, em cima, e as intervenções vêm embaixo,
+ * com a largura toda (antes, a lista de setores numa coluna esticava a linha da intervenção).
+ */
 function LinhasDoFator({
   grupo,
   alvo,
@@ -424,60 +432,55 @@ function LinhasDoFator({
   const [adicionando, setAdicionando] = useState(false);
   const { temas, riscos } = grupo;
   const mostrarNova = podeAlterar && (adicionando || temas.length === 0);
-  const linhas = temas.length + (mostrarNova ? 1 : 0) || 1;
   const rotulo: RiscoConciliado = { ...riscos[0], setor: riscos.map((r) => r.setor).join(", "), fator: grupo.fator };
   const algumAet = riscos.some((r) => r.aet);
   const algumConvergente = riscos.some((r) => r.convergente);
 
-  const celulaRisco = (
-    <Fragment>
-      <td rowSpan={linhas} className="py-2 pr-3 align-top">
-        <span className="block font-medium text-gray-900">{grupo.fator}</span>
-        <div className="mt-1 flex flex-wrap gap-1">
-          {algumAet && <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-800">Aprofundar com AET</span>}
-          {algumConvergente && <span className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">Convergente</span>}
-        </div>
-        {podeAlterar && temas.length > 0 && !adicionando && (
-          <button type="button" onClick={() => setAdicionando(true)} className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-indigo-700 hover:underline">
-            <Plus className="size-3.5" /> Adicionar intervenção
-          </button>
-        )}
-      </td>
-      <td rowSpan={linhas} className="py-2 pr-3 align-top">
-        <ul className="space-y-0.5 text-gray-800">
-          {riscos.map((r) => (
-            <li key={r.chave}>
-              {r.setor}
-              {r.aet && <span className="ml-1 text-[10px] font-semibold text-indigo-700" title="Este setor pediu AET">AET</span>}
-            </li>
-          ))}
-        </ul>
-      </td>
-    </Fragment>
-  );
-
   return (
     <Fragment>
-      {temas.map((t, n) => {
+      <tr className="border-t-2 border-gray-200 bg-gray-50/70">
+        <td colSpan={5} className="px-2 py-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-semibold text-gray-900">{grupo.fator}</span>
+            {algumAet && <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-800">Aprofundar com AET</span>}
+            {algumConvergente && <span className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">Convergente</span>}
+            {podeAlterar && temas.length > 0 && !adicionando && (
+              <button type="button" onClick={() => setAdicionando(true)} className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-indigo-700 hover:underline">
+                <Plus className="size-3.5" /> Adicionar intervenção
+              </button>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-gray-600">
+            <span className="font-semibold text-gray-700">{riscos.length === 1 ? "Setor" : `Setores (${riscos.length})`}: </span>
+            {riscos.map((r, k) => (
+              <Fragment key={r.chave}>
+                {k > 0 && ", "}
+                {r.setor}
+                {r.aet && <span className="ml-0.5 text-[10px] font-semibold text-indigo-700" title="Este setor pediu AET">AET</span>}
+              </Fragment>
+            ))}
+          </p>
+        </td>
+      </tr>
+      {temas.map((t) => {
         const representante = [...t.itens.values()][0];
         const faltam = riscos.length - t.itens.size;
         return (
           <LinhaIntervencao key={t.chave} risco={rotulo} alvo={alvo} item={representante} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar}
-            celulaRisco={n === 0 ? celulaRisco : null}
+            celulaRisco={null}
             grupo={{ riscos, itens: t.itens, empresasDe: empresasDoRisco }}
             nota={faltam > 0 ? `Em ${t.itens.size} de ${riscos.length} setores — qualquer mudança aplica em todos.` : undefined} />
         );
       })}
       {mostrarNova && (
         <LinhaIntervencao risco={rotulo} alvo={alvo} item={null} catalogo={catalogo} opcoes={opcoes} podeAlterar
-          celulaRisco={temas.length === 0 ? celulaRisco : null}
+          celulaRisco={null}
           grupo={{ riscos, itens: new Map(), empresasDe: empresasDoRisco }}
           onCriada={() => setAdicionando(false)}
           onCancelar={temas.length > 0 ? () => setAdicionando(false) : undefined} />
       )}
       {temas.length === 0 && !mostrarNova && (
         <tr>
-          {celulaRisco}
           <td colSpan={5} className="py-2 pr-2 text-xs text-gray-400">Nenhuma intervenção indicada.</td>
         </tr>
       )}
