@@ -15,6 +15,8 @@ import {
   intervencoesDoRisco,
   riscosComIntervencoes,
   riscosDoFechamento,
+  agruparPorRisco,
+  convergentesForaDaFoto,
   situacaoComercial,
   textoIntervencao,
   visaoDoVendedor,
@@ -120,6 +122,25 @@ test("só Confirmar e AET viram risco; descartado e sem parecer ficam de fora", 
     item("TI", "Eventos violentos", null),
   ]);
   assert.deepEqual(r.map((x) => `${x.setor} ${x.fator} ${x.aet}`), ["Açougue Assédio true", "Padaria Sobrecarga false"]);
+});
+
+test("0.3.321: convergente sem parecer é risco; convergente descartado não", () => {
+  const conv = (setor: string, fator: string, decisao: "CONFIRMAR" | "AET" | "DESCARTAR" | null) => ({ ...item(setor, fator, decisao), classe: "Convergente" });
+  const r = riscosDoFechamento([conv("Padaria", "Sobrecarga", null), conv("RH", "Assédio", "DESCARTAR"), item("TI", "Subcarga", null)]);
+  assert.deepEqual(r.map((x) => `${x.setor} ${x.fator} ${x.convergente}`), ["Padaria Sobrecarga true"]);
+  assert.equal(convergentesForaDaFoto({ totais: { DRPS: { Convergente: 3 }, QPS: { Convergente: 2 } } }, [item("TI", "Subcarga", "CONFIRMAR")]), 5);
+  assert.equal(convergentesForaDaFoto({ totais: { DRPS: { Convergente: 3 } } }, [conv("Padaria", "Sobrecarga", null)]), 0);
+  assert.equal(convergentesForaDaFoto(null, []), 0);
+});
+
+test("0.3.321: por risco — o fator reúne os setores, e cada tema os itens de cada setor", () => {
+  const riscos = riscosDoFechamento([item("Eng", "Sobrecarga", "CONFIRMAR"), item("Adm", "Sobrecarga", "AET"), item("Adm", "Assédio", "CONFIRMAR")]);
+  const ind = (setor: string, fator: string, nome: string, id: string | null) =>
+    ({ id_item: setor + nome, id_empresa: "E", setor_chave: setor.toUpperCase(), setor_nome: setor, id_fator: fator.toLowerCase(), fator_nome: fator,
+       id_intervencao: id, nome, modalidade: null, responsavel: null, prazo_dias: null }) as IntervencaoIndicada;
+  const g = agruparPorRisco(riscos, [ind("Eng", "Sobrecarga", "Gestão do tempo", "I1"), ind("Adm", "Sobrecarga", "Gestão do tempo", "I1"), ind("Adm", "Sobrecarga", "Pausas", null)]);
+  assert.deepEqual(g.map((x) => `${x.fator}:${x.riscos.map((r) => r.setor).join("+")}`), ["Assédio:Adm", "Sobrecarga:Adm+Eng"]);
+  assert.deepEqual(g[1].temas.map((t) => `${t.nome}:${t.itens.size}`), ["Gestão do tempo:2", "Pausas:1"]);
 });
 
 test("o mesmo setor × fator do DRPS e do QPS vira um risco só", () => {

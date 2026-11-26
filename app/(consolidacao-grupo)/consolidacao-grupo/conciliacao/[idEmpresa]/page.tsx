@@ -34,6 +34,7 @@ import {
   chaveRisco,
   riscosComIntervencoes,
   riscosDoFechamento,
+  convergentesForaDaFoto,
   situacaoComercial,
 } from "@/lib/comercial/liberacao";
 import { minhaSessaoAberta } from "@/lib/inspecoes/sessoes";
@@ -520,6 +521,12 @@ export default function ConciliacaoEmpresaPage() {
           municipio={empresa.municipio ?? null}
           fechada={fechada}
           riscos={riscos}
+          avisoRiscos={(() => {
+            const n = fechada ? convergentesForaDaFoto(ultimoFechamento?.resumo, (ultimoFechamento?.itens ?? []) as { classe?: string | null }[]) : 0;
+            return n > 0
+              ? `Esta conciliação foi fechada antes de os riscos convergentes (questionário e AEP concordam) entrarem aqui: ${n === 1 ? "1 cruzamento convergente ficou" : `${n} cruzamentos convergentes ficaram`} de fora. Reabra a conciliação e feche de novo para eles aparecerem.`
+              : null;
+          })()}
           indicadas={indicadas}
           atendimento={atendimento}
           podeAlterar={podeTrabalhar && fechada}

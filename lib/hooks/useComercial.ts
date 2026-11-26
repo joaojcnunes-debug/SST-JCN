@@ -15,6 +15,7 @@ import { normalizarRelatorio } from "@/lib/hooks/useAep";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import { perfilEscreveNaRls } from "@/lib/acesso/linha-por-unidade";
 import { useUserStore } from "@/lib/store";
+import type { MetodoModalidade, PlanoIntervencoes } from "@/lib/comercial/plano";
 import {
   montarComercial,
   type CertificadoEmpresa,
@@ -503,5 +504,74 @@ export function useExcluirIntervencao() {
       toast.success("Intervenção excluída");
     },
     onError: (e: Error) => toast.error(mensagemErro(e, "Falha ao excluir a intervenção")),
+  });
+}
+
+// ── Plano de intervenções (0.3.321, banco v370) ────────────────────────────────────────────────
+
+/** O texto padrão de cada método (EAD, Ao vivo = online, Presencial…), editado no Catálogo de intervenções. */
+export function useMetodosModalidade() {
+  return useQuery({
+    queryKey: ["comercial-metodos"],
+    queryFn: async () => {
+      const { data, error } = await sb().from("comercial_metodos").select("modalidade, forma, duracao, avaliacao, certificado, ordem").order("ordem").order("modalidade");
+      if (error) throw error;
+      return (data ?? []) as MetodoModalidade[];
+    },
+  });
+}
+
+export function useSalvarMetodoModalidade() {
+  const qc = useQueryClient();
+  const email = useUserStore((s) => s.user?.email ?? null);
+  return useMutation({
+    mutationFn: async (m: MetodoModalidade) => {
+      const { error } = await sb().from("comercial_metodos").upsert({ ...m, atualizado_em: new Date().toISOString(), atualizado_por: email });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["comercial-metodos"] }),
+    onError: (e: Error) => toast.error(mensagemErro(e, "Falha ao salvar o método")),
+  });
+}
+
+export function useExcluirMetodoModalidade() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (modalidade: string) => {
+      const { error } = await sb().from("comercial_metodos").delete().eq("modalidade", modalidade);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["comercial-metodos"] }),
+    onError: (e: Error) => toast.error(mensagemErro(e, "Falha ao excluir o método")),
+  });
+}
+
+/** O plano da empresa ou do grupo (null = ainda não salvo; a tela usa o padrão). */
+export function usePlanoIntervencoes(alvo: AlvoConciliacao) {
+  return useQuery({
+    queryKey: ["comercial-plano", alvo.tipo, alvo.id],
+    queryFn: async () => {
+      const { data, error } = await sb().from("comercial_planos").select("id_alvo, tipo_alvo, planejamento, inicio, meses, temas, metodos").eq("id_alvo", alvo.id).maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as PlanoIntervencoes | null;
+    },
+  });
+}
+
+/** Grava o plano inteiro (cada mudança na tela manda o plano já com ela). */
+export function useSalvarPlanoIntervencoes() {
+  const qc = useQueryClient();
+  const email = useUserStore((s) => s.user?.email ?? null);
+  return useMutation({
+    mutationFn: async (p: PlanoIntervencoes) => {
+      const { error } = await sb().from("comercial_planos").upsert({ ...p, atualizado_em: new Date().toISOString(), atualizado_por: email });
+      if (error) throw error;
+    },
+    onMutate: async (p) => {
+      // Otimista: a tela já mostra a mudança (o select não pisca enquanto grava).
+      qc.setQueryData(["comercial-plano", p.tipo_alvo, p.id_alvo], p);
+    },
+    onSettled: (_r, _e, p) => qc.invalidateQueries({ queryKey: ["comercial-plano", p.tipo_alvo, p.id_alvo] }),
+    onError: (e: Error) => toast.error(mensagemErro(e, "Falha ao salvar o plano")),
   });
 }

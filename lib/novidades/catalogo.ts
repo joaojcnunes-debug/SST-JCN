@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "conciliacao-plano-intervencoes",
+    data: "2026-11-26",
+    tipo: "novidade",
+    titulo: "Intervenções da conciliação: riscos convergentes, visão por risco e plano de intervenções",
+    texto:
+      "A etapa Intervenções passa a mostrar também os riscos em que o questionário e a AEP concordam (convergentes), que antes " +
+      "ficavam de fora. Dá para ver por setor ou por risco — por risco, a intervenção escolhida vale para todos os setores com " +
+      "aquele risco. E abaixo da tabela vem o Plano de intervenções: setores, riscos, temas, método por tema, a descrição de " +
+      "cada método (com texto padrão no catálogo, ajustável na empresa) e o planejamento (um tema por mês, ou EAD o período " +
+      "todo com ações online e presenciais todo mês), com o cronograma.",
+    onde: "Consolidação › Conciliação DRPS/QPS × AEP",
+    versoes: ["0.3.321"],
+  },
+  {
     id: "subtarefa-como-cartao",
     data: "2026-11-26",
     tipo: "melhoria",
