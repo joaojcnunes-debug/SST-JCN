@@ -65,7 +65,7 @@ export interface CondMin { all?: ClausulaMin[]; any?: ClausulaMin[]; de?: string
 export interface ClausulaMin { campo?: string; op?: string; valor?: unknown }
 export interface AcaoDesc {
   tipo?: string; valor?: string; campo_id?: string; emails?: string[]; vinculo_tipo?: string;
-  id_quadro_destino?: string; status_destino?: string; modelo_slug?: string; responsavel_email?: string;
+  id_quadro_destino?: string; status_destino?: string; modelo_slug?: string; responsavel_email?: string; responsaveis_emails?: string[];
   texto?: string; assunto?: string; para?: string; dias?: string; quantidade?: string; unidade?: string;
   modo?: string; aprovador_email?: string; titulo_template?: string; condicao?: CondMin;
   /** v367 */
@@ -85,6 +85,20 @@ export function nomeEtapa(slug: string | undefined, n: Nomes, idQuadro?: string)
   return m?.[slug] ?? n.etapas?.[slug] ?? slug;
 }
 export const nomePessoa = (email: string | undefined, n: Nomes) => (email ? n.pessoas?.[email.toLowerCase()] ?? email : "");
+
+/** 0.3.323 (v371 = Painel v394): responsáveis da subtarefa criada pela automação — a lista nova, ou o responsável único das regras antigas. */
+export function responsaveisDaAcao(a: { responsavel_email?: string; responsaveis_emails?: string[] }): string[] {
+  const todos = (a.responsaveis_emails ?? []).map((e) => e.trim().toLowerCase()).filter(Boolean);
+  if (todos.length) return [...new Set(todos)];
+  return a.responsavel_email?.trim() ? [a.responsavel_email.trim().toLowerCase()] : [];
+}
+
+/** ", com Fulana como responsável" / ", com Fulana e Beltrana como responsáveis" / "". */
+function frasesResp(a: AcaoDesc, n: Nomes): string {
+  const p = responsaveisDaAcao(a).map((e) => nomePessoa(e, n));
+  if (!p.length) return "";
+  return `, com ${lista(p)} como ${p.length > 1 ? "responsáveis" : "responsável"}`;
+}
 const nomeQuadro = (id: string | undefined, n: Nomes) => (!id ? "" : id === "@unidade" ? "o quadro da unidade do cartão" : n.quadros?.[id] ?? id);
 
 /** A 1ª etapa de um quadro (quando a ação não escolhe etapa, o motor usa a de menor ordem). */
@@ -209,13 +223,13 @@ export function descreverAcao(a: AcaoDesc, n: Nomes = {}): string {
     case "remover_etiqueta": t = `Tira a etiqueta ${a.valor ?? "?"}`; break;
     case "criar_subtarefas_modelo": {
       const m = n.modelos?.[a.modelo_slug ?? ""] ?? a.modelo_slug ?? "?";
-      t = `Cria as subtarefas do modelo ${aspas(m)}${a.responsavel_email ? `, com ${nomePessoa(a.responsavel_email, n)} como responsável` : ""}`;
+      t = `Cria as subtarefas do modelo ${aspas(m)}${frasesResp(a, n)}`;
       break;
     }
     case "criar_subtarefas_produtos": {
       const qual = a.campo_id ? `valor marcado em ${n.campos?.[a.campo_id] ?? "o campo"}` : "Produto marcado";
       const so = a.produtos?.length ? ` (só ${listaOu(a.produtos)})` : "";
-      t = `Cria uma subtarefa para cada ${qual}${so}${a.responsavel_email ? `, com ${nomePessoa(a.responsavel_email, n)} como responsável` : ""}`;
+      t = `Cria uma subtarefa para cada ${qual}${so}${frasesResp(a, n)}`;
       break;
     }
     case "adicionar_vinculados": {

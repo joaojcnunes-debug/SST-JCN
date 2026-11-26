@@ -1443,6 +1443,9 @@ export interface AcaoAutomacao {
   modelo_slug?: string;                       // criar_subtarefas_modelo
   aprovador_email?: string;                   // solicitar_aprovacao (opcional)
   responsavel_email?: string;                 // criar_subtarefas_modelo (v315 = painel v319, opcional)
+  /** 0.3.323 (v371 = Painel v394): criar_subtarefas_modelo/produtos — TODAS as responsáveis da subtarefa; a 1ª fica
+   *  também em responsavel_email (a linha), as demais entram nos responsáveis da janela da subtarefa. */
+  responsaveis_emails?: string[];
   id_quadro_destino?: string;                 // mover/criar_tarefa_quadro; '@unidade' = quadro da unidade da tarefa (v302, só criar)
   status_destino?: string;                    // mover/criar_tarefa_quadro: etapa no destino (criar: v302)
   titulo_template?: string;                   // criar_tarefa_quadro ({{titulo}})

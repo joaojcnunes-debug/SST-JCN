@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { descreverAcao, descreverCondicao, descreverGatilho, descreverRegra, nomeLegivel, rotuloPrimeiraEtapa, GATILHOS, type Nomes } from "./automacao-descricao";
+import { descreverAcao, descreverCondicao, descreverGatilho, descreverRegra, nomeLegivel, responsaveisDaAcao, rotuloPrimeiraEtapa, GATILHOS, type Nomes } from "./automacao-descricao";
 
 const n: Nomes = {
   etapas: { EMPRESAS_NOVAS: "Empresas Novas", AG_AGENDAMENTO: "Aguardando Agendamento", AG_APROVACAO: "Aguardando Aprovação", INSPECAO_PENDENTE: "Inspeção Pendente" },
@@ -58,5 +58,25 @@ describe("automação em português (11/11)", () => {
   test("nome legível tira prefixo técnico e a cidade repetida", () => {
     assert.equal(nomeLegivel("[SST-Esteira] Teresópolis · 2. Procuração concluída → Aguardando Agendamento", "Teresópolis"), "Procuração concluída → Aguardando Agendamento");
     assert.equal(nomeLegivel("Nova automação", "Teresópolis"), "Nova automação");
+  });
+});
+
+describe("0.3.323 (v371): subtarefa com várias responsáveis", () => {
+  const isa = "isabela.esteves@chabra.com.br", gio = "giovanna.terrason@chabra.com.br";
+  test("modelo com duas responsáveis", () => {
+    assert.equal(
+      descreverAcao({ tipo: "criar_subtarefas_modelo", modelo_slug: "entrada", responsavel_email: isa, responsaveis_emails: [isa, gio] }, n),
+      "Cria as subtarefas do modelo \"Entrada\", com Isabela Esteves e Giovanna Terrason como responsáveis",
+    );
+  });
+  test("regra antiga (só responsavel_email) continua igual", () => {
+    assert.equal(descreverAcao({ tipo: "criar_subtarefas_modelo", modelo_slug: "entrada", responsavel_email: isa }, n),
+      "Cria as subtarefas do modelo \"Entrada\", com Isabela Esteves como responsável");
+    assert.deepEqual(responsaveisDaAcao({ responsavel_email: " Isabela.Esteves@chabra.com.br " }), [isa]);
+  });
+  test("lista vale sobre o campo único, sem repetir", () => {
+    assert.deepEqual(responsaveisDaAcao({ responsavel_email: isa, responsaveis_emails: [gio, isa, gio] }), [gio, isa]);
+    assert.deepEqual(responsaveisDaAcao({}), []);
+    assert.match(descreverAcao({ tipo: "criar_subtarefas_produtos", responsaveis_emails: [isa, gio] }, n), /com Isabela Esteves e Giovanna Terrason como responsáveis$/);
   });
 });
