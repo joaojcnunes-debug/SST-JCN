@@ -124,8 +124,15 @@ export default function TarefaCard({
           </span>
         )}
         <div className="min-w-0 flex-1">
-          <p className={`text-sm font-medium ${concluido ? "text-gray-400 line-through" : "text-gray-800"}`}>{t.titulo}</p>
-          {t.titulo_mae && <p className="mt-0.5 truncate text-[11px] text-gray-400" title={t.titulo_mae}>↳ Subtarefa de {t.titulo_mae}</p>}
+          {/* 0.3.320 (pedido do João, 26/11): cartão de subtarefa mostra a tarefa principal em destaque e a subtarefa embaixo. */}
+          {t.titulo_mae ? (
+            <>
+              <p className={`text-sm font-medium ${concluido ? "text-gray-400 line-through" : "text-gray-800"}`} title={`Tarefa principal: ${t.titulo_mae}`}>{t.titulo_mae}</p>
+              <p className={`mt-0.5 text-xs ${concluido ? "text-gray-400 line-through" : "text-gray-600"}`} title={`Subtarefa: ${t.titulo}`}>↳ {t.titulo}</p>
+            </>
+          ) : (
+            <p className={`text-sm font-medium ${concluido ? "text-gray-400 line-through" : "text-gray-800"}`}>{t.titulo}</p>
+          )}
           {empresa && (
             <p className="mt-0.5 flex items-center gap-1 text-[11px] text-gray-500" title={`Empresa: ${empresa}`}>
               <Building2 className="size-3 shrink-0" aria-hidden /> <span className="truncate">{empresa}</span>

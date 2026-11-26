@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { montarSubtarefas, statusDoFeito, itensMostrar } from "./subtarefas-vista";
+import { montarSubtarefas, statusDoFeito, itensMostrar, trocarMaesPorMinhasSubtarefas } from "./subtarefas-vista";
 import type { GestaoTarefa } from "@/lib/hooks/useGestao";
 
 const statuses = [
@@ -58,5 +58,32 @@ describe("itensMostrar", () => {
     assert.deepEqual(itensMostrar("tarefas", t, s).map((x) => x.id_tarefa), ["A"]);
     assert.deepEqual(itensMostrar("subtarefas", t, s).map((x) => x.id_tarefa), ["B"]);
     assert.deepEqual(itensMostrar("ambas", t, s).map((x) => x.id_tarefa), ["A", "B"]);
+  });
+});
+
+describe("só as próprias: subtarefa no lugar do cartão (0.3.320)", () => {
+  const mae = (id: string, extra: Partial<GestaoTarefa> = {}) => ({ id_tarefa: id, titulo: id, status: "A_FAZER", id_tarefa_pai: null, ...extra }) as GestaoTarefa;
+  const sub = (id: string, pai: string, linha?: string) => ({ id_tarefa: id, titulo: "sub " + id, status: "A_FAZER", id_tarefa_pai: pai, sub_linha: linha, titulo_mae: pai }) as GestaoTarefa;
+  const vinc: Record<string, { usuario_email: string; tipo: string; origem?: string | null }[]> = {
+    M1: [{ usuario_email: "jp@x.com", tipo: "seguidor", origem: "subtarefa-mae" }],
+    M2: [{ usuario_email: "jp@x.com", tipo: "responsavel", origem: "app" }],
+    M3: [{ usuario_email: "jp@x.com", tipo: "seguidor", origem: "subtarefa-mae" }],
+    F1: [{ usuario_email: "jp@x.com", tipo: "responsavel", origem: "subtarefa" }],
+  };
+  const base = {
+    tarefas: [mae("M1"), mae("M2"), mae("M3"), mae("M4")],
+    subtarefas: [sub("SUB:L1", "M1", "L1"), sub("SUB:L2", "M1", "L2"), sub("F1", "M1"), sub("SUB:L3", "M2", "L3"), sub("SUB:L4", "M3", "L4")],
+    linhas: [{ id: "L1", responsavel_email: "JP@x.com" }, { id: "L2", responsavel_email: "outro@x.com" }, { id: "L3", responsavel_email: "jp@x.com" }, { id: "L4", responsavel_email: "outro@x.com" }],
+    eu: "jp@x.com",
+    vinculadosDe: (id: string) => vinc[id] ?? [],
+  };
+  test("cartão só pela subtarefa vira as subtarefas DELE; vínculo direto mantém o cartão", () => {
+    const r = trocarMaesPorMinhasSubtarefas(base);
+    assert.deepEqual(r.tarefas.map((t) => t.id_tarefa), ["M2", "M3", "M4"]);
+    assert.deepEqual(r.minhas.map((t) => t.id_tarefa), ["SUB:L1", "F1"]);
+  });
+  test("criou o cartão ou sem e-mail: nada muda", () => {
+    assert.equal(trocarMaesPorMinhasSubtarefas({ ...base, criouEu: (t) => t.id_tarefa === "M1" }).minhas.length, 0);
+    assert.equal(trocarMaesPorMinhasSubtarefas({ ...base, eu: null }).tarefas.length, 4);
   });
 });

@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "subtarefa-como-cartao",
+    data: "2026-11-26",
+    tipo: "melhoria",
+    titulo: "Quem vê só as próprias tarefas vê a sua subtarefa como cartão",
+    texto:
+      "Quem tem o acesso \"só as próprias\" e está num cartão apenas por ser responsável de uma subtarefa passa a ver, no " +
+      "quadro, um cartão para cada subtarefa sua no lugar do cartão principal. Todo cartão de subtarefa mostra agora o nome " +
+      "da tarefa principal em destaque e o da subtarefa embaixo. E o responsável de uma subtarefa passa a seguir o cartão.",
+    onde: "Gestão › Quadro",
+    versoes: ["0.3.320"],
+  },
+  {
     id: "automacao-subtarefas-produtos",
     data: "2026-11-23",
     tipo: "novidade",

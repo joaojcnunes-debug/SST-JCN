@@ -231,9 +231,9 @@ export default function VistaLista({
                       <tr key={t.id_tarefa} className="border-t border-gray-100 hover:bg-gray-50/60">
                         <td className="px-3 py-2">
                           <button type="button" onClick={() => onAbrir(t)} className="text-left font-medium text-gray-800 hover:text-marca-primary">
-                            {t.titulo}
+                            {t.titulo_mae ?? t.titulo}
                           </button>
-                          {t.titulo_mae && <p className="text-[11px] text-gray-400">↳ Subtarefa de {t.titulo_mae}</p>}
+                          {t.titulo_mae && <p className="text-xs text-gray-600">↳ {t.titulo}</p>}
                         </td>
                         <td className="px-3 py-2">
                           {editavel ? (
