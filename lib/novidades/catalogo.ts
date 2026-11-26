@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "conciliacao-intervencoes-por-risco-metodo-por-intervencao",
+    data: "2026-11-26",
+    tipo: "melhoria",
+    titulo: "Intervenções por risco mais legíveis e descrição do método em cada intervenção",
+    texto:
+      "Na visão Por risco, o risco e os seus setores ficam numa linha própria, em cima, e as intervenções (com modalidade, " +
+      "responsável e prazo) vêm embaixo, com a largura toda. No Plano de intervenções, a descrição dos métodos (forma, " +
+      "duração, avaliação e certificado) aparece embaixo de cada intervenção, e o ajuste feito numa intervenção vale só para ela.",
+    onde: "Consolidação › Conciliação DRPS/QPS × AEP",
+    versoes: ["0.3.322"],
+  },
+  {
     id: "conciliacao-plano-intervencoes",
     data: "2026-11-26",
     tipo: "novidade",

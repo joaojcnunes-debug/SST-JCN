@@ -107,11 +107,23 @@ export function modalidadesEmUso(temas: readonly TemaPlano[], metodos: readonly 
   return usadas.sort((a, b) => ordem(a) - ordem(b) || a.localeCompare(b, "pt-BR"));
 }
 
-/** 5. O texto de uma modalidade: o padrão do catálogo com os ajustes da empresa por cima. */
-export function metodoDe(modalidade: string, metodos: readonly MetodoModalidade[], plano: Pick<PlanoIntervencoes, "metodos"> | null): MetodoTexto {
+/** 0.3.322: a chave do ajuste do método de uma intervenção (tema) numa modalidade, em `plano.metodos`. */
+export const chaveMetodo = (tema: string, modalidade: string) => `${tema}::${modalidade}`;
+
+/**
+ * 5. O texto do método: o padrão do catálogo, com os ajustes da empresa por cima. Com o tema (0.3.322), o texto é o
+ * daquela intervenção: o ajuste dela vale mais que o da modalidade inteira (que era como a 0.3.321 gravava).
+ */
+export function metodoDe(
+  modalidade: string,
+  metodos: readonly MetodoModalidade[],
+  plano: Pick<PlanoIntervencoes, "metodos"> | null,
+  tema?: string,
+): MetodoTexto {
   const padrao = metodos.find((x) => norm(x.modalidade) === norm(modalidade));
-  const ajuste = plano?.metodos?.[modalidade] ?? {};
-  const v = (c: keyof MetodoTexto) => (c in ajuste ? ajuste[c] ?? null : padrao?.[c] ?? null);
+  const daModalidade = plano?.metodos?.[modalidade] ?? {};
+  const doTema = (tema && plano?.metodos?.[chaveMetodo(tema, modalidade)]) || {};
+  const v = (c: keyof MetodoTexto) => (c in doTema ? doTema[c] ?? null : c in daModalidade ? daModalidade[c] ?? null : padrao?.[c] ?? null);
   return { forma: v("forma"), duracao: v("duracao"), avaliacao: v("avaliacao"), certificado: v("certificado") };
 }
 
