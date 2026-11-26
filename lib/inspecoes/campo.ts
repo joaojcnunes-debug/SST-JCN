@@ -91,3 +91,43 @@ export function travaEdicaoCampo(p: {
 }): boolean {
   return !p.carregando && p.tecnico && !p.supervisor && p.podeEditar && !p.concluida && !p.sessaoAberta;
 }
+
+export interface LinhaCampoPessoa {
+  idUsuario: string;
+  nome: string;
+  /** Trabalhado no mês corrente (a parte de cada sessão que cai no mês). */
+  mesMs: number;
+  trabalhadoMs: number;
+  deslocamentoMs: number;
+  inspecoes: number;
+  sessoes: number;
+}
+
+/**
+ * Dashboard › Tempo nos documentos, seção "Tempo de campo" (0.3.315): por técnico, o trabalhado no mês corrente e no
+ * período carregado, o deslocamento (à parte) e em quantas inspeções. O deslocamento é contado por inspeção (do fim da
+ * pausa até o próximo início da pessoa naquela inspeção). Quem mais trabalhou no mês vem primeiro.
+ */
+export function campoPorPessoa(sessoes: readonly SessaoDocumento[], agora: number, inicioMes: number): LinhaCampoPessoa[] {
+  const pessoas = new Map<string, LinhaCampoPessoa & { insp: Set<string> }>();
+  const porInspPessoa = new Map<string, SessaoDocumento[]>();
+  for (const s of sessoes) {
+    const p = pessoas.get(s.id_usuario) ?? { idUsuario: s.id_usuario, nome: s.nome, mesMs: 0, trabalhadoMs: 0, deslocamentoMs: 0, inspecoes: 0, sessoes: 0, insp: new Set<string>() };
+    const ini = new Date(s.inicio).getTime();
+    const fim = ini + resumirSessoes([s], agora).trabalhadoMs;
+    p.trabalhadoMs += fim - ini;
+    p.mesMs += Math.max(0, fim - Math.max(ini, inicioMes));
+    p.sessoes++;
+    p.insp.add(s.id_inspecao);
+    pessoas.set(s.id_usuario, p);
+    const k = `${s.id_inspecao}|${s.id_usuario}`;
+    porInspPessoa.set(k, [...(porInspPessoa.get(k) ?? []), s]);
+  }
+  for (const [k, lista] of porInspPessoa) {
+    const p = pessoas.get(k.split("|")[1])!;
+    p.deslocamentoMs += esperasPorMotivo(lista, "DESLOCAMENTO", agora).intervalos.reduce((t, [de, a]) => t + (a - de), 0);
+  }
+  return [...pessoas.values()]
+    .map(({ insp, ...p }) => ({ ...p, inspecoes: insp.size }))
+    .sort((a, b) => b.mesMs - a.mesMs || b.trabalhadoMs - a.trabalhadoMs || a.nome.localeCompare(b.nome, "pt-BR"));
+}

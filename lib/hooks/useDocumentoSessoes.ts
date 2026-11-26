@@ -11,6 +11,9 @@ import { hojeSP } from "@/lib/inspecoes/prioridade";
 import type { CorrecaoSessao, MotivoPausa, SessaoDocumento } from "@/lib/inspecoes/sessoes";
 import type { DocTempo } from "@/lib/dashboard/tempo-documentos";
 import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
+import { useUserStore } from "@/lib/store";
+import { guardarEventoCampo } from "@/lib/hooks/useCampoOffline";
+import { ehFalhaDeRede } from "@/lib/inspecoes/campo-offline";
 
 const CAMPOS = "id_sessao, id_inspecao, id_usuario, nome, inicio, ultima_atividade, fim, motivo_fim, fechada_auto, corrigida";
 export const CHAVE_SESSOES = "documento-sessoes";
@@ -167,13 +170,29 @@ function useInvalidar() {
 export function useIniciarSessao(fonte: FonteSessao = "documento") {
   const invalidar = useInvalidar();
   const rpc = RPC_SESSAO[fonte];
+  const qc = useQueryClient();
+  const user = useUserStore((s) => s.user);
   return useMutation({
+    // Sem sinal, o React Query seguraria a gravação (networkMode "online"); no campo ela tem de rodar e ir para a fila.
+    networkMode: fonte === "campo" ? "always" : "online",
     mutationFn: async (idInspecao: string) => {
+      // 0.3.315 (v365): no tempo de campo, sem sinal o Iniciar fica guardado no aparelho e vai quando a conexão voltar.
+      const guardar = () => {
+        if (!user?.id_usuario) return false;
+        guardarEventoCampo(qc, { tipo: "iniciar", idInspecao, quando: new Date().toISOString() }, { id_usuario: user.id_usuario, nome: user.nome ?? "" });
+        return true;
+      };
+      if (fonte === "campo" && typeof navigator !== "undefined" && !navigator.onLine && guardar()) return "local";
       const { data, error } = await sb().rpc(rpc.iniciar, { [rpc.param]: idInspecao });
-      if (error) throw error;
+      if (error) {
+        if (fonte === "campo" && ehFalhaDeRede(error, typeof navigator === "undefined" || navigator.onLine) && guardar()) return "local";
+        throw error;
+      }
       return data as string;
     },
-    onSuccess: () => invalidar(),
+    onSuccess: (r) => {
+      if (r !== "local") invalidar();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 }
@@ -181,12 +200,28 @@ export function useIniciarSessao(fonte: FonteSessao = "documento") {
 export function usePausarSessao(fonte: FonteSessao = "documento") {
   const invalidar = useInvalidar();
   const rpc = RPC_SESSAO[fonte];
+  const qc = useQueryClient();
+  const user = useUserStore((s) => s.user);
   return useMutation({
-    mutationFn: async ({ idInspecao, motivo }: { idInspecao: string; motivo: MotivoPausa | "DESLOCAMENTO" }) => {
+    // Sem sinal, o React Query seguraria a gravação (networkMode "online"); no campo ela tem de rodar e ir para a fila.
+    networkMode: fonte === "campo" ? "always" : "online",
+    mutationFn: async ({ idInspecao, motivo }: { idInspecao: string; motivo: MotivoPausa | "DESLOCAMENTO" }): Promise<"local" | void> => {
+      // 0.3.315 (v365): no tempo de campo, sem sinal o Pausar fica guardado no aparelho (com o horário de agora).
+      const guardar = () => {
+        if (!user?.id_usuario) return false;
+        guardarEventoCampo(qc, { tipo: "pausar", idInspecao, motivo, quando: new Date().toISOString() }, { id_usuario: user.id_usuario, nome: user.nome ?? "" });
+        return true;
+      };
+      if (fonte === "campo" && typeof navigator !== "undefined" && !navigator.onLine && guardar()) return "local";
       const { error } = await sb().rpc(rpc.pausar, { [rpc.param]: idInspecao, p_motivo: motivo });
-      if (error) throw error;
+      if (error) {
+        if (fonte === "campo" && ehFalhaDeRede(error, typeof navigator === "undefined" || navigator.onLine) && guardar()) return "local";
+        throw error;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (r) => {
+      // Guardado sem sinal: a tela já mudou (sessão provisória); recarregar agora apagaria isso até a fila ir.
+      if (r === "local") return;
       invalidar();
       toast.success("Pausado");
     },
@@ -215,14 +250,14 @@ export function useDesfazerConclusao() {
   });
 }
 
-/** Histórico das correções das sessões de um documento (v312). */
-export function useCorrecoesSessoes(idInspecao: string, ativo: boolean) {
+/** Histórico das correções das sessões de um documento (v312) — ou do tempo de campo (v365, 0.3.315). */
+export function useCorrecoesSessoes(idInspecao: string, ativo: boolean, fonte: FonteSessao = "documento") {
   return useQuery({
-    queryKey: [CHAVE_SESSOES, "correcoes", idInspecao],
+    queryKey: [CHAVE_SESSOES, "correcoes", fonte, idInspecao],
     enabled: ativo && !!idInspecao,
     queryFn: async () => {
       const { data, error } = await sb()
-        .from("documento_sessoes_correcoes")
+        .from(fonte === "campo" ? "campo_sessoes_correcoes" : "documento_sessoes_correcoes")
         .select("*")
         .eq("id_inspecao", idInspecao)
         .order("corrigido_em", { ascending: false });
@@ -232,12 +267,12 @@ export function useCorrecoesSessoes(idInspecao: string, ativo: boolean) {
   });
 }
 
-/** Supervisor ajusta início/fim de uma sessão, com justificativa (v312). */
-export function useCorrigirSessao() {
+/** Supervisor ajusta início/fim de uma sessão, com justificativa (v312; no tempo de campo, v365). */
+export function useCorrigirSessao(fonte: FonteSessao = "documento") {
   const invalidar = useInvalidar();
   return useMutation({
     mutationFn: async (p: { idSessao: string; inicio: string; fim: string; justificativa: string }) => {
-      const { error } = await sb().rpc("documento_sessao_corrigir", {
+      const { error } = await sb().rpc(fonte === "campo" ? "campo_sessao_corrigir" : "documento_sessao_corrigir", {
         p_id_sessao: p.idSessao,
         p_inicio: p.inicio,
         p_fim: p.fim,

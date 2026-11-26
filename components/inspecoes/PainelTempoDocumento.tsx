@@ -249,13 +249,13 @@ export default function PainelTempoDocumento({
   } else if (estado === "cliente") {
     const desde = ultima?.fim ? ms(ultima.fim) : agora;
     titulo = "Aguardando o cliente";
-    grande = fmtDuracao(agora - desde);
+    grande = fmtDuracao(Math.max(0, agora - desde));
     sub = `Pausado em ${diaHora(desde)} · esse tempo não conta como trabalhado`;
     Icone = Hourglass;
   } else if (estado === "deslocamento") {
     const desde = ultima?.fim ? ms(ultima.fim) : agora;
     titulo = "Em deslocamento";
-    grande = fmtDuracao(agora - desde);
+    grande = fmtDuracao(Math.max(0, agora - desde));
     sub = `Desde ${diaHora(desde)} · conta à parte, fora do tempo trabalhado`;
     Icone = Car;
   } else if (estado === "pausado") {
@@ -517,7 +517,7 @@ export default function PainelTempoDocumento({
               ))}
             </div>
 
-            <ListaSessoes idInspecao={idInspecao} sessoes={sessoes} agora={agora} podeCorrigir={podeCorrigir} />
+            <ListaSessoes idInspecao={idInspecao} sessoes={sessoes} agora={agora} podeCorrigir={podeCorrigir} fonte={fonte} />
           </div>
         )}
       </div>

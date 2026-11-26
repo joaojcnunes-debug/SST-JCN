@@ -10,9 +10,11 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { minhaSessaoAberta, type SessaoDocumento } from "@/lib/inspecoes/sessoes";
 import { ehTecnicoDeCampo, travaEdicaoCampo } from "@/lib/inspecoes/campo";
 import { useAgora } from "@/lib/hooks/useDocumentoSessoes";
+import { CHAVE_CAMPO, marcarAtividadeLocal } from "@/lib/inspecoes/campo-offline";
+import { useEnviarFilaCampo } from "@/lib/hooks/useCampoOffline";
 
-export const CHAVE_CAMPO = "campo-sessoes";
-const CAMPOS = "id_sessao, id_inspecao, id_usuario, nome, inicio, ultima_atividade, fim, motivo_fim, fechada_auto";
+export { CHAVE_CAMPO };
+const CAMPOS = "id_sessao, id_inspecao, id_usuario, nome, inicio, ultima_atividade, fim, motivo_fim, fechada_auto, corrigida";
 
 // campo_sessoes (v364) ainda não está no tipo `Database`.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,6 +49,11 @@ export function useAtividadeCampo(idInspecao: string, ativa: boolean) {
       const agora = Date.now();
       if (agora - ultimo.current < 120_000) return;
       ultimo.current = agora;
+      // 0.3.315: sem sinal, a sessão provisória acompanha a atividade na tela (senão pausaria em 30 min).
+      if (!navigator.onLine) {
+        qcRef.current.setQueryData<SessaoDocumento[]>([CHAVE_CAMPO, idInspecao], (s) => marcarAtividadeLocal(s ?? [], new Date(agora).toISOString()));
+        return;
+      }
       sb()
         .rpc("campo_sessao_atividade", { p_id_inspecao: idInspecao })
         .then(({ data, error }: { data: boolean | null; error: unknown }) => {
@@ -88,6 +95,8 @@ export function useCampoDaInspecao(p: {
   const concluida = p.inspecao?.status === "CONCLUIDA";
   const correndo = !!minhaSessaoAberta(sessoes, p.usuario?.id_usuario, agora);
   useAtividadeCampo(p.idInspecao, correndo);
+  // 0.3.315: o que ficou guardado sem sinal vai quando a conexão voltar.
+  useEnviarFilaCampo();
   return {
     carregando: isLoading || !p.inspecao,
     sessoes,
@@ -103,4 +112,26 @@ export function useCampoDaInspecao(p: {
       sessaoAberta: correndo,
     }),
   };
+}
+
+/**
+ * Dashboard › Tempo nos documentos, seção "Tempo de campo" (0.3.315): as sessões de campo dos últimos `meses` meses,
+ * com a empresa da inspeção (para o filtro de unidade). A RLS recorta o que a pessoa enxerga.
+ */
+export function useTempoCampo(meses = 12) {
+  return useQuery({
+    queryKey: [CHAVE_CAMPO, "dashboard", meses],
+    refetchInterval: 120_000,
+    queryFn: async () => {
+      const desde = new Date(Date.now() - meses * 31 * 86_400_000).toISOString();
+      const { data, error } = await sb()
+        .from("campo_sessoes")
+        .select(`${CAMPOS}, inspecoes(id_empresa)`)
+        .gte("inicio", desde)
+        .order("inicio")
+        .limit(20000);
+      if (error) throw error;
+      return (data ?? []) as (SessaoDocumento & { inspecoes: { id_empresa: string } | null })[];
+    },
+  });
 }

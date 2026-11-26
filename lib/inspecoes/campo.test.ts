@@ -67,3 +67,23 @@ test("travaEdicaoCampo: técnico sem o play trava; supervisor, concluída, play 
   assert.equal(travaEdicaoCampo({ ...base, podeEditar: false }), false);
   assert.equal(travaEdicaoCampo({ ...base, carregando: true }), false);
 });
+
+test("campoPorPessoa: mês corrente, total, deslocamento por inspeção e quantas inspeções", async () => {
+  const { campoPorPessoa } = await import("./campo");
+  const inicioMes = t0 - 2 * H; // o mês começou 2h antes de t0
+  const r = campoPorPessoa(
+    [
+      sessao({ de: t0 - 3 * H, ate: t0 - 1 * H, motivo_fim: "DESLOCAMENTO" }), // 2h, 1h dentro do mês
+      sessao({ de: t0, ate: t0 + H, id_inspecao: "INS-1" }), // volta 1h depois: 1h de deslocamento
+      sessao({ de: t0, ate: t0 + 0.5 * H, id_inspecao: "INS-2", id_usuario: "U2", nome: "Beto" }),
+    ],
+    t0 + 5 * H,
+    inicioMes,
+  );
+  assert.equal(r[0].nome, "Ana");
+  assert.equal(r[0].trabalhadoMs, 3 * H);
+  assert.equal(r[0].mesMs, 2 * H);
+  assert.equal(r[0].deslocamentoMs, 1 * H);
+  assert.equal(r[0].inspecoes, 1);
+  assert.equal(r[1].nome, "Beto");
+});

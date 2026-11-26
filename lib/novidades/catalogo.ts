@@ -41,6 +41,31 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "relatorio-sumario-margem",
+    data: "2026-11-19",
+    tipo: "correcao",
+    titulo: "Relatório: Sumário e capítulos antes do corpo com margem",
+    texto:
+      "No relatório da inspeção, o Sumário, a Identificação da Empresa e os capítulos de texto padrão que vêm logo " +
+      "depois da capa ficavam colados na borda da folha. Agora têm a mesma margem do resto do relatório (a impressão " +
+      "não muda).",
+    onde: "Inspeção › Relatório",
+    versoes: ["0.3.316"],
+  },
+  {
+    id: "inspecao-tempo-campo-etapa2",
+    data: "2026-11-19",
+    tipo: "novidade",
+    titulo: "Tempo de campo: sem sinal, no relatório, no Dashboard e correção",
+    texto:
+      "Sem internet, o Iniciar e o Pausar do tempo de campo ficam guardados no aparelho com o horário certo e vão " +
+      "sozinhos quando a conexão voltar. O tempo de campo aparece também no relatório da inspeção e no Dashboard › " +
+      "Tempo nos documentos (por técnico: no mês, 12 meses, deslocamento). A supervisão corrige uma sessão errada, " +
+      "com justificativa — a sessão fica marcada como corrigida.",
+    onde: "Inspeção, relatório e Dashboard",
+    versoes: ["0.3.315"],
+  },
+  {
     id: "inspecao-tempo-campo",
     data: "2026-11-19",
     tipo: "novidade",
