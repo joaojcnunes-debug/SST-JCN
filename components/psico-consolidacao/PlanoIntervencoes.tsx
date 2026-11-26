@@ -4,12 +4,12 @@
 // planejamento das ações (um tema por mês, ou EAD o período todo; início, duração, mês de cada tema e cronograma):
 // setores, riscos, temas, método e a descrição dele já estão na tabela, em cada intervenção. Grava sozinho.
 
-import { Fragment, useMemo, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import type { AlvoConciliacao } from "@/lib/hooks/useConciliacaoParecer";
 import { usePlanoIntervencoes, useSalvarPlanoIntervencoes } from "@/lib/hooks/useComercial";
 import type { IntervencaoIndicada } from "@/lib/comercial/liberacao";
 import {
-  cronograma, ehEad, gruposDoPlano, mesDoTema, mesesDoPlano, planoVazio, rotuloMes, rotuloModalidade, temasDoPlano, temasMensais,
+  cronograma, ehEad, linhasDoPlano, mesDoTema, mesesDoPlano, planoVazio, rotuloMes, rotuloModalidade, temasDoPlano, temasMensais,
   type PlanoIntervencoes, type TemaPlano,
 } from "@/lib/comercial/plano";
 import { cn } from "@/lib/utils";
@@ -48,7 +48,7 @@ export default function PlanoIntervencoes({
   const crono = useMemo(() => cronograma(plano, temas), [plano, temas]);
   const mensais = temasMensais(plano.planejamento, temas);
   const totalMeses = mesesDoPlano(plano, temas);
-  const grupos = gruposDoPlano(mensais, agrupar);
+  const linhas = linhasDoPlano(indicadas, mensais, agrupar);
   const ondeEntra = (t: TemaPlano) => (agrupar === "setor" ? t.setores : t.riscos).join(", ");
 
   const mudar = (p: Partial<PlanoIntervencoes>) => podeAlterar && salvar.mutate({ ...plano, ...p });
@@ -102,36 +102,39 @@ export default function PlanoIntervencoes({
 
         {mensais.length > 0 && (
           <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[32rem] text-sm">
+            {/* 0.3.327 (pedido do João): colunas de setor e risco no lugar das faixas de grupo, e "Intervenção" no lugar de "Tema"
+                (o mesmo nome da tabela de cima). O setor/risco aparece só na 1ª linha de cada grupo. */}
+            <table className="w-full min-w-[40rem] text-sm">
               <thead className="text-left text-xs font-semibold text-gray-600">
-                <tr><th className="py-1 pr-3">Tema</th><th className="py-1 pr-3">Método</th><th className="w-44 py-1">Mês</th></tr>
+                <tr>
+                  <th className="w-44 py-1 pr-3">{agrupar === "setor" ? "Setor" : "Risco"}</th>
+                  <th className="w-44 py-1 pr-3">{agrupar === "setor" ? "Risco" : "Setores"}</th>
+                  <th className="py-1 pr-3">Intervenção</th>
+                  <th className="w-36 py-1 pr-3">Método</th>
+                  <th className="w-36 py-1">Mês</th>
+                </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {/* 0.3.325: agrupado por setor ou por risco, como a tabela de cima. */}
-                {grupos.map((g) => (
-                  <Fragment key={g.nome}>
-                  <tr className="bg-indigo-50/60">
-                    <td colSpan={3} className="px-2 py-1.5 text-xs">
-                      <span className="font-semibold text-indigo-700">{agrupar === "setor" ? "Setor:" : "Risco:"}</span>{" "}
-                      <span className="font-bold text-gray-900">{g.nome}</span>
-                    </td>
-                  </tr>
-                  {g.temas.map((t) => (
-                  <tr key={`${g.nome}:${t.chave}`}>
-                    <td className="py-1.5 pr-3 font-medium text-gray-800">{t.nome}</td>
-                    <td className="py-1.5 pr-3 text-gray-600">
-                      {(plano.planejamento === "ead_continuo" ? t.modalidades.filter((m) => !ehEad(m)) : t.modalidades).map(rotuloModalidade).join(" + ") || "—"}
-                    </td>
-                    <td className="py-1.5">
-                      <select value={mesDoTema(plano, mensais, t.chave, totalMeses)} disabled={!podeAlterar}
-                        onChange={(e) => mudar({ temas: { ...plano.temas, [t.chave]: Number(e.target.value) } })} className={campo}>
-                        {Array.from({ length: totalMeses }, (_, k) => <option key={k} value={k + 1}>{rotuloMes(plano.inicio, k + 1)}</option>)}
-                      </select>
-                    </td>
-                  </tr>
-                  ))}
-                  </Fragment>
-                ))}
+              <tbody>
+                {linhas.map((l, n) => {
+                  const primeira = n === 0 || linhas[n - 1].grupo !== l.grupo;
+                  const t = l.tema;
+                  return (
+                    <tr key={`${l.grupo}:${t.chave}`} className={cn(primeira ? "border-t border-gray-200" : "border-t border-gray-50")}>
+                      <td className="py-1.5 pr-3 align-top font-semibold text-gray-900">{primeira ? l.grupo : ""}</td>
+                      <td className="py-1.5 pr-3 align-top text-gray-600">{l.outros.join(", ")}</td>
+                      <td className="py-1.5 pr-3 align-top font-medium text-gray-800">{t.nome}</td>
+                      <td className="py-1.5 pr-3 align-top text-gray-600">
+                        {(plano.planejamento === "ead_continuo" ? t.modalidades.filter((m) => !ehEad(m)) : t.modalidades).map(rotuloModalidade).join(" + ") || "—"}
+                      </td>
+                      <td className="py-1 align-top">
+                        <select value={mesDoTema(plano, mensais, t.chave, totalMeses)} disabled={!podeAlterar}
+                          onChange={(e) => mudar({ temas: { ...plano.temas, [t.chave]: Number(e.target.value) } })} className={campo}>
+                          {Array.from({ length: totalMeses }, (_, k) => <option key={k} value={k + 1}>{rotuloMes(plano.inicio, k + 1)}</option>)}
+                        </select>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

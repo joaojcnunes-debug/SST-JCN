@@ -174,21 +174,38 @@ export function cronograma(plano: PlanoIntervencoes | null, temas: readonly Tema
   return { meses, continuos };
 }
 
+export interface LinhaPlano {
+  /** O setor (Por setor) ou o risco (Por risco) da linha. */
+  grupo: string;
+  /** Os riscos (Por setor) ou os setores (Por risco) em que o tema entra dentro do grupo. */
+  outros: string[];
+  tema: TemaPlano;
+}
+
 /**
- * 0.3.325 (pedido do João): o planejamento na visão Por setor ou Por risco — os temas mensais agrupados pelo setor ou
- * pelo risco em que entram (um tema em dois setores aparece nos dois; o mês é o mesmo, é do tema).
+ * 0.3.325 / 0.3.327 (pedido do João): o planejamento na visão Por setor ou Por risco, em colunas — uma linha por grupo × tema, com o
+ * outro lado ao lado (Por setor: os riscos daquele setor em que o tema entra; Por risco: os setores). Um tema em dois
+ * setores aparece nas duas linhas; o mês é o mesmo (é do tema). Ordem: grupo, o outro lado, depois tema.
  */
-export function gruposDoPlano(temas: readonly TemaPlano[], por: "setor" | "risco"): { nome: string; temas: TemaPlano[] }[] {
-  const grupos = new Map<string, { nome: string; temas: TemaPlano[] }>();
-  for (const t of temas) {
-    for (const nome of por === "setor" ? t.setores : t.riscos) {
-      const k = norm(nome);
-      const g = grupos.get(k) ?? { nome, temas: [] };
-      g.temas.push(t);
-      grupos.set(k, g);
-    }
+export function linhasDoPlano(
+  indicadas: readonly IntervencaoIndicada[],
+  temas: readonly TemaPlano[],
+  por: "setor" | "risco",
+): LinhaPlano[] {
+  const doTema = new Map(temas.map((t) => [t.chave, t]));
+  const linhas = new Map<string, LinhaPlano>();
+  for (const i of indicadas) {
+    const tema = doTema.get(chaveTema(i));
+    if (!tema || !i.nome.trim()) continue;
+    const grupo = por === "setor" ? i.setor_nome : i.fator_nome;
+    const outro = por === "setor" ? i.fator_nome : i.setor_nome;
+    const k = `${norm(grupo)}|${tema.chave}`;
+    const l = linhas.get(k) ?? { grupo, outros: [], tema };
+    semRepetir(l.outros, outro);
+    linhas.set(k, l);
   }
-  return [...grupos.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  return [...linhas.values()].sort((a, b) =>
+    a.grupo.localeCompare(b.grupo, "pt-BR") || a.outros.join(", ").localeCompare(b.outros.join(", "), "pt-BR") || a.tema.nome.localeCompare(b.tema.nome, "pt-BR"));
 }
 
 export function planoVazio(idAlvo: string, tipo: "empresa" | "grupo"): PlanoIntervencoes {

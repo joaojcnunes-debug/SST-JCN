@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "conciliacao-plano-colunas-setor-risco",
+    data: "2026-11-26",
+    tipo: "melhoria",
+    titulo: "Plano de intervenções com colunas de setor e risco",
+    texto:
+      "No Planejamento das ações, a tabela passa a ter colunas: Por setor, Setor | Risco | Intervenção | Método | Mês; Por " +
+      "risco, Risco | Setores | Intervenção | Método | Mês. O setor (ou o risco) aparece na primeira linha do grupo, e a " +
+      "coluna que se chamava Tema agora é Intervenção, o mesmo nome da tabela de cima.",
+    onde: "Consolidação › Conciliação DRPS/QPS × AEP",
+    versoes: ["0.3.327"],
+  },
+  {
     id: "conciliacao-intervencoes-titulos-no-bloco-sem-prazo",
     data: "2026-11-26",
     tipo: "melhoria",

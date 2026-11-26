@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { IntervencaoIndicada, RiscoConciliado } from "./liberacao";
-import { chaveMetodo, cronograma, gruposDoPlano, metodoDe, modalidadesEmUso, planoVazio, riscosDoPlano, rotuloMes, setoresDoPlano, temasDoPlano } from "./plano";
+import { chaveMetodo, cronograma, linhasDoPlano, metodoDe, modalidadesEmUso, planoVazio, riscosDoPlano, rotuloMes, setoresDoPlano, temasDoPlano } from "./plano";
 
 const ind = (setor: string, fator: string, nome: string, modalidade: string | null, id: string | null = null) =>
   ({ id_item: `${setor}${fator}${nome}`, id_empresa: "E", setor_chave: setor, setor_nome: setor, id_fator: fator, fator_nome: fator,
@@ -53,8 +53,12 @@ test("EAD contínuo: só EAD fica o período todo; online e presencial vão para
   assert.equal(rotuloMes(null, 2), "Mês 2");
 });
 
-test("planejamento por setor e por risco: o tema entra em cada grupo dele", () => {
-  const temas = temasDoPlano([ind("Caixa", "Assédio", "Tema A", "EAD", "I1"), ind("Loja", "Assédio", "Tema A", "EAD", "I1"), ind("Caixa", "Sobrecarga", "Tema B", "Presencial")]);
-  assert.deepEqual(gruposDoPlano(temas, "setor").map((g) => `${g.nome}:${g.temas.map((t) => t.nome).join(",")}`), ["Caixa:Tema A,Tema B", "Loja:Tema A"]);
-  assert.deepEqual(gruposDoPlano(temas, "risco").map((g) => `${g.nome}:${g.temas.map((t) => t.nome).join(",")}`), ["Assédio:Tema A", "Sobrecarga:Tema B"]);
+test("planejamento em colunas: por setor (riscos ao lado) e por risco (setores ao lado)", () => {
+  const ii = [ind("Caixa", "Assédio", "Tema A", "EAD", "I1"), ind("Loja", "Assédio", "Tema A", "EAD", "I1"), ind("Caixa", "Sobrecarga", "Tema B", "Presencial")];
+  const temas = temasDoPlano(ii);
+  const txt = (por: "setor" | "risco") => linhasDoPlano(ii, temas, por).map((l) => `${l.grupo}|${l.outros.join("+")}|${l.tema.nome}`);
+  assert.deepEqual(txt("setor"), ["Caixa|Assédio|Tema A", "Caixa|Sobrecarga|Tema B", "Loja|Assédio|Tema A"]);
+  assert.deepEqual(txt("risco"), ["Assédio|Caixa+Loja|Tema A", "Sobrecarga|Caixa|Tema B"]);
+  // só os temas pedidos (ex.: os mensais)
+  assert.deepEqual(linhasDoPlano(ii, temas.filter((t) => t.nome === "Tema B"), "setor").map((l) => l.grupo), ["Caixa"]);
 });
