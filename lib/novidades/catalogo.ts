@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "roteamento-unidade-produtos",
+    data: "2026-11-23",
+    tipo: "correcao",
+    titulo: "Encaminhamento para a unidade: vai para a lista certa e não perde os Produtos",
+    texto:
+      "O cartão concluído no Comercial agora vai sempre para a lista da unidade (ex.: Friburgo › Empresas Novas), " +
+      "nunca para a Agenda da unidade. Mudar o status na janela da tarefa leva junto os Produtos e a Região escolhidos " +
+      "e ainda não salvos. Se nenhum encaminhamento for rodar (Produtos vazio ou sem Região), o sistema avisa antes. " +
+      "O \"Adicionar tarefa\" do Comercial pede também os Produtos.",
+    onde: "Gestão › Comercial",
+    versoes: ["0.3.318"],
+  },
+  {
     id: "automacao-excluir",
     data: "2026-11-23",
     tipo: "melhoria",
