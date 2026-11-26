@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "subtarefa-varias-responsaveis",
+    data: "2026-11-26",
+    tipo: "melhoria",
+    titulo: "Automação cria subtarefa com várias responsáveis; status da subtarefa na lista",
+    texto:
+      "Nas automações que criam subtarefas (do modelo ou a partir dos Produtos), o campo de responsável virou uma lista: dá " +
+      "para pôr quantas pessoas forem necessárias, e todas ficam responsáveis pela subtarefa e recebem o aviso. As regras " +
+      "antigas, com uma pessoa só, continuam iguais. E na lista de subtarefas do cartão dá para escolher o status da " +
+      "subtarefa direto na linha (também nas que vieram do Runrun), sem mover o cartão.",
+    onde: "Gestão › Automações e Gestão › Cartão › Subtarefas",
+    versoes: ["0.3.323"],
+  },
+  {
     id: "conciliacao-intervencoes-por-risco-metodo-por-intervencao",
     data: "2026-11-26",
     tipo: "melhoria",

@@ -6,7 +6,7 @@ import { X } from "lucide-react";
 import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
 import ListaSuspensaMultipla from "@/components/gestao/ListaSuspensaMultipla";
 import { CAMPO_PRODUTOS_ID } from "@/lib/gestao/regiao-produtos";
-import { rotuloPrimeiraEtapa } from "@/lib/gestao/automacao-descricao";
+import { responsaveisDaAcao, rotuloPrimeiraEtapa } from "@/lib/gestao/automacao-descricao";
 import {
   PRIORIDADES, useStatusQuadro,
   type AcaoAutomacao, type GestaoCampo, type GestaoEtiqueta, type GestaoQuadro, type GestaoStatus,
@@ -69,6 +69,50 @@ function EtapaDestino({ idQuadro, value, onChange, disabled, nomeQuadro, daUnida
       <option value="">{rotulo}</option>
       {etapas.map((s) => <option key={s.slug} value={s.slug}>{s.nome}</option>)}
     </select>
+  );
+}
+
+/** 0.3.323 (v371 = Painel v394, "deixar quantas pessoas forem necessárias"): responsáveis da subtarefa criada pela
+ *  automação. Grava a lista em responsaveis_emails e a 1ª pessoa também em responsavel_email (a linha da subtarefa —
+ *  é o que as regras antigas e o motor anterior à v371 leem). */
+function ResponsaveisSubtarefa({ acao, onChange, disabled, usuariosFull, vazio }: {
+  acao: AcaoAutomacao; onChange: (patch: Partial<AcaoAutomacao>) => void; disabled: boolean;
+  usuariosFull: { nome: string; email: string }[]; vazio: string;
+}) {
+  const atuais = responsaveisDaAcao(acao);
+  const nome = (em: string) => usuariosFull.find((u) => u.email.toLowerCase() === em)?.nome ?? em;
+  const gravar = (lista: string[]) =>
+    onChange({ responsaveis_emails: lista.length ? lista : undefined, responsavel_email: lista[0] || undefined });
+  return (
+    <div className="space-y-1.5">
+      {atuais.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {atuais.map((em) => (
+            <span key={em} className="inline-flex items-center gap-1 rounded-full bg-marca-light px-2.5 py-0.5 text-xs font-medium text-marca-primary" title={em}>
+              {nome(em)}
+              {!disabled && (
+                <button type="button" onClick={() => gravar(atuais.filter((x) => x !== em))} className="text-marca-primary/60 hover:text-red-600" aria-label={`Remover ${nome(em)}`}>
+                  <X className="size-3" />
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[11px] text-gray-400">{vazio}</p>
+      )}
+      {!disabled && (
+        <div className="min-w-[14rem] max-w-xs">
+          <UsuarioCombobox
+            usuarios={usuariosFull.filter((u) => !atuais.includes(u.email.toLowerCase()))}
+            value=""
+            onChange={(email) => { const e = (email ?? "").trim().toLowerCase(); if (e && !atuais.includes(e)) gravar([...atuais, e]); }}
+            placeholder={atuais.length ? "Adicionar outra pessoa…" : "Adicionar responsável…"}
+            className={`${sel} w-full`}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -213,18 +257,11 @@ export default function AutomacaoAcaoEditor({
               {modelos.map((m) => <option key={m.slug} value={m.slug}>{m.titulo}</option>)}
             </select>
             {modelos.length === 0 && <span className="text-[11px] text-gray-400">crie um modelo de checklist primeiro</span>}
-            {/* v315: quem fica com as subtarefas deste produto nesta unidade (é avisado ao ser alocado). */}
-            <div className="min-w-[14rem]">
-              <UsuarioCombobox
-                usuarios={usuariosFull}
-                value={acao.responsavel_email ?? ""}
-                onChange={(email) => onChange({ responsavel_email: email || undefined })}
-                disabled={disabled}
-                incluirVazio
-                vazioLabel="Sem responsável"
-                placeholder="Responsável (opcional; senão, Funcionários por produto)"
-                className={`${sel} w-full`}
-              />
+            {/* v315: quem fica com as subtarefas deste produto nesta unidade (é avisado ao ser alocado); 0.3.323: várias. */}
+            <div className="w-full">
+              <span className="text-[11px] font-semibold uppercase text-gray-500">Responsáveis das subtarefas</span>
+              <ResponsaveisSubtarefa acao={acao} onChange={onChange} disabled={disabled} usuariosFull={usuariosFull}
+                vazio="Sem responsável escolhido: vale o “Funcionários por produto” do quadro." />
             </div>
           </>
         )}
@@ -248,17 +285,10 @@ export default function AutomacaoAcaoEditor({
               </div>
               <input defaultValue={acao.titulo_template ?? ""} disabled={disabled} onBlur={(e) => onChange({ titulo_template: e.target.value.trim() || undefined })}
                 placeholder="título ({produto})" title="Nome de cada subtarefa. {produto} = o valor marcado; aceita {titulo} etc." className={`${sel} min-w-[10rem]`} />
-              <div className="min-w-[14rem]">
-                <UsuarioCombobox
-                  usuarios={usuariosFull}
-                  value={acao.responsavel_email ?? ""}
-                  onChange={(email) => onChange({ responsavel_email: email || undefined })}
-                  disabled={disabled}
-                  incluirVazio
-                  vazioLabel="Sem responsável"
-                  placeholder="Responsável (opcional; senão, Funcionários por produto)"
-                  className={`${sel} w-full`}
-                />
+              <div className="w-full">
+                <span className="text-[11px] font-semibold uppercase text-gray-500">Responsáveis das subtarefas</span>
+                <ResponsaveisSubtarefa acao={acao} onChange={onChange} disabled={disabled} usuariosFull={usuariosFull}
+                  vazio="Sem responsável escolhido: vale o “Funcionários por produto” do quadro." />
               </div>
               <span className="w-full text-[11px] text-gray-400">Se o quadro tem um modelo de subtarefas com o nome do produto, cria os itens dele; senão, uma subtarefa com o título acima. Não repete subtarefa com o mesmo nome, e desmarcar um produto não apaga a subtarefa. Uma regra assim substitui as regras de checklist por produto.</span>
             </>

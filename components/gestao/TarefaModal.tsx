@@ -1560,6 +1560,11 @@ export default function TarefaModal({
                       // 0.3.296 ("a janela vale"): os Alocados se ajustam na lista também na linha do Runrun (× e + Adicionar,
                       // que abrem a janela dela se ainda não existe).
                       const alocarNaLinha = subAoVivo && !!s.id;
+                      // 0.3.323 (= Painel 0.3.1023; a equipe "só quer escolher o status"): o Status também se muda na lista na
+                      // linha do Runrun. Grava na janela dela, como no duplo clique — a janela é tarefa filha, as automações não
+                      // rodam nela, então o CARTÃO NÃO SE MOVE (só um status do tipo concluído marca a subtarefa feita, igual ao
+                      // quadradinho). Prioridade e datas seguem travadas.
+                      const statusNaLinha = subAoVivo && !!s.id;
                       const janela = db?.id_tarefa_filha ? janelas?.[db.id_tarefa_filha] : undefined;
                       const statusLinha = s.id ? etapaDaLinha(s.feito, janela?.status, statuses) : null;
                       const atrasada = entregaAtrasada(db?.entrega_desejada, s.feito)
@@ -1653,7 +1658,7 @@ export default function TarefaModal({
                               <StatusSubtarefa
                                 valor={statusLinha}
                                 statuses={statuses}
-                                ro={ro || !naLinha}
+                                ro={ro || !statusNaLinha}
                                 rotulo={`Status de ${s.texto}`}
                                 onMudar={(slug) => void mudarJanela(s, { status: slug }, { acao: "status", payload: { de: nomeStatus(statusLinha ?? ""), para: nomeStatus(slug) } })}
                               />
