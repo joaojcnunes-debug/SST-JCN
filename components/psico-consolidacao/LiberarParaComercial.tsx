@@ -200,7 +200,7 @@ export default function LiberarParaComercial({
                 <table className="w-full min-w-[48rem] text-sm">
                   <thead className="sticky top-0 z-20 bg-white text-left text-xs font-semibold text-gray-600 shadow-[0_1px_0_0_rgb(229_231_235)]">
                     <tr>
-                      <th colSpan={5} className="px-2 pb-1 pt-2 font-normal">
+                      <th colSpan={4} className="px-2 pb-2 pt-2 font-normal">
                         <p className="text-xs text-gray-500">
                           Riscos da conciliação fechada: os confirmados, os de AET e os convergentes (questionário e AEP concordam). As opções vêm do{" "}
                           <Link href="/consolidacao-grupo/intervencoes" className="font-medium text-indigo-700 underline">
@@ -225,13 +225,6 @@ export default function LiberarParaComercial({
                         </div>
                       </th>
                     </tr>
-                    <tr>
-                      <th className="px-2 py-2">Intervenção</th>
-                      <th className="w-32 py-2 pr-2">Modalidade</th>
-                      <th className="w-72 py-2 pr-2">Responsável</th>
-                      <th className="w-24 py-2 pr-2">Prazo (dias)</th>
-                      <th className="w-10 py-2" />
-                    </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {agrupar === "risco" && porFator.map((g) => (
@@ -244,7 +237,7 @@ export default function LiberarParaComercial({
                       return (
                         <Fragment key={g.setorChave}>
                           <tr className="bg-indigo-50/70">
-                            <td colSpan={5} className="border-t-2 border-indigo-200 px-2 py-2">
+                            <td colSpan={4} className="border-t-2 border-indigo-200 px-2 py-2">
                               <span className="text-xs font-semibold text-indigo-700">Setor:</span>{" "}
                               <span className="font-bold text-gray-900">{g.setor}</span>
                               <span className="ml-2 text-xs text-gray-500">
@@ -262,7 +255,7 @@ export default function LiberarParaComercial({
                   </tbody>
                 </table>
               </div>
-              <PlanoIntervencoes alvo={alvo} indicadas={indicadas} podeAlterar={podeAlterar} agrupar={agrupar} />
+              <PlanoIntervencoes alvo={alvo} indicadas={indicadas} podeAlterar={podeAlterar} agrupar={agrupar} onAgrupar={setAgrupar} />
             </>
           )}
         </div>
@@ -385,7 +378,7 @@ function LinhasDoFator({
   return (
     <Fragment>
       <tr className="border-t-2 border-gray-200 bg-gray-50/70">
-        <td colSpan={5} className="px-2 py-2">
+        <td colSpan={4} className="px-2 py-2">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="text-xs font-semibold text-gray-500">Risco:</span>
             <span className="font-semibold text-gray-900">{grupo.fator}</span>
@@ -422,7 +415,7 @@ function LinhasDoFator({
               grupo={{ riscos, itens: t.itens, empresasDe: empresasDoRisco }}
               nota={faltam > 0 ? `Em ${t.itens.size} de ${riscos.length} setores — qualquer mudança aplica em todos.` : undefined} />
             <tr>
-              <td colSpan={5} className="pb-3 pr-2">
+              <td colSpan={4} className="pb-3 pr-2">
                 <div className="overflow-hidden rounded-md border border-gray-200">
                   <MetodoDaIntervencao alvo={alvo} tema={chaveTema(representante)} modalidade={representante.modalidade} podeAlterar={podeAlterar} />
                 </div>
@@ -440,7 +433,7 @@ function LinhasDoFator({
       )}
       {temas.length === 0 && !mostrarNova && (
         <tr>
-          <td colSpan={5} className="py-2 pr-2 text-xs text-gray-400">Nenhuma intervenção indicada.</td>
+          <td colSpan={4} className="py-2 pr-2 text-xs text-gray-400">Nenhuma intervenção indicada.</td>
         </tr>
       )}
     </Fragment>
@@ -448,6 +441,8 @@ function LinhasDoFator({
 }
 
 type OpcoesCatalogo = ReturnType<typeof opcoesDoCatalogo>;
+
+const rotuloCampo = "mb-0.5 block text-[11px] font-semibold text-gray-500";
 
 const INSERIR_NOVO = "__inserir_novo__";
 
@@ -571,18 +566,12 @@ function LinhaIntervencao({
   // Na linha nova, o que foi preenchido antes de escolher a intervenção espera aqui, e vai junto.
   const [rascunhoModalidade, setRascunhoModalidade] = useState<string | null>(null);
   const [rascunhoResponsavel, setRascunhoResponsavel] = useState<string | null>(null);
-  const [prazo, setPrazo] = useState(item?.prazo_dias ? String(item.prazo_dias) : "");
 
   const modalidade = item ? item.modalidade : rascunhoModalidade;
   const responsavel = item ? item.responsavel : rascunhoResponsavel;
   const noCatalogo = catalogo.find((c) => c.id_intervencao === item?.id_intervencao);
   const opcoesIntervencao = catalogo.filter((c) => c.ativo || c.id_intervencao === item?.id_intervencao);
   const bloqueado = !podeAlterar || salvar.isPending || criarNoCatalogo.isPending;
-
-  const diasDoPrazo = () => {
-    const dias = prazo.trim() ? Math.max(1, Math.floor(Number(prazo))) : null;
-    return dias !== null && !Number.isFinite(dias) ? null : dias;
-  };
 
   // Uma linha grava um item; por risco (0.3.321), um em cada setor do risco — cria onde ainda não há.
   const destinos = grupo
@@ -604,7 +593,7 @@ function LinhaIntervencao({
             nome: it?.nome ?? item?.nome ?? "",
             modalidade,
             responsavel,
-            prazoDias: item ? item.prazo_dias : diasDoPrazo(),
+            prazoDias: item ? item.prazo_dias : null,
             ...mudanca,
           }),
         ),
@@ -684,13 +673,6 @@ function LinhaIntervencao({
     registrarNaIntervencao({ responsavel: v });
   }
 
-  function gravarPrazo() {
-    const dias = diasDoPrazo();
-    if (dias === (item?.prazo_dias ?? null)) return;
-    setPrazo(dias ? String(dias) : "");
-    gravar({ prazoDias: dias });
-  }
-
   async function remover() {
     if (!item) return;
     const itens = destinos.map((d) => d.it).filter((x): x is IntervencaoIndicada => !!x);
@@ -701,7 +683,10 @@ function LinhaIntervencao({
   return (
     <tr className="align-top">
       {celulaRisco}
-      <td className="py-2 pr-2">
+      {/* 0.3.326 (pedido do João): o título de cada campo fica em cima dele, dentro do bloco do risco (sem a linha de colunas), e o
+          prazo saiu — o tempo agora é do Plano de intervenções. O prazo já gravado continua no item. */}
+      <td className="py-2 pl-2 pr-2">
+        <span className={rotuloCampo}>Intervenção</span>
         <CampoOpcoes
           valor={item ? (item.id_intervencao ?? ITEM_FORA_DO_CATALOGO) : ""}
           vazio={item ? undefined : "Escolha a intervenção..."}
@@ -717,7 +702,8 @@ function LinhaIntervencao({
         />
         {nota && <p className="mt-0.5 text-[11px] text-amber-700">{nota}</p>}
       </td>
-      <td className="py-2 pr-2">
+      <td className="w-36 py-2 pr-2">
+        <span className={rotuloCampo}>Modalidade</span>
         <CampoOpcoes
           valor={modalidade ?? ""}
           vazio="—"
@@ -729,7 +715,8 @@ function LinhaIntervencao({
           onNovo={novaModalidade}
         />
       </td>
-      <td className="py-2 pr-2">
+      <td className="w-72 py-2 pr-2">
+        <span className={rotuloCampo}>Responsável</span>
         <CampoOpcoes
           valor={responsavel ?? ""}
           vazio="—"
@@ -742,19 +729,7 @@ function LinhaIntervencao({
           onNovo={novoResponsavel}
         />
       </td>
-      <td className="py-2 pr-2">
-        <input
-          type="number"
-          min={1}
-          value={prazo}
-          disabled={bloqueado}
-          onChange={(e) => setPrazo(e.target.value)}
-          onBlur={() => item && gravarPrazo()}
-          aria-label="Prazo em dias"
-          className={cn(campoCls, "tabular-nums")}
-        />
-      </td>
-      <td className="py-2 text-right">
+      <td className="w-10 pb-2 pt-6 text-right">
         {podeAlterar && item && (
           <button type="button" onClick={remover} disabled={retirar.isPending} aria-label={`Retirar ${item.nome}`} className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-700 disabled:opacity-60">
             <Trash2 className="size-4" />

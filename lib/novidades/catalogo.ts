@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "conciliacao-intervencoes-titulos-no-bloco-sem-prazo",
+    data: "2026-11-26",
+    tipo: "melhoria",
+    titulo: "Intervenções: títulos em cima dos campos, sem prazo, e Por setor | Por risco no plano",
+    texto:
+      "Na etapa Intervenções, os títulos Intervenção, Modalidade e Responsável ficam em cima de cada campo, junto do " +
+      "bloco do risco, e a coluna Prazo saiu (o tempo agora é do Plano de intervenções). O Plano de intervenções ganhou " +
+      "o próprio botão Por setor | Por risco, que troca a visão da tabela junto.",
+    onde: "Consolidação › Conciliação DRPS/QPS × AEP",
+    versoes: ["0.3.326"],
+  },
+  {
     id: "conciliacao-intervencoes-por-setor-titulo-fixo",
     data: "2026-11-26",
     tipo: "melhoria",
