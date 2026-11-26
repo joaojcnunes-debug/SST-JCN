@@ -25,7 +25,7 @@ import SidebarAlca from "@/components/layout/SidebarAlca";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import SelectVerde from "@/components/gestao/SelectVerde";
 import { useQueryClient } from "@tanstack/react-query";
-import { montarSubtarefas, itensMostrar, type MostrarItens } from "@/lib/gestao/subtarefas-vista";
+import { montarSubtarefas, itensMostrar, trocarMaesPorMinhasSubtarefas, type MostrarItens } from "@/lib/gestao/subtarefas-vista";
 import { itensDaContagem } from "@/lib/gestao/contagem-concluidas";
 import { ehMinha, type CtxMinhas } from "@/lib/gestao/minhas";
 import { OPCOES_ORDEM, campoTemValor, ordenarTarefas, proximaOrdem, type CampoOrdem, type OrdemColuna } from "@/lib/gestao/ordenar-coluna";
@@ -57,7 +57,7 @@ import FormulariosManagerModal from "@/components/gestao/FormulariosManagerModal
 import ModelosManagerModal from "@/components/gestao/ModelosManagerModal";
 import CalendarioModal from "@/components/gestao/CalendarioModal";
 import MembrosModal from "@/components/gestao/MembrosModal";
-import { useMeuPapelGestao, useMeuNivel, nivelPodeEditar, nivelPodeComentar, useColaboradores, useEquipes, useEquipeMembros } from "@/lib/hooks/useGestaoAcesso";
+import { useMeuPapelGestao, useMeuNivel, nivelPodeEditar, nivelPodeComentar, nivelVeTodas, useColaboradores, useEquipes, useEquipeMembros } from "@/lib/hooks/useGestaoAcesso";
 import ColaboradoresView from "@/components/gestao/ColaboradoresView";
 import TarefaCard from "@/components/gestao/TarefaCard";
 import FiltrosPanel from "@/components/gestao/FiltrosPanel";
@@ -366,7 +366,9 @@ export default function GestaoChabraPage() {
   const { data: usuariosEmail = VAZIA } = useUsuarios();
   // O Painel sempre precisa das subtarefas: pela regra da contagem (lib/gestao/contagem-concluidas.ts)
   // subtarefa feita vale uma tarefa feita, mesmo com "Mostrar = Tarefas".
-  const precisaSubs = mostrar !== "tarefas" || vista === "painel";
+  // 0.3.320: quem vê "só as próprias" vê as subtarefas dele no lugar do cartão em que só está por elas.
+  const soProprias = !!meuNivel && !nivelVeTodas(meuNivel);
+  const precisaSubs = mostrar !== "tarefas" || vista === "painel" || soProprias;
   const { data: subsQuadro } = useSubtarefasDoQuadro(quadro?.id_quadro, precisaSubs);
   const subItens = useMemo(() => {
     if (!precisaSubs || !subsQuadro) return VAZIA;
@@ -374,7 +376,6 @@ export default function GestaoChabraPage() {
     const sts = statusList.length ? statusList : quadro ? statusPadrao(quadro.id_quadro) : [];
     return montarSubtarefas({ maes: tarefas, linhas: subsQuadro.linhas, filhas: subsQuadro.filhas, statuses: sts, nomeDe: (e) => nomes.get(e.toLowerCase()) ?? null });
   }, [precisaSubs, subsQuadro, tarefas, usuariosEmail, statusList, quadro]);
-  useEffect(() => setItems(itensMostrar(mostrar, tarefas, subItens)), [tarefas, subItens, mostrar]);
   useEffect(() => setLimiteCol({}), [quadroId, mostrar, quadroAgrupar]);
 
   /** Abre a janela da tarefa; a subtarefa ainda sem filha ganha a filha na hora (v300). */
@@ -423,6 +424,17 @@ export default function GestaoChabraPage() {
   const { data: equipesTodas = [] } = useEquipes();
   const { data: membrosEquipes = [] } = useEquipeMembros();
   const { data: vincQuadro } = useVinculadosQuadro(quadro?.id_quadro);
+  useEffect(() => {
+    if (!soProprias) { setItems(itensMostrar(mostrar, tarefas, subItens)); return; }
+    // 0.3.320 (pedido do João, 26/11): "só as próprias" — o cartão em que a pessoa só está por causa da subtarefa dá
+    // lugar às subtarefas dela (lib/gestao/subtarefas-vista.ts). Com "Mostrar" subtarefas, elas já estão lá.
+    const r = trocarMaesPorMinhasSubtarefas({
+      tarefas, subtarefas: subItens, linhas: subsQuadro?.linhas ?? [], eu: user?.email,
+      vinculadosDe: (id) => vincQuadro?.get(id) ?? [],
+      criouEu: (t) => !!user?.email && (t.created_by ?? "").toLowerCase() === user.email.toLowerCase(),
+    });
+    setItems(mostrar === "tarefas" ? [...r.tarefas, ...r.minhas] : itensMostrar(mostrar, r.tarefas, subItens));
+  }, [soProprias, tarefas, subItens, subsQuadro, mostrar, vincQuadro, user?.email]);
   const nomePorEmail = useMemo(() => new Map(usuariosEmail.map((u) => [u.email.toLowerCase(), u.nome])), [usuariosEmail]);
   const apelidosRunrun = useMemo(() => mapaApelidos(usuariosEmail), [usuariosEmail]);
   /** E-mails dos membros de cada equipe — só os que eu vejo (a RLS mostra a gestor e a supervisor). */
