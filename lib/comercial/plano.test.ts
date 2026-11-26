@@ -1,0 +1,47 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import type { IntervencaoIndicada, RiscoConciliado } from "./liberacao";
+import { cronograma, metodoDe, modalidadesEmUso, planoVazio, riscosDoPlano, rotuloMes, setoresDoPlano, temasDoPlano } from "./plano";
+
+const ind = (setor: string, fator: string, nome: string, modalidade: string | null, id: string | null = null) =>
+  ({ id_item: `${setor}${fator}${nome}`, id_empresa: "E", setor_chave: setor, setor_nome: setor, id_fator: fator, fator_nome: fator,
+     id_intervencao: id, nome, modalidade, responsavel: null, prazo_dias: null }) as IntervencaoIndicada;
+const risco = (setor: string, fator: string, aet = false) =>
+  ({ chave: `${setor}|${fator}`, setorChave: setor, setor, idFator: fator, fator, questionarios: [], aet, foraDaConciliacao: false }) as RiscoConciliado;
+
+test("temas sem repetir, com métodos, setores e riscos", () => {
+  const t = temasDoPlano([ind("Adm", "Sobrecarga", "Gestão do tempo", "EAD", "I1"), ind("Eng", "Sobrecarga", "Gestão do tempo", "Presencial", "I1"),
+    ind("Eng", "Assédio", "Respeito no trabalho", "Ao vivo")]);
+  assert.deepEqual(t.map((x) => [x.nome, x.modalidades.join("+"), x.setores.join("+")]), [["Gestão do tempo", "EAD+Presencial", "Adm+Eng"], ["Respeito no trabalho", "Ao vivo", "Eng"]]);
+  assert.deepEqual(modalidadesEmUso(t, [{ modalidade: "EAD", ordem: 1 }, { modalidade: "Ao vivo", ordem: 2 }, { modalidade: "Presencial", ordem: 3 }] as never), ["EAD", "Ao vivo", "Presencial"]);
+});
+
+test("setores e riscos do plano", () => {
+  const r = [risco("Eng", "Sobrecarga"), risco("Adm", "Sobrecarga", true), risco("Adm", "Assédio")];
+  assert.deepEqual(setoresDoPlano(r), ["Adm", "Eng"]);
+  assert.deepEqual(riscosDoPlano(r), [{ fator: "Assédio", setores: ["Adm"], aet: false }, { fator: "Sobrecarga", setores: ["Eng", "Adm"], aet: true }]);
+});
+
+test("método: padrão do catálogo com o ajuste da empresa por cima", () => {
+  const m = [{ modalidade: "EAD", ordem: 1, forma: "Plataforma", duracao: "8h", avaliacao: "Prova", certificado: "Sim" }];
+  assert.equal(metodoDe("EAD", m, null).duracao, "8h");
+  assert.deepEqual(metodoDe("EAD", m, { metodos: { EAD: { duracao: "4h", certificado: null } } }), { forma: "Plataforma", duracao: "4h", avaliacao: "Prova", certificado: null });
+  assert.equal(metodoDe("Presencial", m, null).forma, null);
+});
+
+test("um tema por mês: um em cada mês, na ordem, e o escolhido vale", () => {
+  const temas = temasDoPlano([ind("A", "F1", "Tema A", "EAD"), ind("A", "F2", "Tema B", "Presencial"), ind("A", "F3", "Tema C", "Ao vivo")]);
+  const c = cronograma({ ...planoVazio("E", "empresa"), inicio: "2027-11-01" }, temas);
+  assert.deepEqual(c.meses.map((m) => `${m.rotulo}:${m.temas.map((t) => t.nome).join(",")}`), ["nov/2027:Tema A", "dez/2027:Tema B", "jan/2028:Tema C"]);
+  const chaveC = temas.find((t) => t.nome === "Tema C")!.chave;
+  const c2 = cronograma({ ...planoVazio("E", "empresa"), meses: 2, temas: { [chaveC]: 1 } }, temas);
+  assert.deepEqual(c2.meses.map((m) => m.temas.map((t) => t.nome).join(",")), ["Tema A,Tema C", "Tema B"]);
+});
+
+test("EAD contínuo: só EAD fica o período todo; online e presencial vão para os meses", () => {
+  const temas = temasDoPlano([ind("A", "F1", "Tema A", "EAD"), ind("A", "F2", "Tema B", "Presencial"), ind("B", "F1", "Tema A", "EAD")]);
+  const c = cronograma({ ...planoVazio("E", "empresa"), planejamento: "ead_continuo", meses: 3 }, temas);
+  assert.deepEqual(c.continuos.map((t) => t.nome), ["Tema A"]);
+  assert.deepEqual(c.meses.map((m) => m.temas.map((t) => t.nome).join(",")), ["Tema B", "", ""]);
+  assert.equal(rotuloMes(null, 2), "Mês 2");
+});

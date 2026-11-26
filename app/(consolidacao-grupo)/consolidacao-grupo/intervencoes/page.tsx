@@ -42,6 +42,7 @@ import {
   type IntervencaoCatalogo,
 } from "@/lib/hooks/useComercial";
 import { cn } from "@/lib/utils";
+import MetodosModalidade from "@/components/psico-consolidacao/MetodosModalidade";
 import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 const inputCls =
@@ -223,6 +224,9 @@ export default function IntervencoesPage() {
           </tbody>
         </table>
       </div>
+
+      {/* 0.3.321: o texto padrão de cada método, para o Plano de intervenções da conciliação. */}
+      <MetodosModalidade modalidades={opcoes.modalidades} podeEditar={pode} />
 
       {forma && <JanelaIntervencao inicial={forma} catalogo={catalogo} onFechar={() => setForma(null)} />}
     </div>

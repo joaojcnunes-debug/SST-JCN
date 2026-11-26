@@ -694,7 +694,8 @@ export interface ItemFechamento {
   id_acao: string | null;
 }
 
-/** A foto que vai para psico_conciliacao_fechamentos.itens: toda divergência e todo parecer. */
+/** A foto que vai para psico_conciliacao_fechamentos.itens: toda divergência, todo parecer e (0.3.321) todo
+ *  convergente — o questionário e a AEP concordam que há risco; não pede parecer, mas é risco para Intervenções. */
 export function itensDoFechamento(
   r: ResultadoConciliacao,
   pareceres: ReadonlyMap<string, ParecerConciliacao>,
@@ -707,7 +708,7 @@ export function itensDoFechamento(
       const classe = c.classe[q];
       if (!classe || classe === "Sem par") continue;
       const p = pareceres.get(chaveParecer(c.chaveSetor, c.idFator, q));
-      if (!DIVERGENCIAS.has(classe) && !p) continue;
+      if (!DIVERGENCIAS.has(classe) && classe !== "Convergente" && !p) continue;
       const lado = ladoQuestionario(c, q);
       out.push({
         setor: c.setor,

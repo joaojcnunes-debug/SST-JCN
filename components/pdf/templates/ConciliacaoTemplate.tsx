@@ -66,7 +66,9 @@ const CLASSES_RESUMO = ["Nível divergente", "Só questionário", "Só AEP", "Co
 
 const dataBr = (s: string | null) => (s ? s.slice(0, 10).split("-").reverse().join("/") : "—");
 
-export function ConciliacaoTemplate({ empresa, grupo, logoUrl, geradoEm, fechamento: f, acoes }: ConciliacaoPdfProps) {
+export function ConciliacaoTemplate({ empresa, grupo, logoUrl, geradoEm, fechamento: foto, acoes }: ConciliacaoPdfProps) {
+  // 0.3.321: a foto guarda também os convergentes sem parecer (para Intervenções); o PDF segue com divergências e pareceres.
+  const f = { ...foto, itens: foto.itens.filter((i) => !(i.classe === "Convergente" && !i.decisao)) };
   // A régua sempre grava DRPS e QPS em `totais`; o resumo diz quais existiam (12/11: sem isto saía "QPS × AEP" zerado).
   const questionarios = f.questionarios?.length ? f.questionarios.filter((q) => q in f.totais) : Object.keys(f.totais);
   const porSetor = new Map<string, ConciliacaoPdfProps["fechamento"]["itens"]>();

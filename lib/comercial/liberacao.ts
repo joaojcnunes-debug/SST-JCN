@@ -128,22 +128,30 @@ export interface RiscoConciliado {
   questionarios: Questionario[];
   /** Algum parecer pediu Aprofundar com AET. */
   aet: boolean;
+  /** 0.3.321: o questionário e a AEP concordam que há risco (sem parecer: não precisava). */
+  convergente?: boolean;
   /** Só tem intervenção gravada: saiu da última conciliação fechada. */
   foraDaConciliacao: boolean;
 }
 
 export const chaveRisco = (setorChave: string, idFator: string) => `${setorChave}|${idFator}`;
 
-/** Os riscos de uma conciliação fechada: Confirmar e AET; o mesmo setor × fator vira um só. */
+/**
+ * Os riscos de uma conciliação fechada: Confirmar, AET e (0.3.321) o convergente sem parecer — o questionário e a AEP
+ * concordam que há risco, então a conciliação não pede parecer, mas ele é risco. Descartado fica de fora. O mesmo
+ * setor × fator vira um só.
+ */
 export function riscosDoFechamento(itens: readonly ItemConciliado[]): RiscoConciliado[] {
   const porChave = new Map<string, RiscoConciliado>();
   for (const i of itens) {
-    if (i.decisao !== "CONFIRMAR" && i.decisao !== "AET") continue;
+    const convergente = i.decisao == null && i.classe === "Convergente";
+    if (i.decisao !== "CONFIRMAR" && i.decisao !== "AET" && !convergente) continue;
     const chave = chaveRisco(i.setor_chave, i.id_fator);
     const atual = porChave.get(chave);
     if (atual) {
       if (!atual.questionarios.includes(i.questionario)) atual.questionarios.push(i.questionario);
       atual.aet ||= i.decisao === "AET";
+      if (convergente) atual.convergente = true;
       continue;
     }
     porChave.set(chave, {
@@ -154,12 +162,23 @@ export function riscosDoFechamento(itens: readonly ItemConciliado[]): RiscoConci
       fator: i.fator,
       questionarios: [i.questionario],
       aet: i.decisao === "AET",
+      ...(convergente ? { convergente: true } : {}),
       foraDaConciliacao: false,
     });
   }
   return [...porChave.values()].sort(
     (a, b) => a.setor.localeCompare(b.setor, "pt-BR") || a.fator.localeCompare(b.fator, "pt-BR"),
   );
+}
+
+/**
+ * 0.3.321: fechamento feito antes de a foto guardar os convergentes — o resumo conta convergentes, mas a foto não tem
+ * nenhum. Devolve quantos faltam (0 = nada a avisar). Reabrir e fechar de novo traz os riscos para Intervenções.
+ */
+export function convergentesForaDaFoto(resumo: unknown, itens: readonly { classe?: string | null }[]): number {
+  if (itens.some((i) => i.classe === "Convergente")) return 0;
+  const totais = (resumo as { totais?: Record<string, Record<string, number>> } | null)?.totais ?? {};
+  return Object.values(totais).reduce((s, t) => s + (t?.Convergente ?? 0), 0);
 }
 
 /**
@@ -184,6 +203,50 @@ export function riscosComIntervencoes(riscos: readonly RiscoConciliado[], indica
     });
   }
   return [...riscos, ...fora.values()];
+}
+
+/** 0.3.321: um tema (intervenção) dentro de um risco agrupado — o item de cada setor que já o tem. */
+export interface TemaDoFator {
+  chave: string;
+  nome: string;
+  /** chave do risco (setor × fator) → item gravado. */
+  itens: Map<string, IntervencaoIndicada>;
+}
+
+/** 0.3.321: o mesmo fator em vários setores. */
+export interface RiscoPorFator {
+  idFator: string;
+  fator: string;
+  riscos: RiscoConciliado[];
+  temas: TemaDoFator[];
+}
+
+/**
+ * 0.3.321 (pedido do João, 26/11): "mostrar por risco" — agrupa os riscos pelo fator. Cada tema (a intervenção, pelo
+ * catálogo ou pelo nome) reúne os itens dos setores que já o têm; na tela ele vale para todos os setores do risco.
+ */
+export function agruparPorRisco(riscos: readonly RiscoConciliado[], indicadas: readonly IntervencaoIndicada[]): RiscoPorFator[] {
+  const grupos = new Map<string, RiscoPorFator>();
+  for (const r of riscos) {
+    const g = grupos.get(r.idFator) ?? { idFator: r.idFator, fator: r.fator, riscos: [], temas: [] };
+    g.riscos.push(r);
+    grupos.set(r.idFator, g);
+  }
+  for (const g of grupos.values()) {
+    const chaves = new Set(g.riscos.map((r) => r.chave));
+    const temas = new Map<string, TemaDoFator>();
+    for (const i of indicadas) {
+      const chaveR = chaveRisco(i.setor_chave, i.id_fator);
+      if (!chaves.has(chaveR)) continue;
+      const chave = i.id_intervencao ?? `nome:${i.nome.trim().toLowerCase()}`;
+      const t = temas.get(chave) ?? { chave, nome: i.nome, itens: new Map<string, IntervencaoIndicada>() };
+      if (!t.itens.has(chaveR)) t.itens.set(chaveR, i);
+      temas.set(chave, t);
+    }
+    g.riscos.sort((a, b) => a.setor.localeCompare(b.setor, "pt-BR"));
+    g.temas = [...temas.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }
+  return [...grupos.values()].sort((a, b) => a.fator.localeCompare(b.fator, "pt-BR"));
 }
 
 /**
