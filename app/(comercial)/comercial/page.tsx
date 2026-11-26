@@ -9,7 +9,8 @@
 // (Inspeção, AEP, Conciliação), o que justifica, a situação e a venda.
 
 import PessoaComFoto from "@/components/ui/PessoaComFoto";
-import { useId, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useId, useMemo, useState, type ReactNode } from "react";
+import { rotuloMes, type MetodoTexto, type PlanoDoVendedor } from "@/lib/comercial/plano";
 import { BadgeCheck, Building2, ChevronDown, ChevronRight, ClipboardCheck, Download, FilterX, Handshake, Info, Loader2, Mail, MapPin, Phone, Search, Undo2 } from "lucide-react";
 import { useComercial, useDesfazerVenda, useRegistrarVenda } from "@/lib/hooks/useComercial";
 import Modal from "@/components/ui/Modal";
@@ -701,7 +702,11 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
                     {l.risco}
                   </td>
                 )}
-                <td className="px-3 py-2 font-semibold text-gray-900">{l.intervencao}</td>
+                <td className="px-3 py-2">
+                  <p className="font-semibold text-gray-900">{l.intervencao}</p>
+                  {/* 0.3.328 (pedido do João): o método que a equipe descreveu, para o vendedor ter tudo na proposta. */}
+                  {l.metodo && <MetodoNaVenda m={l.metodo} />}
+                </td>
                 <td className="px-3 py-2">{l.modalidade ?? "—"}</td>
                 <td className="px-3 py-2">{l.responsavel ?? "—"}</td>
                 <td className="px-3 py-2 whitespace-nowrap">{l.prazoDias ? `${l.prazoDias} ${l.prazoDias === 1 ? "dia" : "dias"}` : "—"}</td>
@@ -722,6 +727,66 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
           })}
         </tbody>
       </table>
+      {o.plano && <PlanoNaVenda p={o.plano} />}
+    </div>
+  );
+}
+
+const LINHAS_METODO: { campo: keyof MetodoTexto; rotulo: string }[] = [
+  { campo: "forma", rotulo: "Forma de realização" },
+  { campo: "avaliacao", rotulo: "Avaliação de aprendizado" },
+  { campo: "duracao", rotulo: "Duração" },
+  { campo: "certificado", rotulo: "Certificado" },
+];
+
+/** 0.3.328: as 4 linhas do método da intervenção (o que a equipe preparou na Conciliação), só leitura. */
+function MetodoNaVenda({ m }: { m: MetodoTexto }) {
+  const linhas = LINHAS_METODO.filter((x) => m[x.campo]);
+  if (linhas.length === 0) return null;
+  return (
+    <dl className="mt-1.5 grid grid-cols-[9.5rem_1fr] gap-x-2 gap-y-0.5 rounded-md border border-gray-100 bg-gray-50/70 px-2 py-1.5 text-xs">
+      {linhas.map((x) => (
+        <Fragment key={x.campo}>
+          <dt className="font-semibold text-gray-600">{x.rotulo}</dt>
+          <dd className="text-gray-800">{m[x.campo]}</dd>
+        </Fragment>
+      ))}
+    </dl>
+  );
+}
+
+/** 0.3.328: o Plano de intervenções da Conciliação (planejamento e cronograma), só leitura. */
+function PlanoNaVenda({ p }: { p: PlanoDoVendedor }) {
+  return (
+    <div className="border-t border-indigo-100 px-3 py-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-indigo-900">Plano de intervenções</p>
+      <p className="mt-0.5 text-xs text-gray-600">
+        {p.planejamento === "ead_continuo" ? "EAD disponível o período todo, com ações online e presenciais todo mês" : "Um tema por mês"}
+        {" · "}
+        {p.meses} {p.meses === 1 ? "mês" : "meses"}
+        {p.inicio ? ` a partir de ${rotuloMes(p.inicio, 1)}` : ""}
+        {!p.gravado && <span className="text-gray-400"> (sugestão padrão: a equipe ainda não ajustou o plano)</span>}
+      </p>
+      {p.linhas.length > 0 && (
+        <table className="mt-2 w-full max-w-3xl text-sm">
+          <thead className="text-left text-xs font-semibold text-gray-600">
+            <tr><th className="py-1 pr-3">Intervenção</th><th className="w-40 py-1 pr-3">Método</th><th className="w-28 py-1">Mês</th></tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 text-gray-700">
+            {p.linhas.map((l) => (
+              <tr key={l.intervencao}><td className="py-1 pr-3 font-medium text-gray-900">{l.intervencao}</td><td className="py-1 pr-3">{l.metodo}</td><td className="py-1">{l.mes}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {p.continuos.length > 0 && (
+        <p className="mt-2 text-sm text-gray-700"><span className="font-medium">Todo o período (EAD):</span> {p.continuos.join(", ")}</p>
+      )}
+      <ul className="mt-2 grid gap-0.5 text-sm text-gray-700 sm:grid-cols-2 lg:grid-cols-3">
+        {p.cronograma.map((m) => (
+          <li key={m.rotulo}><span className="font-medium">{m.rotulo}:</span> {m.intervencoes.length ? m.intervencoes.join(", ") : <span className="text-gray-400">—</span>}</li>
+        ))}
+      </ul>
     </div>
   );
 }

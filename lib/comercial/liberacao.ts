@@ -427,6 +427,7 @@ export function visaoDoVendedor(
               modalidade: i.modalidade,
               responsavel: i.responsavel,
               prazoDias: i.prazo_dias,
+              idIntervencao: i.id_intervencao,
             }))
             .sort((x, y) => x.setor.localeCompare(y.setor, "pt-BR") || x.risco.localeCompare(y.risco, "pt-BR")),
         },
