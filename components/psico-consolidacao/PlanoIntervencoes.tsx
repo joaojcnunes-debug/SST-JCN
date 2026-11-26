@@ -4,13 +4,13 @@
 // planejamento das ações (um tema por mês, ou EAD o período todo; início, duração, mês de cada tema e cronograma):
 // setores, riscos, temas, método e a descrição dele já estão na tabela, em cada intervenção. Grava sozinho.
 
-import { useMemo, type ReactNode } from "react";
+import { Fragment, useMemo, type ReactNode } from "react";
 import type { AlvoConciliacao } from "@/lib/hooks/useConciliacaoParecer";
 import { usePlanoIntervencoes, useSalvarPlanoIntervencoes } from "@/lib/hooks/useComercial";
 import type { IntervencaoIndicada } from "@/lib/comercial/liberacao";
 import {
-  cronograma, ehEad, mesDoTema, mesesDoPlano, planoVazio, rotuloMes, rotuloModalidade, temasDoPlano, temasMensais,
-  type PlanoIntervencoes,
+  cronograma, ehEad, gruposDoPlano, mesDoTema, mesesDoPlano, planoVazio, rotuloMes, rotuloModalidade, temasDoPlano, temasMensais,
+  type PlanoIntervencoes, type TemaPlano,
 } from "@/lib/comercial/plano";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +29,10 @@ export default function PlanoIntervencoes({
   alvo,
   indicadas,
   podeAlterar,
+  agrupar = "risco",
 }: {
+  /** 0.3.325: a visão escolhida no topo da tabela (Por setor | Por risco) vale também aqui. */
+  agrupar?: "setor" | "risco";
   alvo: AlvoConciliacao;
   indicadas: readonly IntervencaoIndicada[];
   podeAlterar: boolean;
@@ -42,6 +45,8 @@ export default function PlanoIntervencoes({
   const crono = useMemo(() => cronograma(plano, temas), [plano, temas]);
   const mensais = temasMensais(plano.planejamento, temas);
   const totalMeses = mesesDoPlano(plano, temas);
+  const grupos = gruposDoPlano(mensais, agrupar);
+  const ondeEntra = (t: TemaPlano) => (agrupar === "setor" ? t.setores : t.riscos).join(", ");
 
   const mudar = (p: Partial<PlanoIntervencoes>) => podeAlterar && salvar.mutate({ ...plano, ...p });
 
@@ -87,8 +92,17 @@ export default function PlanoIntervencoes({
                 <tr><th className="py-1 pr-3">Tema</th><th className="py-1 pr-3">Método</th><th className="w-44 py-1">Mês</th></tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {mensais.map((t) => (
-                  <tr key={t.chave}>
+                {/* 0.3.325: agrupado por setor ou por risco, como a tabela de cima. */}
+                {grupos.map((g) => (
+                  <Fragment key={g.nome}>
+                  <tr className="bg-indigo-50/60">
+                    <td colSpan={3} className="px-2 py-1.5 text-xs">
+                      <span className="font-semibold text-indigo-700">{agrupar === "setor" ? "Setor:" : "Risco:"}</span>{" "}
+                      <span className="font-bold text-gray-900">{g.nome}</span>
+                    </td>
+                  </tr>
+                  {g.temas.map((t) => (
+                  <tr key={`${g.nome}:${t.chave}`}>
                     <td className="py-1.5 pr-3 font-medium text-gray-800">{t.nome}</td>
                     <td className="py-1.5 pr-3 text-gray-600">
                       {(plano.planejamento === "ead_continuo" ? t.modalidades.filter((m) => !ehEad(m)) : t.modalidades).map(rotuloModalidade).join(" + ") || "—"}
@@ -100,6 +114,8 @@ export default function PlanoIntervencoes({
                       </select>
                     </td>
                   </tr>
+                  ))}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -116,7 +132,12 @@ export default function PlanoIntervencoes({
             )}
             <ul className="grid gap-1 text-sm text-gray-700 sm:grid-cols-2 lg:grid-cols-3">
               {crono.meses.map((m) => (
-                <li key={m.n}><span className="font-medium">{m.rotulo}:</span> {m.temas.length ? m.temas.map((t) => t.nome).join(", ") : <span className="text-gray-400">—</span>}</li>
+                <li key={m.n}>
+                  <span className="font-medium">{m.rotulo}:</span>{" "}
+                  {m.temas.length ? m.temas.map((t, k) => (
+                    <span key={t.chave}>{k > 0 && "; "}{t.nome} <span className="text-xs text-gray-500">({ondeEntra(t)})</span></span>
+                  )) : <span className="text-gray-400">—</span>}
+                </li>
               ))}
             </ul>
           </div>
