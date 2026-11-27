@@ -190,6 +190,7 @@ export const MODULO_DA_ROTA: Readonly<Record<string, ModuloPermitido | readonly 
   "apreciacao-maquinas": "apreciacao_maquinas",
   comercial: "comercial",
   "comercial-matriz-aiha": "comercial",
+  "comercial-orcamentos": "comercial",
   "relatorio-conformidade": "conformidade",
   "consolidacao-grupo": "consolidacao_psicossocial",
   dimensionamento: "dimensionamento",

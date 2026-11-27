@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "comercial-orcamentos",
+    data: "2026-11-27",
+    tipo: "novidade",
+    titulo: "Comercial: Orçamentos no padrão de cada marca",
+    texto:
+      "O Comercial ganhou Orçamentos: Plano Essencial (os 20 serviços, limite de funcionários com excedente, Designado CIPA " +
+      "e as 3 exclusões padrão), Treinamentos (por participante) e Avulso, em PDF no padrão da Chabra, da Holos ou da JCN. " +
+      "\"Gerar orçamento\" no cartão da empresa já traz os dados e os serviços a vender. Os preços vêm do catálogo (que a " +
+      "equipe cadastra) e podem ser trocados em cada orçamento. Cada orçamento tem número, situação (rascunho, enviado, " +
+      "aprovado, recusado) e versões; ao aprovar, dá para registrar a venda.",
+    onde: "Comercial › Orçamentos",
+    versoes: ["0.3.339"],
+  },
+  {
     id: "comercial-avisos-oportunidade",
     data: "2026-11-27",
     tipo: "novidade",

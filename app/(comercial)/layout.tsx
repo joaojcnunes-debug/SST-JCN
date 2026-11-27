@@ -5,7 +5,7 @@
 // os dados vêm da RPC `comercial_dados`, que confere a mesma permissão.
 
 import { type ReactNode } from "react";
-import { Grid3x3, Handshake, Home } from "lucide-react";
+import { FileText, Grid3x3, Handshake, Home } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -17,6 +17,8 @@ const SECTIONS: NavSection[] = [
     items: [
       { href: "/comercial", label: "Oportunidades", icon: Handshake },
       { href: "/comercial-matriz-aiha", label: "Matriz AIHA", icon: Grid3x3 },
+      // 0.3.339 (pedido do usuário): orçamentos no padrão de cada marca, com catálogo de preços.
+      { href: "/comercial-orcamentos", label: "Orçamentos", icon: FileText },
     ],
   },
   {

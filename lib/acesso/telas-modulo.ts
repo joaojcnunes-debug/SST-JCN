@@ -127,6 +127,7 @@ export const TELAS_DO_MODULO: Partial<Record<ModuloPermitido, TelaModulo[]>> = {
   comercial: [
     t("/comercial", "Oportunidades"),
     t("/comercial-matriz-aiha", "Matriz AIHA"),
+    t("/comercial-orcamentos", "Orçamentos"),
   ],
   dimensionamento: [
     t("/dimensionamento", "Headcount"),

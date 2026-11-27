@@ -8,10 +8,11 @@
 // 0.3.246: primeiro a lista de empresas, recolhida; ao abrir, cada serviço numa linha com a origem
 // (Inspeção, AEP, Conciliação), o que justifica, a situação e a venda.
 
+import Link from "next/link";
 import PessoaComFoto from "@/components/ui/PessoaComFoto";
 import { Fragment, useId, useMemo, useState, type ReactNode } from "react";
 import { rotuloMes, type MetodoTexto, type PlanoDoVendedor } from "@/lib/comercial/plano";
-import { BadgeCheck, Building2, ChevronDown, ChevronRight, ClipboardCheck, Download, FilterX, Handshake, Loader2, Mail, MapPin, Phone, Search, Undo2 } from "lucide-react";
+import { BadgeCheck, Building2, ChevronDown, ChevronRight, ClipboardCheck, Download, FileText, FilterX, Handshake, Loader2, Mail, MapPin, Phone, Search, Undo2 } from "lucide-react";
 import { useComercial, useDesfazerVenda, useRegistrarVenda } from "@/lib/hooks/useComercial";
 import Modal from "@/components/ui/Modal";
 import BotaoCadastroEmpresa from "@/components/comercial/BotaoCadastroEmpresa";
@@ -445,6 +446,11 @@ function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial
                 Inspeção {c.inspecao.idInspecao} concluída {c.inspecao.concluidaEm ? fmtData(c.inspecao.concluidaEm) : ""}
               </span>
             )}
+            {/* 0.3.339 (pedido do usuário): o orçamento já vem com a empresa e os serviços a vender. */}
+            <Link href={`/comercial-orcamentos/novo?empresa=${encodeURIComponent(e.idEmpresa)}`}
+              className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:opacity-90">
+              <FileText className="size-3.5" /> Gerar orçamento
+            </Link>
           </div>
 
           {/* Um serviço por linha, com a origem da indicação. 0.3.329 (pedido do João): cada serviço é um cartão com sombra, como as
