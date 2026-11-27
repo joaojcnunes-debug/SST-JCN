@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { casarSetoresDoLaudo, semelhancaSetor, chaveSetor, previaDoLaudo, riscosDoLaudo, tipoDaInspecao, type RiscoGravado, type SetorDoLaudo } from "./riscos-do-laudo";
+import { casarSetoresDoLaudo, laudoForaDoPgr, semelhancaSetor, chaveSetor, previaDoLaudo, riscosDoLaudo, tipoDaInspecao, type RiscoGravado, type SetorDoLaudo } from "./riscos-do-laudo";
 
 const setorAep: SetorDoLaudo = {
   id: "s1",
@@ -85,4 +85,11 @@ test("setor do laudo: igual vai direto, parecido vem para conferir, sem nenhum s
   assert.deepEqual(por["teste"].sugestao, { tipo: "criar", nome: "teste", descricao: null });
   assert.equal(semelhancaSetor("Adm", "Administrativo"), 0.9);
   assert.ok(semelhancaSetor("Teste", "Loja") < 0.8);
+});
+
+test("laudoForaDoPgr: só risco da AEP/AET Trivial ou Baixo", () => {
+  assert.equal(laudoForaDoPgr({ origem: "AEP", nivel_risco: "Trivial" }), true);
+  assert.equal(laudoForaDoPgr({ origem: "AET", nivel_risco: "Baixo" }), true);
+  assert.equal(laudoForaDoPgr({ origem: "AEP", nivel_risco: "Moderado" }), false);
+  assert.equal(laudoForaDoPgr({ origem: null, nivel_risco: "Baixo" }), false);
 });

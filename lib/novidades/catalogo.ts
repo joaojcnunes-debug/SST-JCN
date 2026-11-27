@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "relatorio-laudo-trivial-baixo-fora-pgr",
+    data: "2026-11-27",
+    tipo: "melhoria",
+    titulo: "Relatório: risco da AEP/AET Trivial ou Baixo avisa que não entra no PGR",
+    texto:
+      "No relatório da inspeção, o risco trazido da AEP/AET com nível Trivial ou Baixo mostra o aviso \"Não entra no PGR\" " +
+      "no cartão do risco, ao lado do quadro de avaliação.",
+    onde: "Inspeções › Relatório",
+    versoes: ["0.3.332"],
+  },
+  {
     id: "trazer-riscos-laudo-setor-automatico",
     data: "2026-11-27",
     tipo: "melhoria",

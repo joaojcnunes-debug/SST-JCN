@@ -283,3 +283,11 @@ export function casarSetoresDoLaudo(
     };
   }).sort((a, b) => a.setorLaudo.localeCompare(b.setorLaudo, "pt-BR"));
 }
+
+// ── 0.3.332 (pedido do usuário, 27/11/2026): risco da AEP/AET Trivial ou Baixo não entra no PGR ───────────────────────────
+
+/** O risco veio da AEP/AET e está classificado como Trivial ou Baixo: o relatório avisa que ele não deve entrar no PGR. */
+export function laudoForaDoPgr(r: { origem?: string | null; nivel_risco?: NivelRisco | string | null }): boolean {
+  const o = (r.origem ?? "").toUpperCase();
+  return (o === "AEP" || o === "AET") && (r.nivel_risco === "Trivial" || r.nivel_risco === "Baixo");
+}
