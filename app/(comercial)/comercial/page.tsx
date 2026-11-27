@@ -691,31 +691,35 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
       <table className={cn(TABELA_GRADE, "w-full min-w-[64rem] text-sm")}>
         <thead className={CLS_THEAD}>
           <FaixaGrupos indicacao="Indicado na Conciliação" colunas={4} />
-          <tr>
-            {por === "setor"
-              ? <Titulo className="w-44" dica="Fator de risco psicossocial confirmado na Conciliação">Risco</Titulo>
-              : <Titulo className="w-44" dica="Setor onde o risco foi confirmado">Setor</Titulo>}
-            <Titulo dica="Ação indicada para o risco">Intervenção</Titulo>
-            <Titulo className="w-28" dica="Como é feita: EAD, presencial ou ao vivo">Modalidade</Titulo>
-            <Titulo className="w-48" dica="Quem executa a intervenção">Responsável</Titulo>
-            <Titulo className="w-40" comercial dica="Aberta ou vendida, por intervenção">Situação</Titulo>
-            <Titulo className="w-52" comercial dica="Cada intervenção se vende sozinha; quem marcou, ou um Admin, pode desfazer">Venda</Titulo>
-          </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 text-gray-700">
           {grupos.map((g) => (
             <Fragment key={g.nome}>
               {/* O título do grupo: o setor (com quantas intervenções) ou o risco (com os setores em que aparece). */}
+              {/* 0.3.329 (pedido do João): a faixa do grupo vem primeiro e os títulos das colunas logo abaixo, em cada grupo. */}
               <tr className="bg-indigo-50/60">
-                <td colSpan={6} className="border-t-2 border-indigo-200 px-3 py-2 !text-left">
-                  <span className="text-xs font-semibold text-indigo-700">{por === "setor" ? "Setor:" : "Risco:"}</span>{" "}
-                  <span className="font-bold text-gray-900">{g.nome}</span>
-                  <span className="ml-2 text-xs text-gray-500">
-                    {por === "setor"
-                      ? `${g.linhas.length} ${g.linhas.length === 1 ? "intervenção" : "intervenções"}`
-                      : `${g.outros.length === 1 ? "Setor" : `Setores (${g.outros.length})`}: ${g.outros.join(", ")}`}
-                  </span>
+                <td colSpan={6} className="border-t-2 border-indigo-200 px-3 py-2">
+                  <div className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-0.5">
+                    <span className="text-xs font-semibold text-indigo-700">{por === "setor" ? "Setor:" : "Risco:"}</span>
+                    <span className="font-bold text-gray-900">{g.nome}</span>
+                    <span className="text-xs text-gray-500">
+                      ·{" "}
+                      {por === "setor"
+                        ? `${g.linhas.length} ${g.linhas.length === 1 ? "intervenção" : "intervenções"}`
+                        : `${g.outros.length === 1 ? "Setor" : `Setores (${g.outros.length})`}: ${g.outros.join(", ")}`}
+                    </span>
+                  </div>
                 </td>
+              </tr>
+              <tr className={cn(CLS_THEAD, "border-b-2 border-gray-300")}>
+                {por === "setor"
+                  ? <Titulo className="w-44" dica="Fator de risco psicossocial confirmado na Conciliação">Risco</Titulo>
+                  : <Titulo className="w-44" dica="Setor onde o risco foi confirmado">Setor</Titulo>}
+                <Titulo dica="Ação indicada para o risco">Intervenção</Titulo>
+                <Titulo className="w-28" dica="Como é feita: EAD, presencial ou ao vivo">Modalidade</Titulo>
+                <Titulo className="w-48" dica="Quem executa a intervenção">Responsável</Titulo>
+                <Titulo className="w-40" comercial dica="Aberta ou vendida, por intervenção">Situação</Titulo>
+                <Titulo className="w-52" comercial dica="Cada intervenção se vende sozinha; quem marcou, ou um Admin, pode desfazer">Venda</Titulo>
               </tr>
               {g.linhas.map((l, n) => {
                 const novoOutro = n === 0 || g.outro(g.linhas[n - 1]) !== g.outro(l);
@@ -726,7 +730,8 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
                   <Fragment key={l.idItem}>
                     <tr className="align-top">
                       {novoOutro && (
-                        <td rowSpan={altura} className="border-l-0 px-3 py-2 font-medium text-gray-800">
+                        // No meio do bloco (largura e altura).
+                        <td rowSpan={altura} className="border-l-0 px-3 py-2 align-middle font-semibold text-gray-800">
                           {g.outro(l)}
                         </td>
                       )}
@@ -749,7 +754,7 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
                     {temMetodo(l) && (
                       // O método que a equipe descreveu, numa faixa embaixo da intervenção (texto à esquerda).
                       <tr>
-                        <td colSpan={5} className="bg-gray-50/60 px-3 py-2 !text-left">
+                        <td colSpan={5} className="bg-gray-50/60 p-0">
                           <MetodoNaVenda m={l.metodo!} />
                         </td>
                       </tr>
@@ -785,9 +790,10 @@ function somarAltura<T extends { metodo?: MetodoTexto | null }>(linhas: readonly
 /** 0.3.328: o método da intervenção (o que a equipe preparou na Conciliação), só leitura: os 4 campos lado a lado. */
 function MetodoNaVenda({ m }: { m: MetodoTexto }) {
   return (
-    <dl className="grid gap-x-4 gap-y-2 text-left text-xs sm:grid-cols-2 xl:grid-cols-4 [&_*]:!text-left">
+    // 0.3.329 (pedido do João): os 4 campos separados por linhas verticais.
+    <dl className="grid grid-cols-4 divide-x divide-dashed divide-gray-300 text-left text-xs [&_*]:!text-left">
       {LINHAS_METODO.map((x) => (
-        <div key={x.campo}>
+        <div key={x.campo} className="px-3 py-2">
           <dt className="text-[10px] font-bold uppercase tracking-wide text-gray-500">{x.rotulo}</dt>
           <dd className="mt-0.5 text-gray-800">{m[x.campo] || <span className="text-gray-400">—</span>}</dd>
         </div>
