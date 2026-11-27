@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "comercial-orcamentos-fase2",
+    data: "2026-11-27",
+    tipo: "novidade",
+    titulo: "Orçamentos: grupo de empresas, valor por vida, inclusão do Designado CIPA e tabela de exames",
+    texto:
+      "Os Orçamentos do Comercial ganharam 4 modelos. Grupo de empresas: a soma dos valores individuais aparece riscada, " +
+      "seguida do valor do grupo, do desconto por mês e da economia no ano, com um anexo opcional da distribuição por empresa. " +
+      "Valor por vida: mínimo de vidas, faturamento mínimo e tabela por função. Inclusão do Designado CIPA: a conta " +
+      "mensalidade atual + R$ 15,00 = nova mensalidade, com as condições e as assinaturas. Tabela de exames: exames por " +
+      "setor e valores unitários, como documento próprio ou anexo de qualquer orçamento. Os exames podem vir do catálogo.",
+    onde: "Comercial › Orçamentos › Novo orçamento › Modelo",
+    versoes: ["0.3.340"],
+  },
+  {
     id: "comercial-orcamentos",
     data: "2026-11-27",
     tipo: "novidade",

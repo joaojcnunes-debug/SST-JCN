@@ -1,7 +1,8 @@
 /**
  * Comercial › Orçamentos (0.3.339, banco v375): os 3 modelos da Fase 1 — Plano Essencial, Treinamentos e Avulso —, os
  * textos padrão (os 20 serviços e as 3 exclusões das bases de conhecimento), as contas e a sugestão de itens a partir das
- * oportunidades do Comercial.
+ * oportunidades do Comercial. Fase 2 (0.3.340, banco v376): grupo de empresas com desconto, valor por vida, inclusão do
+ * Designado CIPA e tabela de exames (documento próprio ou anexo).
  *
  * Módulo puro, testado em `modelo.test.ts`. Nada aqui inventa valor: item sem preço no catálogo entra com R$ 0,00 e a
  * tela avisa.
@@ -9,15 +10,26 @@
 
 import type { MarcaOrcamento } from "@/lib/orcamentos/marcas";
 
-export type ModeloOrcamento = "essencial" | "treinamentos" | "avulso";
+export type ModeloOrcamento = "essencial" | "grupo" | "vida" | "cipa" | "treinamentos" | "avulso" | "exames";
 export type SituacaoOrcamento = "rascunho" | "enviado" | "aprovado" | "recusado";
 export type TipoPreco = "servico" | "treinamento" | "exame";
 
 export const ROTULO_MODELO: Record<ModeloOrcamento, string> = {
   essencial: "Plano Essencial",
+  grupo: "Grupo de empresas",
+  vida: "Valor por vida",
+  cipa: "Inclusão do Designado CIPA",
   treinamentos: "Treinamentos",
   avulso: "Avulso",
+  exames: "Tabela de exames",
 };
+
+/** Modelos que levam a lista de serviços do Plano Essencial (0.3.340: grupo e valor por vida também). */
+export const usaServicosEssencial = (m: ModeloOrcamento) => m === "essencial" || m === "grupo" || m === "vida";
+/** Modelos de valor mensal (o total sai "/mês"). */
+export const ehMensal = (m: ModeloOrcamento) => m === "essencial" || m === "grupo" || m === "vida" || m === "cipa";
+/** Modelos que podem levar a tabela de exames como anexo. */
+export const aceitaAnexoExames = (m: ModeloOrcamento) => m !== "exames" && m !== "cipa";
 
 export const ROTULO_SITUACAO: Record<SituacaoOrcamento, string> = {
   rascunho: "Rascunho",
@@ -70,11 +82,79 @@ export interface DadosEssencial {
   servicosExtras: { titulo: string; descricao: string }[];
 }
 
+/** Uma empresa do orçamento de grupo. */
+export interface EmpresaDoGrupo {
+  id: string;
+  idEmpresa?: string | null;
+  nome: string;
+  cnpj: string | null;
+  funcionarios: number | null;
+  /** O valor mensal que a empresa pagaria sozinha. */
+  valorIndividual: number;
+}
+
+export interface DadosGrupo {
+  empresas: EmpresaDoGrupo[];
+  /** O valor mensal do grupo, com o desconto. */
+  valorGrupo: number;
+  /** Anexo com a distribuição do valor por empresa (proporcional aos funcionários). */
+  anexoDistribuicao: boolean;
+}
+
+export interface FuncaoVida {
+  id: string;
+  funcao: string;
+  colaboradores: number;
+}
+
+export interface DadosVida {
+  valorPorVida: number;
+  /** Mínimo de vidas cobradas (0 = sem mínimo). */
+  minimoVidas: number;
+  /** Distribuição por função (opcional; sem funções, vale o número de funcionários). */
+  funcoes: FuncaoVida[];
+}
+
+export interface DadosCipa {
+  mensalidadeAtual: number;
+  /** Acréscimo do Designado CIPA (padrão R$ 15,00). */
+  acrescimo: number;
+}
+
+export interface ExameTabela {
+  id: string;
+  nome: string;
+  categoria: string;
+  valor: number;
+  /** Incluso no plano: sai como "Isento". */
+  isento: boolean;
+}
+
+export interface SetorExames {
+  id: string;
+  setor: string;
+  /** Os ids dos exames (ExameTabela.id) do setor. */
+  exames: string[];
+}
+
+export interface DadosExames {
+  exames: ExameTabela[];
+  setores: SetorExames[];
+  /** O terceiro campo do quadro do cliente (ex.: "Plano Essencial"). */
+  plano?: string;
+}
+
 /** O conteúdo do orçamento (comercial_orcamentos.dados). */
 export interface DadosOrcamento {
   /** Data do documento (AAAA-MM-DD). */
   data: string;
   essencial?: DadosEssencial;
+  grupo?: DadosGrupo;
+  vida?: DadosVida;
+  cipa?: DadosCipa;
+  /** A tabela de exames: o corpo do modelo "exames", ou o anexo dos outros (com `anexarExames`). */
+  tabelaExames?: DadosExames;
+  anexarExames?: boolean;
   itens?: ItemOrcamento[];
   /** Forma de pagamento / faturamento (Treinamentos e Avulso). */
   pagamento?: string;
@@ -160,7 +240,7 @@ export const EXCLUSOES_ESSENCIAL: ServicoPadrao[] = [
   },
 ];
 
-export const PAGAMENTO_PADRAO: Record<Exclude<ModeloOrcamento, "essencial">, string> = {
+export const PAGAMENTO_PADRAO: Record<"treinamentos" | "avulso", string> = {
   treinamentos: "Os valores são por participante e serão faturados junto à mensalidade, no mês subsequente à realização.",
   avulso: "O valor será faturado junto à cobrança mensal contratual.",
 };
@@ -168,6 +248,13 @@ export const PAGAMENTO_PADRAO: Record<Exclude<ModeloOrcamento, "essencial">, str
 export function essencialVazio(): DadosEssencial {
   return { valorMensal: 0, limiteFuncionarios: null, valorExcedente: 20, cipa: "quando", servicosRemovidos: [], servicosExtras: [] };
 }
+
+export const ACRESCIMO_CIPA_PADRAO = 15;
+
+export const grupoVazio = (): DadosGrupo => ({ empresas: [], valorGrupo: 0, anexoDistribuicao: false });
+export const vidaVazia = (): DadosVida => ({ valorPorVida: 0, minimoVidas: 0, funcoes: [] });
+export const cipaVazia = (): DadosCipa => ({ mensalidadeAtual: 0, acrescimo: ACRESCIMO_CIPA_PADRAO });
+export const examesVazios = (): DadosExames => ({ exames: [], setores: [], plano: "" });
 
 /** Os serviços que saem no Plano Essencial: os padrão (menos os removidos; o CIPA conforme a opção) e os extras. */
 export function servicosDoEssencial(e: DadosEssencial): ServicoPadrao[] {
@@ -192,10 +279,143 @@ export const centavos = (v: number) => Math.round((Number.isFinite(v) ? v : 0) *
 
 export const subtotalItem = (i: Pick<ItemOrcamento, "quantidade" | "valor">) => centavos((i.quantidade || 0) * (i.valor || 0));
 
-/** O total do orçamento: no Plano Essencial, o valor mensal; nos outros, a soma dos itens. */
+// ── Grupo de empresas ──
+
+/** A soma dos valores individuais (o "de" do desconto). */
+export const somaIndividual = (g: DadosGrupo) => centavos(g.empresas.reduce((s, e) => s + (e.valorIndividual || 0), 0));
+
+/** O desconto do grupo: por mês e no ano (×12). Sem percentual (as bases pedem para não mostrar). */
+export function descontoGrupo(g: DadosGrupo): { mensal: number; anual: number } {
+  const mensal = centavos(Math.max(0, somaIndividual(g) - (g.valorGrupo || 0)));
+  return { mensal, anual: centavos(mensal * 12) };
+}
+
+export const funcionariosDoGrupo = (g: DadosGrupo) => g.empresas.reduce((s, e) => s + (e.funcionarios || 0), 0);
+
+/**
+ * A distribuição do valor do grupo por empresa: valor do grupo ÷ total de funcionários × funcionários da empresa. Os
+ * centavos que sobram do arredondamento ficam na última empresa, para a soma bater. Null se faltar funcionário.
+ */
+export function distribuicaoGrupo(g: DadosGrupo): { id: string; valor: number }[] | null {
+  const total = funcionariosDoGrupo(g);
+  if (!total || g.empresas.some((e) => !(e.funcionarios && e.funcionarios > 0))) return null;
+  const out = g.empresas.map((e) => ({ id: e.id, valor: centavos(((g.valorGrupo || 0) * (e.funcionarios || 0)) / total) }));
+  const resto = centavos((g.valorGrupo || 0) - out.reduce((s, x) => s + x.valor, 0));
+  if (out.length) out[out.length - 1].valor = centavos(out[out.length - 1].valor + resto);
+  return out;
+}
+
+// ── Valor por vida ──
+
+/** As vidas informadas: a soma das funções, ou (sem funções) o número de funcionários. */
+export function vidasInformadas(v: DadosVida, funcionarios?: number | null): number {
+  return v.funcoes.length ? v.funcoes.reduce((s, f) => s + (f.colaboradores || 0), 0) : Math.max(0, funcionarios ?? 0);
+}
+
+/** As vidas cobradas: as informadas, nunca abaixo do mínimo. */
+export const vidasCobradas = (v: DadosVida, funcionarios?: number | null) => Math.max(vidasInformadas(v, funcionarios), v.minimoVidas || 0);
+
+export const faturamentoMinimo = (v: DadosVida) => centavos((v.minimoVidas || 0) * (v.valorPorVida || 0));
+
+export const mensalPorVida = (v: DadosVida, funcionarios?: number | null) => centavos(vidasCobradas(v, funcionarios) * (v.valorPorVida || 0));
+
+// ── Inclusão do Designado CIPA ──
+
+export const novaMensalidadeCipa = (c: DadosCipa) => centavos((c.mensalidadeAtual || 0) + (c.acrescimo || 0));
+
+/** As 4 condições comerciais da proposta de inclusão (bases de conhecimento). */
+export function condicoesCipa(c: DadosCipa): string[] {
+  return [
+    "O Designado da CIPA (NR-5) será incorporado ao contrato mediante a aprovação desta proposta.",
+    `A mensalidade passa de R$ ${fmtValor(c.mensalidadeAtual)} para R$ ${fmtValor(novaMensalidadeCipa(c))}.`,
+    "A alteração será formalizada e comunicada ao financeiro para o faturamento.",
+    "As demais condições do contrato permanecem inalteradas.",
+  ];
+}
+
+// ── Tabela de exames ──
+
+export const CATEGORIAS_EXAME = ["Clínicos", "Complementares", "Laboratoriais", "Imagem", "Outros"] as const;
+
+/** A categoria provável do exame pelo nome (dá para trocar na tela). */
+export function categoriaDoExame(nome: string): string {
+  const n = norm(nome);
+  if (/clinic|\baso\b/.test(n)) return "Clínicos";
+  if (/raio|\brx\b|tomograf|ultrass|ressonanc|radiograf/.test(n)) return "Imagem";
+  if (/audiom|espirom|eletro|\becg\b|\beeg\b|acuidade|snellen|ishihara|psicoss|psicolog|romberg|ergometr/.test(n)) return "Complementares";
+  return "Laboratoriais";
+}
+
+/** O valor por colaborador do setor: a soma dos exames do setor que não são isentos. */
+export function valorPorColaborador(s: SetorExames, exames: readonly ExameTabela[]): number {
+  const porId = new Map(exames.map((e) => [e.id, e]));
+  return centavos(s.exames.reduce((t, id) => { const e = porId.get(id); return t + (e && !e.isento ? e.valor || 0 : 0); }, 0));
+}
+
+/** Os exames agrupados por categoria, na ordem de CATEGORIAS_EXAME (as outras depois, por nome). */
+export function examesPorCategoria(exames: readonly ExameTabela[]): { categoria: string; exames: ExameTabela[] }[] {
+  const m = new Map<string, ExameTabela[]>();
+  for (const e of exames) {
+    const c = e.categoria?.trim() || "Outros";
+    m.set(c, [...(m.get(c) ?? []), e]);
+  }
+  const ordem = (c: string) => { const i = (CATEGORIAS_EXAME as readonly string[]).indexOf(c); return i < 0 ? 99 : i; };
+  return [...m].sort(([a], [b]) => ordem(a) - ordem(b) || a.localeCompare(b, "pt-BR")).map(([categoria, exames]) => ({ categoria, exames }));
+}
+
+/**
+ * Divide os valores unitários em páginas de 2 colunas. Cada categoria ocupa 1,5 linha de título + 1 por exame; a
+ * primeira página tem `capPrimeira` linhas por coluna (o resto do espaço é do quadro por setor), as demais `capDemais`.
+ * Categoria que não cabe continua na coluna seguinte (com o título repetido). Quando o que resta cabe na página, as
+ * duas colunas ficam equilibradas (lista curta não fica toda na coluna da esquerda).
+ */
+export function paginarExames(
+  grupos: readonly { categoria: string; exames: ExameTabela[] }[],
+  capPrimeira: number,
+  capDemais: number,
+): { categoria: string; exames: ExameTabela[] }[][][] {
+  type Col = { categoria: string; exames: ExameTabela[] }[];
+  const paginas: Col[][] = [];
+  let pagina: Col[] = [[]];
+  let usado = 0;
+  let restante = grupos.reduce((t, g) => t + (g.exames.length ? 1.5 + g.exames.length : 0), 0);
+  const cap = () => (paginas.length === 0 ? capPrimeira : capDemais);
+  const limiteDaColuna = () => (pagina.length === 1 && restante <= 2 * cap() - 3 ? Math.min(cap(), Math.ceil(restante / 2) + 1.5) : cap());
+  let limite = limiteDaColuna();
+  const proximaColuna = () => {
+    if (pagina.length === 2) { paginas.push(pagina); pagina = [[]]; } else pagina.push([]);
+    usado = 0;
+    limite = limiteDaColuna();
+  };
+  for (const g of grupos) {
+    // Categoria que não cabe aqui, mas cabe inteira numa coluna nova, não é partida.
+    if (usado > 0 && usado + 1.5 + g.exames.length > limite && 1.5 + g.exames.length <= cap()) proximaColuna();
+    let resto = [...g.exames];
+    while (resto.length) {
+      if (usado + 2.5 > limite && usado > 0) proximaColuna();
+      const cabem = Math.max(1, Math.floor(limite - usado - 1.5));
+      const parte = resto.slice(0, cabem);
+      pagina[pagina.length - 1].push({ categoria: g.categoria, exames: parte });
+      usado += 1.5 + parte.length;
+      restante -= parte.length + (resto.length === g.exames.length ? 1.5 : 0);
+      resto = resto.slice(parte.length);
+      if (resto.length) proximaColuna();
+    }
+  }
+  if (pagina.some((c) => c.length) || paginas.length === 0) paginas.push(pagina);
+  return paginas;
+}
+
+/** O total do orçamento: nos mensais, o valor do mês; nos de itens, a soma; na tabela de exames, 0 (não tem total). */
 export function totalOrcamento(modelo: ModeloOrcamento, d: DadosOrcamento): number {
-  if (modelo === "essencial") return centavos(d.essencial?.valorMensal ?? 0);
-  return centavos((d.itens ?? []).reduce((s, i) => s + subtotalItem(i), 0));
+  switch (modelo) {
+    case "essencial": return centavos(d.essencial?.valorMensal ?? 0);
+    case "grupo": return centavos(d.grupo?.valorGrupo ?? 0);
+    case "vida": return d.vida ? mensalPorVida(d.vida, d.funcionarios) : 0;
+    case "cipa": return d.cipa ? novaMensalidadeCipa(d.cipa) : 0;
+    case "exames": return 0;
+    default: return centavos((d.itens ?? []).reduce((s, i) => s + subtotalItem(i), 0));
+  }
 }
 
 /** "R$ 1.234,56". */
@@ -235,9 +455,35 @@ export function rotuloNumero(o: Pick<Orcamento, "numero" | "versao">): string {
 /** O que falta para o orçamento sair (vazio = pode gerar). */
 export function pendencias(modelo: ModeloOrcamento, cliente: string, d: DadosOrcamento): string[] {
   const p: string[] = [];
-  if (!cliente.trim()) p.push("Informe o cliente.");
+  if (!cliente.trim()) p.push(modelo === "grupo" ? "Informe o nome do grupo." : "Informe o cliente.");
+  const exames = (t: DadosExames | undefined) => {
+    const l = t?.exames ?? [];
+    if (l.length === 0) p.push("Inclua ao menos um exame na tabela.");
+    if (l.some((e) => !e.nome.trim())) p.push("Há exame sem nome.");
+    const semValor = l.filter((e) => !e.isento && !(e.valor > 0)).length;
+    if (semValor) p.push(`${semValor === 1 ? "1 exame está" : `${semValor} exames estão`} sem valor (ou marque como isento).`);
+    if ((t?.setores ?? []).some((s) => !s.setor.trim())) p.push("Há setor sem nome na tabela de exames.");
+  };
   if (modelo === "essencial") {
     if (!(d.essencial?.valorMensal && d.essencial.valorMensal > 0)) p.push("Informe o valor mensal.");
+  } else if (modelo === "grupo") {
+    const g = d.grupo ?? grupoVazio();
+    if (g.empresas.length < 2) p.push("Inclua ao menos duas empresas no grupo.");
+    if (g.empresas.some((e) => !e.nome.trim())) p.push("Há empresa sem nome.");
+    if (g.empresas.some((e) => !(e.valorIndividual > 0))) p.push("Informe o valor individual de cada empresa.");
+    if (!(g.valorGrupo > 0)) p.push("Informe o valor do grupo.");
+    else if (g.empresas.length && g.valorGrupo >= somaIndividual(g)) p.push("O valor do grupo precisa ser menor que a soma dos valores individuais (é o desconto).");
+    if (g.anexoDistribuicao && !distribuicaoGrupo(g)) p.push("Para o anexo de distribuição, informe os funcionários de cada empresa.");
+  } else if (modelo === "vida") {
+    const v = d.vida ?? vidaVazia();
+    if (!(v.valorPorVida > 0)) p.push("Informe o valor por vida.");
+    if (v.funcoes.some((f) => !f.funcao.trim())) p.push("Há função sem nome.");
+    if (vidasCobradas(v, d.funcionarios) === 0) p.push("Informe as funções (ou os funcionários) ou o mínimo de vidas.");
+  } else if (modelo === "cipa") {
+    if (!(d.cipa?.mensalidadeAtual && d.cipa.mensalidadeAtual > 0)) p.push("Informe a mensalidade atual.");
+    if (!(d.cipa?.acrescimo && d.cipa.acrescimo > 0)) p.push("Informe o acréscimo do Designado CIPA.");
+  } else if (modelo === "exames") {
+    exames(d.tabelaExames);
   } else {
     const itens = d.itens ?? [];
     if (itens.length === 0) p.push("Inclua ao menos um item.");
@@ -246,6 +492,7 @@ export function pendencias(modelo: ModeloOrcamento, cliente: string, d: DadosOrc
     if (semValor) p.push(`${semValor === 1 ? "1 item está" : `${semValor} itens estão`} sem valor.`);
     if (modelo === "treinamentos" && itens.some((i) => !(i.quantidade > 0))) p.push("Há treinamento sem número de participantes.");
   }
+  if (aceitaAnexoExames(modelo) && d.anexarExames) exames(d.tabelaExames);
   return p;
 }
 
@@ -334,7 +581,7 @@ export function sugerirItens(oportunidades: readonly OportunidadeSugestao[], cat
 }
 
 /** O modelo que combina com as oportunidades: só treinamentos → Treinamentos; senão, Avulso. */
-export function modeloSugerido(oportunidades: readonly Pick<OportunidadeSugestao, "produto">[]): Exclude<ModeloOrcamento, "essencial"> {
+export function modeloSugerido(oportunidades: readonly Pick<OportunidadeSugestao, "produto">[]): "treinamentos" | "avulso" {
   return oportunidades.length > 0 && oportunidades.every((o) => o.produto === "Treinamentos NR") ? "treinamentos" : "avulso";
 }
 

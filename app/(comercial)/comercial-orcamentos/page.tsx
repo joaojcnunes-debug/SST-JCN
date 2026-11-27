@@ -13,7 +13,7 @@ import { COR_SITUACAO } from "@/components/orcamentos/estilos";
 import { useOrcamentos } from "@/lib/hooks/useOrcamentos";
 import { buscar } from "@/lib/busca/texto";
 import { LISTA_MARCAS, MARCAS, type MarcaOrcamento } from "@/lib/orcamentos/marcas";
-import { ROTULO_MODELO, ROTULO_SITUACAO, dataCurta, fmtBRL, rotuloNumero, type SituacaoOrcamento } from "@/lib/orcamentos/modelo";
+import { ROTULO_MODELO, ROTULO_SITUACAO, dataCurta, ehMensal, fmtBRL, rotuloNumero, type SituacaoOrcamento } from "@/lib/orcamentos/modelo";
 import { cn } from "@/lib/utils";
 
 
@@ -110,7 +110,7 @@ function Lista() {
                   {o.criado_por ? ` · ${o.criado_por}` : ""}
                 </span>
               </Link>
-              <span className="text-sm font-semibold tabular-nums text-gray-900">{fmtBRL(o.total)}{o.modelo === "essencial" ? <span className="text-xs font-normal text-gray-500">/mês</span> : null}</span>
+              <span className="text-sm font-semibold tabular-nums text-gray-900">{o.modelo === "exames" ? <span className="text-xs font-normal text-gray-500">Tabela de valores</span> : <>{fmtBRL(o.total)}{ehMensal(o.modelo) ? <span className="text-xs font-normal text-gray-500">/mês</span> : null}</>}</span>
               <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium ring-1", COR_SITUACAO[o.situacao])}>{ROTULO_SITUACAO[o.situacao]}</span>
               <a href={`/api/pdf/orcamento/${encodeURIComponent(o.id_orcamento)}`} target="_blank" rel="noreferrer" aria-label={`PDF do orçamento ${rotuloNumero(o)}`}
                 className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"><FileDown className="size-4" /></a>
