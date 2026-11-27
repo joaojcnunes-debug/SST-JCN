@@ -7,3 +7,8 @@ export const COR_SITUACAO: Record<SituacaoOrcamento, string> = {
   aprovado: "bg-emerald-50 text-emerald-800 ring-emerald-200",
   recusado: "bg-red-50 text-red-700 ring-red-200",
 };
+
+/** 0.3.340: campo e rótulo dos formulários do orçamento (editor e seções dos modelos). */
+export const inp =
+  "w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20 disabled:bg-gray-50 disabled:text-gray-600";
+export const rot = "block text-xs font-semibold text-gray-600";

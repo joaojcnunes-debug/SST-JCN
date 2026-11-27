@@ -3,6 +3,8 @@
 // Comercial › Orçamentos (0.3.339, banco v375): criar e editar um orçamento — cliente (da empresa ou digitado), marca,
 // modelo, itens (do catálogo ou das oportunidades da empresa) e o Plano Essencial com as regras das bases de
 // conhecimento. Rascunho grava e gera o PDF; enviado/decidido fica só leitura (alterar = versão nova).
+// Fase 2 (0.3.340, banco v376): grupo de empresas, valor por vida, inclusão do Designado CIPA e tabela de exames
+// (documento próprio ou anexo dos outros modelos) — as seções estão em SecoesFase2.tsx.
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -23,7 +25,14 @@ import {
   ROTULO_MODELO,
   SERVICOS_ESSENCIAL,
   TITULO_CIPA,
+  aceitaAnexoExames,
+  cipaVazia,
+  ehMensal,
   essencialVazio,
+  examesVazios,
+  grupoVazio,
+  usaServicosEssencial,
+  vidaVazia,
   fmtBRL,
   modeloSugerido,
   novoIdItem,
@@ -41,9 +50,9 @@ import {
 } from "@/lib/orcamentos/modelo";
 import { hojeSP } from "@/lib/inspecoes/prioridade";
 import { cn, formatCNPJ } from "@/lib/utils";
+import { inp, rot } from "./estilos";
+import { CipaEditor, GrupoEditor, TabelaExamesEditor, VidaEditor } from "./SecoesFase2";
 
-const inp = "w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20 disabled:bg-gray-50 disabled:text-gray-600";
-const rot = "block text-xs font-semibold text-gray-600";
 
 export default function OrcamentoEditor({ existente, empresaInicial }: { existente?: Orcamento | null; empresaInicial?: string | null }) {
   const router = useRouter();
@@ -65,6 +74,11 @@ export default function OrcamentoEditor({ existente, empresaInicial }: { existen
   const [itens, setItens] = useState<ItemOrcamento[]>(existente?.dados.itens ?? []);
   const [pagamento, setPagamento] = useState<string>(existente?.dados.pagamento ?? "");
   const [observacoes, setObservacoes] = useState(existente?.dados.observacoes ?? "");
+  const [grupo, setGrupo] = useState(existente?.dados.grupo ?? grupoVazio());
+  const [vida, setVida] = useState(existente?.dados.vida ?? vidaVazia());
+  const [cipa, setCipa] = useState(existente?.dados.cipa ?? cipaVazia());
+  const [tabelaExames, setTabelaExames] = useState(existente?.dados.tabelaExames ?? examesVazios());
+  const [anexarExames, setAnexarExames] = useState(!!existente?.dados.anexarExames);
 
   // As oportunidades a vender da empresa (o que o Comercial já indicou).
   const oportunidades = useMemo<OportunidadeSugestao[]>(() => {
@@ -107,14 +121,22 @@ export default function OrcamentoEditor({ existente, empresaInicial }: { existen
 
   const trocarModelo = (m: ModeloOrcamento) => {
     setModelo(m);
-    if (m !== "essencial" && !pagamento.trim()) setPagamento(PAGAMENTO_PADRAO[m]);
+    if ((m === "treinamentos" || m === "avulso") && !pagamento.trim()) setPagamento(PAGAMENTO_PADRAO[m]);
   };
 
+  // Grava só o que o modelo usa (os outros campos ficam na tela, se voltar ao modelo anterior antes de salvar).
+  const comItens = modelo === "treinamentos" || modelo === "avulso";
+  const comExames = modelo === "exames" || (aceitaAnexoExames(modelo) && anexarExames);
   const dados: DadosOrcamento = {
     data,
-    funcionarios,
+    funcionarios: modelo === "grupo" ? null : funcionarios,
     observacoes,
-    ...(modelo === "essencial" ? { essencial } : { itens, pagamento }),
+    ...(usaServicosEssencial(modelo) ? { essencial } : {}),
+    ...(modelo === "grupo" ? { grupo } : {}),
+    ...(modelo === "vida" ? { vida } : {}),
+    ...(modelo === "cipa" ? { cipa } : {}),
+    ...(comItens ? { itens, pagamento } : {}),
+    ...(comExames ? { tabelaExames, anexarExames: modelo !== "exames" } : {}),
   };
   const faltam = pendencias(modelo, cliente, dados);
   const total = totalOrcamento(modelo, dados);
@@ -151,10 +173,14 @@ export default function OrcamentoEditor({ existente, empresaInicial }: { existen
 
       {/* Cliente e marca */}
       <section className="grid gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm md:grid-cols-2 xl:grid-cols-4">
-        <div className="md:col-span-2">
-          <span className={rot}>Empresa do sistema (opcional)</span>
-          <EmpresaSelect value={idEmpresa} onChange={escolherEmpresa} allowAll disabled={somenteLeitura} className="mt-1" placeholder="Escolha para preencher os dados…" />
-        </div>
+        {modelo !== "grupo" ? (
+          <div className="md:col-span-2">
+            <span className={rot}>Empresa do sistema (opcional)</span>
+            <EmpresaSelect value={idEmpresa} onChange={escolherEmpresa} allowAll disabled={somenteLeitura} className="mt-1" placeholder="Escolha para preencher os dados…" />
+          </div>
+        ) : (
+          <p className="self-end text-xs text-gray-500 md:col-span-2">No grupo, as empresas (com CNPJ e funcionários) entram na tabela abaixo; aqui vai o nome do grupo.</p>
+        )}
         <label className="block">
           <span className={rot}>Marca do PDF</span>
           <select value={marca} disabled={somenteLeitura} onChange={(e) => { const m = e.target.value as MarcaOrcamento; if (cidade === MARCAS[marca].cidadePadrao) setCidade(MARCAS[m].cidadePadrao); setMarca(m); }} className={cn(inp, "mt-1")}>
@@ -168,17 +194,21 @@ export default function OrcamentoEditor({ existente, empresaInicial }: { existen
           </select>
         </label>
         <label className="block md:col-span-2">
-          <span className={rot}>Cliente (razão social)</span>
-          <input value={cliente} disabled={somenteLeitura} onChange={(e) => setCliente(e.target.value)} className={cn(inp, "mt-1")} />
+          <span className={rot}>{modelo === "grupo" ? "Nome do grupo" : "Cliente (razão social)"}</span>
+          <input value={cliente} disabled={somenteLeitura} onChange={(e) => setCliente(e.target.value)} placeholder={modelo === "grupo" ? "Ex.: Grupo Exemplo" : undefined} className={cn(inp, "mt-1")} />
         </label>
-        <label className="block">
-          <span className={rot}>CNPJ</span>
-          <input value={cnpj} disabled={somenteLeitura} onChange={(e) => setCnpj(e.target.value)} placeholder="Sem CNPJ: deixe em branco" className={cn(inp, "mt-1")} />
-        </label>
-        <label className="block">
-          <span className={rot}>Funcionários (informativo)</span>
-          <input type="number" min={0} value={funcionarios ?? ""} disabled={somenteLeitura} onChange={(e) => setFuncionarios(e.target.value ? Number(e.target.value) : null)} className={cn(inp, "mt-1")} />
-        </label>
+        {modelo !== "grupo" && (
+          <>
+            <label className="block">
+              <span className={rot}>CNPJ</span>
+              <input value={cnpj} disabled={somenteLeitura} onChange={(e) => setCnpj(e.target.value)} placeholder="Sem CNPJ: deixe em branco" className={cn(inp, "mt-1")} />
+            </label>
+            <label className="block">
+              <span className={rot}>{modelo === "vida" ? "Funcionários (vidas, se não houver funções)" : "Funcionários (informativo)"}</span>
+              <input type="number" min={0} value={funcionarios ?? ""} disabled={somenteLeitura} onChange={(e) => setFuncionarios(e.target.value ? Number(e.target.value) : null)} className={cn(inp, "mt-1")} />
+            </label>
+          </>
+        )}
         <label className="block">
           <span className={rot}>Cidade da data</span>
           <input value={cidade} disabled={somenteLeitura} onChange={(e) => setCidade(e.target.value)} className={cn(inp, "mt-1")} />
@@ -189,9 +219,20 @@ export default function OrcamentoEditor({ existente, empresaInicial }: { existen
         </label>
       </section>
 
-      {modelo === "essencial" ? (
-        <PlanoEssencial e={essencial} onMudar={setEssencial} somenteLeitura={somenteLeitura} />
-      ) : (
+      {modelo === "grupo" && (
+        <GrupoEditor g={grupo} onMudar={setGrupo} somenteLeitura={somenteLeitura} onNomeGrupo={(n) => { if (!cliente.trim()) setCliente(n); }} />
+      )}
+      {modelo === "vida" && <VidaEditor v={vida} onMudar={setVida} funcionarios={funcionarios} somenteLeitura={somenteLeitura} />}
+      {modelo === "cipa" && <CipaEditor c={cipa} onMudar={setCipa} somenteLeitura={somenteLeitura} />}
+      {modelo === "exames" && (
+        <section className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-900">Tabela de exames · documento próprio (sem assinaturas)</h2>
+          <TabelaExamesEditor t={tabelaExames} onMudar={setTabelaExames} catalogo={catalogo} somenteLeitura={somenteLeitura} comPlano />
+        </section>
+      )}
+      {usaServicosEssencial(modelo) ? (
+        <PlanoEssencial e={essencial} onMudar={setEssencial} somenteLeitura={somenteLeitura} soServicos={modelo !== "essencial"} />
+      ) : !comItens ? null : (
         <section className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-gray-900">{modelo === "treinamentos" ? "Treinamentos (valor por participante)" : "Itens"}</h2>
@@ -267,6 +308,16 @@ export default function OrcamentoEditor({ existente, empresaInicial }: { existen
         </section>
       )}
 
+      {aceitaAnexoExames(modelo) && (
+        <section className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+            <input type="checkbox" checked={anexarExames} disabled={somenteLeitura} onChange={(e) => setAnexarExames(e.target.checked)} />
+            Anexar a tabela de exames complementares (valores unitários, faturados à parte)
+          </label>
+          {anexarExames && <TabelaExamesEditor t={tabelaExames} onMudar={setTabelaExames} catalogo={catalogo} somenteLeitura={somenteLeitura} comPlano={false} />}
+        </section>
+      )}
+
       <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <label className="block">
           <span className={rot}>Observações (saem no fim do documento)</span>
@@ -277,8 +328,14 @@ export default function OrcamentoEditor({ existente, empresaInicial }: { existen
       {/* Rodapé fixo: total, pendências e ações */}
       <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center gap-3 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
         <div className="text-sm">
-          <span className="text-gray-500">{modelo === "essencial" ? "Valor mensal" : "Total"}:</span>{" "}
-          <strong className="tabular-nums text-gray-900">{fmtBRL(total)}</strong>
+          {modelo === "exames" ? (
+            <span className="text-gray-500">{tabelaExames.exames.length} exame(s) · {tabelaExames.setores.length} setor(es)</span>
+          ) : (
+            <>
+              <span className="text-gray-500">{modelo === "cipa" ? "Nova mensalidade" : ehMensal(modelo) ? "Valor mensal" : "Total"}:</span>{" "}
+              <strong className="tabular-nums text-gray-900">{fmtBRL(total)}</strong>
+            </>
+          )}
         </div>
         {faltam.length > 0 && !somenteLeitura && (
           <span className="inline-flex items-center gap-1 text-xs text-amber-700"><AlertTriangle className="size-3.5" />{faltam.join(" ")}</span>
@@ -309,11 +366,22 @@ export default function OrcamentoEditor({ existente, empresaInicial }: { existen
   );
 }
 
-function PlanoEssencial({ e, onMudar, somenteLeitura }: { e: DadosEssencial; onMudar: (e: DadosEssencial) => void; somenteLeitura: boolean }) {
+function PlanoEssencial({ e, onMudar, somenteLeitura, soServicos }: { e: DadosEssencial; onMudar: (e: DadosEssencial) => void; somenteLeitura: boolean; soServicos: boolean }) {
   const m = (c: Partial<DadosEssencial>) => onMudar({ ...e, ...c });
+  const cipa = (
+    <label className="block">
+      <span className={rot}>Designado CIPA</span>
+      <select value={e.cipa} disabled={somenteLeitura} onChange={(x) => m({ cipa: x.target.value as OpcaoCipa })} className={cn(inp, "mt-1")}>
+        <option value="quando">Quando aplicável</option>
+        <option value="incluido">Incluído no plano</option>
+        <option value="sem">Sem CIPA (não mencionar)</option>
+      </select>
+    </label>
+  );
   return (
     <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <h2 className="text-sm font-semibold text-gray-900">Plano Essencial · contrato mensal</h2>
+      <h2 className="text-sm font-semibold text-gray-900">{soServicos ? "Serviços do Plano Essencial" : "Plano Essencial · contrato mensal"}</h2>
+      {soServicos ? <div className="w-64">{cipa}</div> : (
       <div className="grid gap-3 md:grid-cols-4">
         <label className="block">
           <span className={rot}>Valor mensal (R$)</span>
@@ -327,15 +395,9 @@ function PlanoEssencial({ e, onMudar, somenteLeitura }: { e: DadosEssencial; onM
           <span className={rot}>Por colaborador excedente (R$)</span>
           <input type="number" min={0} step="0.01" value={e.valorExcedente} disabled={somenteLeitura || !e.limiteFuncionarios} onChange={(x) => m({ valorExcedente: Number(x.target.value) })} className={cn(inp, "mt-1")} />
         </label>
-        <label className="block">
-          <span className={rot}>Designado CIPA</span>
-          <select value={e.cipa} disabled={somenteLeitura} onChange={(x) => m({ cipa: x.target.value as OpcaoCipa })} className={cn(inp, "mt-1")}>
-            <option value="quando">Quando aplicável</option>
-            <option value="incluido">Incluído no plano</option>
-            <option value="sem">Sem CIPA (não mencionar)</option>
-          </select>
-        </label>
+        {cipa}
       </div>
+      )}
       <div>
         <p className={cn(rot, "mb-1.5")}>Serviços inclusos (desmarque o que não entra)</p>
         <div className="grid gap-1 sm:grid-cols-2 xl:grid-cols-4">
@@ -371,7 +433,7 @@ function PlanoEssencial({ e, onMudar, somenteLeitura }: { e: DadosEssencial; onM
         )}
       </div>
       <p className="text-xs text-gray-500">
-        A página de investimento traz as 3 exclusões padrão (exames complementares, avaliações ambientais — exceto ruído e calor — e intervenções psicossociais) e, com limite, a cláusula do excedente.
+        A página de investimento traz as 3 exclusões padrão (exames complementares, avaliações ambientais — exceto ruído e calor — e intervenções psicossociais){soServicos ? "." : " e, com limite, a cláusula do excedente."}
       </p>
     </section>
   );
