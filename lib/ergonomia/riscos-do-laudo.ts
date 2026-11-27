@@ -211,3 +211,75 @@ export function previaDoLaudo(
   const foraDoLaudo = riscosInspecao.filter((r) => r.origem_chave?.startsWith(prefixo) && !noLaudo.has(r.origem_chave));
   return { itens, foraDoLaudo };
 }
+
+// ── 0.3.331 (pedido do João, 27/11/2026): o setor do laudo casado automaticamente ─────────────────────────────────────
+
+/** Semelhança de 0 a 1 entre dois nomes de setor (sem acento e sem caixa): 1 = igual; um contido no outro vale 0.9. */
+export function semelhancaSetor(a: string, b: string): number {
+  const x = chaveSetor(a), y = chaveSetor(b);
+  if (!x || !y) return 0;
+  if (x === y) return 1;
+  if (x.length >= 3 && y.length >= 3 && (x.includes(y) || y.includes(x))) return 0.9;
+  // distância de edição (Levenshtein) normalizada
+  const m = x.length, n = y.length;
+  let ant = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const atual = [i];
+    for (let j = 1; j <= n; j++) atual[j] = Math.min(ant[j] + 1, atual[j - 1] + 1, ant[j - 1] + (x[i - 1] === y[j - 1] ? 0 : 1));
+    ant = atual;
+  }
+  return 1 - ant[n] / Math.max(m, n);
+}
+
+/** Para onde vai um setor do laudo: um setor que a inspeção já tem, ou criar um novo com este nome. */
+export type DestinoSetor = { tipo: "existente"; idSetor: string } | { tipo: "criar"; nome: string; descricao: string | null };
+
+export interface CasamentoSetor {
+  /** Nome do setor como está no laudo. */
+  setorLaudo: string;
+  /** Quantos riscos do laudo são deste setor. */
+  riscos: number;
+  /** "igual": mesmo nome na inspeção; "parecido": nome parecido (conferir); "novo": a inspeção não tem. */
+  como: "igual" | "parecido" | "novo";
+  /** O destino sugerido. */
+  sugestao: DestinoSetor;
+  /** A empresa já tem um setor com este nome em outra inspeção (o pré-cadastro). */
+  doCadastro: { nome: string; descricao: string } | null;
+}
+
+/**
+ * Casa cada setor do laudo com os setores da inspeção: nome igual (sem acento e sem caixa) vai direto; nome parecido
+ * (semelhança ≥ 0,8) vem sugerido para conferir; sem nenhum, a sugestão é criar o setor com o nome do laudo — com a
+ * descrição do pré-cadastro da empresa (setor de mesmo nome em outra inspeção), se houver.
+ */
+export function casarSetoresDoLaudo(
+  itens: readonly Pick<ItemDoLaudo, "setorLaudo">[],
+  setoresInspecao: readonly SetorDaInspecao[],
+  cadastroEmpresa: readonly { nome: string; descricao: string }[],
+): CasamentoSetor[] {
+  const contagem = new Map<string, { nome: string; n: number }>();
+  for (const i of itens) {
+    const k = chaveSetor(i.setorLaudo);
+    const c = contagem.get(k) ?? { nome: i.setorLaudo.trim(), n: 0 };
+    c.n++;
+    contagem.set(k, c);
+  }
+  return [...contagem.values()].map(({ nome, n }): CasamentoSetor => {
+    const doCadastro = cadastroEmpresa.find((c) => chaveSetor(c.nome) === chaveSetor(nome)) ?? null;
+    const igual = setoresInspecao.find((s) => chaveSetor(s.setor_ghe) === chaveSetor(nome));
+    if (igual) return { setorLaudo: nome, riscos: n, como: "igual", sugestao: { tipo: "existente", idSetor: igual.id_setor }, doCadastro };
+    let melhor: { s: SetorDaInspecao; nota: number } | null = null;
+    for (const s of setoresInspecao) {
+      const nota = semelhancaSetor(nome, s.setor_ghe);
+      if (nota >= 0.8 && (!melhor || nota > melhor.nota)) melhor = { s, nota };
+    }
+    if (melhor) return { setorLaudo: nome, riscos: n, como: "parecido", sugestao: { tipo: "existente", idSetor: melhor.s.id_setor }, doCadastro };
+    return {
+      setorLaudo: nome,
+      riscos: n,
+      como: "novo",
+      sugestao: { tipo: "criar", nome: doCadastro?.nome ?? nome, descricao: doCadastro?.descricao || null },
+      doCadastro,
+    };
+  }).sort((a, b) => a.setorLaudo.localeCompare(b.setorLaudo, "pt-BR"));
+}

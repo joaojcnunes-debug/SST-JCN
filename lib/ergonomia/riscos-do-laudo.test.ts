@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chaveSetor, previaDoLaudo, riscosDoLaudo, tipoDaInspecao, type RiscoGravado, type SetorDoLaudo } from "./riscos-do-laudo";
+import { casarSetoresDoLaudo, semelhancaSetor, chaveSetor, previaDoLaudo, riscosDoLaudo, tipoDaInspecao, type RiscoGravado, type SetorDoLaudo } from "./riscos-do-laudo";
 
 const setorAep: SetorDoLaudo = {
   id: "s1",
@@ -68,4 +68,21 @@ test("previaDoLaudo: setor sem par fica para escolher", () => {
   assert.equal(p.itens[0].idSetor, null);
   assert.equal(p.itens[0].dados.nivel_risco, "Muito Alto");
   assert.equal(p.itens[0].chave, "aet:x:a");
+});
+
+test("setor do laudo: igual vai direto, parecido vem para conferir, sem nenhum sugere criar (com o pré-cadastro)", () => {
+  const insp = [{ id_setor: "S1", setor_ghe: "Administrativo" }, { id_setor: "S2", setor_ghe: "Produção" }] as never;
+  const cad = [{ nome: "Expedição", descricao: "Carga e descarga" }];
+  const itens = [{ setorLaudo: "PRODUCAO" }, { setorLaudo: "producao" }, { setorLaudo: "Administrativ" }, { setorLaudo: "Expedicao" }, { setorLaudo: "teste" }];
+  const r = casarSetoresDoLaudo(itens, insp, cad);
+  const por = Object.fromEntries(r.map((c) => [c.setorLaudo, c]));
+  assert.equal(por["PRODUCAO"].como, "igual");
+  assert.equal(por["PRODUCAO"].riscos, 2);
+  assert.deepEqual(por["PRODUCAO"].sugestao, { tipo: "existente", idSetor: "S2" });
+  assert.equal(por["Administrativ"].como, "parecido");
+  assert.deepEqual(por["Administrativ"].sugestao, { tipo: "existente", idSetor: "S1" });
+  assert.deepEqual(por["Expedicao"].sugestao, { tipo: "criar", nome: "Expedição", descricao: "Carga e descarga" });
+  assert.deepEqual(por["teste"].sugestao, { tipo: "criar", nome: "teste", descricao: null });
+  assert.equal(semelhancaSetor("Adm", "Administrativo"), 0.9);
+  assert.ok(semelhancaSetor("Teste", "Loja") < 0.8);
 });

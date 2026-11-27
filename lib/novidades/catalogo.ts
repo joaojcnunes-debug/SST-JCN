@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "trazer-riscos-laudo-setor-automatico",
+    data: "2026-11-27",
+    tipo: "melhoria",
+    titulo: "Trazer riscos da AEP/AET: o setor já vem casado",
+    texto:
+      "Ao trazer os riscos da AEP/AET para a inspeção, um quadro no topo mostra cada setor do laudo e para onde ele vai: " +
+      "nome igual a um setor da inspeção vai direto, nome parecido vem sugerido para conferir e, quando a inspeção não tem " +
+      "o setor, a sugestão é criá-lo com o nome do laudo (com a descrição do cadastro da empresa, se ela já tem esse setor " +
+      "em outra inspeção). Escolhe-se uma vez por setor, não risco por risco.",
+    onde: "Inspeções › Riscos › Trazer riscos da AEP/AET",
+    versoes: ["0.3.331"],
+  },
+  {
     id: "catalogo-busca-metodo-por-intervencao",
     data: "2026-11-27",
     tipo: "melhoria",

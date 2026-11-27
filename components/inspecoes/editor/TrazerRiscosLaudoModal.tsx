@@ -3,12 +3,16 @@
 // "Trazer riscos da AEP/AET" (0.3.308, banco v363, 19/11/2026 — pedido do João). Prévia por setor do que o laudo tem:
 // novo, mudou no laudo (atualiza) ou já igual. O técnico desmarca o que não quer e escolhe o setor quando o nome do
 // setor do laudo não bate com nenhum setor da inspeção. Grava riscos comuns, com o selo AEP/AET.
+// 0.3.331 (pedido do João, 27/11/2026): o setor se resolve por SETOR DO LAUDO, num quadro no topo, e já vem casado — nome
+// igual vai direto, nome parecido vem para conferir e, sem nenhum, a sugestão é criar o setor com o nome do laudo (com a
+// descrição do pré-cadastro da empresa, se ela já tem esse setor em outra inspeção).
 
 import { useEffect, useMemo, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import NivelBadge from "@/components/riscos/NivelBadge";
 import { useAplicarRiscosDoLaudo, useLaudosComSetores } from "@/lib/hooks/useRiscosDoLaudo";
-import { previaDoLaudo, type ItemDoLaudo, type RiscoGravado } from "@/lib/ergonomia/riscos-do-laudo";
+import { casarSetoresDoLaudo, chaveSetor, previaDoLaudo, type DestinoSetor, type ItemDoLaudo, type RiscoGravado } from "@/lib/ergonomia/riscos-do-laudo";
+import { useCatalogoSetoresEmpresa } from "@/lib/hooks/useAep";
 import { cn } from "@/lib/utils";
 import type { NivelRisco, Risco, Setor } from "@/lib/supabase/types";
 
@@ -48,19 +52,35 @@ export default function TrazerRiscosLaudoModal({
   const todos = useMemo(() => previas.flatMap((p) => p.itens), [previas]);
 
   const [marcados, setMarcados] = useState<Record<string, boolean>>({});
-  const [setorEscolhido, setSetorEscolhido] = useState<Record<string, string>>({});
+  // A escolha do destino por setor do laudo (a chave do nome): "criar" ou o id de um setor da inspeção.
+  const [escolha, setEscolha] = useState<Record<string, string>>({});
+  const { data: cadastro = [] } = useCatalogoSetoresEmpresa(open ? idEmpresa : null);
+  // Só os itens que ainda não estão gravados escolhem setor (o já trazido fica onde está).
+  const casamentos = useMemo(
+    () => casarSetoresDoLaudo(todos.filter((i) => !i.idRisco), setores, cadastro),
+    [todos, setores, cadastro],
+  );
   // Ao abrir (ou quando o que o laudo tem muda de fato), marca o que é novo ou mudou. A assinatura evita refazer a
   // marcação a cada desenho (lista nova com o mesmo conteúdo).
   const assinatura = todos.map((i) => `${i.chave}=${i.situacao}`).join("|");
   useEffect(() => {
     if (!open) return;
     setMarcados(Object.fromEntries(assinatura ? assinatura.split("|").map((x) => { const [k, sit] = x.split("="); return [k, sit !== "igual"]; }) : []));
-    setSetorEscolhido({});
+    setEscolha({});
   }, [open, assinatura]);
 
-  const setorDe = (i: ItemDoLaudo) => i.idSetor ?? setorEscolhido[i.chave] ?? "";
+  const destinoDoSetor = (setorLaudo: string): DestinoSetor | null => {
+    const c = casamentos.find((x) => chaveSetor(x.setorLaudo) === chaveSetor(setorLaudo));
+    if (!c) return null;
+    const e = escolha[chaveSetor(setorLaudo)];
+    if (!e) return c.sugestao;
+    if (e === "criar") return { tipo: "criar", nome: c.doCadastro?.nome ?? c.setorLaudo, descricao: c.doCadastro?.descricao || null };
+    return { tipo: "existente", idSetor: e };
+  };
+  const destinoDe = (i: ItemDoLaudo): DestinoSetor | null =>
+    i.idRisco && i.idSetor ? { tipo: "existente", idSetor: i.idSetor } : destinoDoSetor(i.setorLaudo);
   const escolhidos = todos.filter((i) => marcados[i.chave] && i.situacao !== "igual");
-  const semSetor = escolhidos.filter((i) => !setorDe(i));
+  const semSetor = escolhidos.filter((i) => !destinoDe(i));
   const nNovos = escolhidos.filter((i) => i.situacao === "novo").length;
   const nAtualizar = escolhidos.length - nNovos;
 
@@ -70,7 +90,7 @@ export default function TrazerRiscosLaudoModal({
     await aplicar.mutateAsync({
       idInspecao,
       idEmpresa,
-      itens: escolhidos.map((i) => ({ ...i, idSetor: setorDe(i) })),
+      itens: escolhidos.map((i) => ({ ...i, destino: destinoDe(i)! })),
     });
     onClose();
   }
@@ -113,8 +133,50 @@ export default function TrazerRiscosLaudoModal({
         <div className="space-y-5">
           <p className="text-xs text-gray-500">
             Os riscos entram como os demais riscos da inspeção, com o selo AEP ou AET. Trazer de novo depois não duplica:
-            atualiza o que mudou no laudo. O setor é o de mesmo nome na inspeção; quando não há, escolha abaixo.
+            atualiza o que mudou no laudo.
           </p>
+          {casamentos.length > 0 && (
+            // 0.3.331: para onde vai cada setor do laudo — já casado; mude se precisar.
+            <section className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-3">
+              <h3 className="text-sm font-semibold text-gray-900">Setores do laudo</h3>
+              <p className="mb-2 text-xs text-gray-500">
+                Nome igual a um setor da inspeção vai direto; nome parecido vem para conferir; sem nenhum, o setor é criado nesta
+                inspeção com o nome do laudo. Mude se precisar.
+              </p>
+              <ul className="space-y-1.5">
+                {casamentos.map((c) => {
+                  const k = chaveSetor(c.setorLaudo);
+                  const valor = escolha[k] ?? (c.sugestao.tipo === "criar" ? "criar" : c.sugestao.idSetor);
+                  return (
+                    <li key={k} className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm">
+                      <span className="min-w-[10rem] font-medium text-gray-900">{c.setorLaudo}</span>
+                      <span className="text-xs text-gray-500">{c.riscos} risco{c.riscos === 1 ? "" : "s"}</span>
+                      {c.como === "igual" && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200">mesmo nome na inspeção</span>}
+                      {c.como === "parecido" && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800 ring-1 ring-amber-200">nome parecido — confira</span>}
+                      {c.como === "novo" && <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-800 ring-1 ring-sky-200">não existe na inspeção</span>}
+                      {c.doCadastro && c.como !== "igual" && (
+                        <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-800 ring-1 ring-violet-200" title={c.doCadastro.descricao || undefined}>
+                          já cadastrado na empresa
+                        </span>
+                      )}
+                      <span className="ml-auto text-xs text-gray-400">→</span>
+                      <select
+                        aria-label={`Setor da inspeção para ${c.setorLaudo}`}
+                        value={valor}
+                        onChange={(e) => setEscolha((x) => ({ ...x, [k]: e.target.value }))}
+                        className={cn("rounded-md border px-2 py-1 text-xs", valor === "criar" ? "border-sky-300 bg-sky-50" : "border-gray-300 bg-white")}
+                      >
+                        <option value="criar">+ Criar o setor “{c.doCadastro?.nome ?? c.setorLaudo}” nesta inspeção</option>
+                        {setores.map((s) => (
+                          <option key={s.id_setor} value={s.id_setor}>{s.setor_ghe}</option>
+                        ))}
+                      </select>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
           {previas.map((p) => (
             <section key={p.origem}>
               <h3 className="mb-2 text-sm font-semibold text-gray-900">
@@ -147,21 +209,15 @@ export default function TrazerRiscosLaudoModal({
                           {i.dados.severidade && ` · ${i.dados.severidade}`}
                         </div>
                       </div>
-                      {i.idSetor ? (
-                        <span className="text-xs text-gray-600">→ {nomeSetor.get(i.idSetor) ?? "setor"}</span>
-                      ) : (
-                        <select
-                          aria-label={`Setor de ${i.dados.agente}`}
-                          value={setorEscolhido[i.chave] ?? ""}
-                          onChange={(e) => setSetorEscolhido((s) => ({ ...s, [i.chave]: e.target.value }))}
-                          className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs"
-                        >
-                          <option value="">Escolha o setor…</option>
-                          {setores.map((s) => (
-                            <option key={s.id_setor} value={s.id_setor}>{s.setor_ghe}</option>
-                          ))}
-                        </select>
-                      )}
+                      {(() => {
+                        // 0.3.331: o destino vem do quadro "Setores do laudo" (o risco já trazido fica onde está).
+                        const d = destinoDe(i);
+                        return (
+                          <span className={cn("text-xs", d?.tipo === "criar" ? "text-sky-700" : "text-gray-600")}>
+                            → {!d ? "—" : d.tipo === "criar" ? `${d.nome} (novo)` : nomeSetor.get(d.idSetor) ?? "setor"}
+                          </span>
+                        );
+                      })()}
                     </li>
                   ))}
                 </ul>
