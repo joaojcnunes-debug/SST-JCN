@@ -106,7 +106,7 @@ export default function TrazerRiscosLaudoModal({
           <p className="text-xs text-gray-500">
             {escolhidos.length === 0
               ? "Nada marcado."
-              : `${nNovos} novo${nNovos === 1 ? "" : "s"} · ${nAtualizar} atualização${nAtualizar === 1 ? "" : "ões"}`}
+              : `${nNovos} novo${nNovos === 1 ? "" : "s"} · ${nAtualizar} ${nAtualizar === 1 ? "atualização" : "atualizações"}`}
             {semSetor.length > 0 && <span className="ml-2 font-medium text-amber-700">Escolha o setor de {semSetor.length} risco{semSetor.length === 1 ? "" : "s"}.</span>}
           </p>
           <div className="flex gap-2">
