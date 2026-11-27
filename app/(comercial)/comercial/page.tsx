@@ -723,8 +723,12 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
               </tr>
               {g.linhas.map((l, n) => {
                 const novoOutro = n === 0 || g.outro(g.linhas[n - 1]) !== g.outro(l);
-                // A intervenção com método ocupa 2 linhas (a dela e a faixa do método embaixo).
-                const altura = novoOutro ? somarAltura(g.linhas, n, (x) => g.outro(x) === g.outro(l)) : 0;
+                const mesmo = (x: LinhaIntervencaoOferta) => g.outro(x) === g.outro(l);
+                // A intervenção com método ocupa 2 linhas (a dela e a faixa do método embaixo), e entre duas intervenções do
+                // mesmo risco/setor há a linha do espaço — todas contam na célula mesclada da 1ª coluna.
+                const seguidas = novoOutro ? contarIguais(g.linhas, n, mesmo) : 0;
+                const altura = novoOutro ? somarAltura(g.linhas, n, mesmo) + seguidas - 1 : 0;
+                const proxima = g.linhas[n + 1];
                 const st = SITUACAO[l.venda || o.venda ? "vendida" : "aberta"];
                 return (
                   <Fragment key={l.idItem}>
@@ -759,6 +763,13 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
                         </td>
                       </tr>
                     )}
+                    {proxima && (
+                      // 0.3.329 (pedido do João): um espaço entre os quadros de intervenção. Dentro do mesmo risco/setor ele fica ao
+                      // lado da célula mesclada; quando o risco/setor muda, ocupa a largura toda.
+                      <tr aria-hidden="true">
+                        <td colSpan={mesmo(proxima) ? 5 : 6} className="h-3 !border-x-0 bg-white p-0" />
+                      </tr>
+                    )}
                   </Fragment>
                 );
               })}
@@ -779,6 +790,13 @@ const LINHAS_METODO: { campo: keyof MetodoTexto; rotulo: string }[] = [
 ];
 
 const temMetodo = (l: { metodo?: MetodoTexto | null }) => !!l.metodo && LINHAS_METODO.some((x) => l.metodo![x.campo]);
+
+/** Quantas intervenções seguidas, a partir de `inicio`, atendem `igual`. */
+function contarIguais<T>(linhas: readonly T[], inicio: number, igual: (x: T) => boolean): number {
+  let k = inicio;
+  while (k < linhas.length && igual(linhas[k])) k++;
+  return k - inicio;
+}
 
 /** Quantas linhas da tabela as intervenções seguidas do mesmo grupo ocupam (com método, 2 cada). */
 function somarAltura<T extends { metodo?: MetodoTexto | null }>(linhas: readonly T[], inicio: number, igual: (x: T) => boolean): number {
