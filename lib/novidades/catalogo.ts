@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "consolidacao-dashboard",
+    data: "2026-11-27",
+    tipo: "novidade",
+    titulo: "Dashboard da Consolidação",
+    texto:
+      "A Consolidação ganhou um Dashboard, que passa a ser a tela de entrada do módulo: a situação da consolidação das " +
+      "empresas e dos grupos (sem consolidação, pendente e concluída), o andamento até a venda, os riscos e as intervenções " +
+      "(fatores mais confirmados, intervenções e modalidades mais indicadas, riscos ainda sem intervenção), as vendas e o " +
+      "tempo da equipe. Clicar num número mostra a lista, com o link para abrir cada uma.",
+    onde: "Consolidação › Dashboard",
+    versoes: ["0.3.335"],
+  },
+  {
     id: "intervencoes-motivo-so-leitura",
     data: "2026-11-27",
     tipo: "melhoria",

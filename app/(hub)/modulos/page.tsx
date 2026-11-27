@@ -154,7 +154,8 @@ const CARDS: HubCardCfg[] = [
   },
   {
     modulo: "consolidacao_psicossocial",
-    href: "/consolidacao-grupo",
+    // 0.3.335: o módulo abre no Dashboard.
+    href: "/consolidacao-grupo/dashboard",
     title: "Consolidação Psicossocial de Grupo",
     description: "Junta AEP e DRPS/Questionário das empresas de um grupo e define os fatores de cada setor no PGR",
     icon: <Network className="size-12" />,
