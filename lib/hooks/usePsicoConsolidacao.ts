@@ -281,6 +281,28 @@ export function useSalvarPapelEconomico() {
 
 // ── Fase 7: registro da consolidação e validação do cliente (append-only) ─────
 
+/**
+ * 0.3.336: os registros e as validações de TODOS os grupos e consolidações (só id, grupo, data e empresa), para os cartões
+ * de Grupos de empresas e Por empresa.
+ */
+export function useResumoRegistrosConsolidacao() {
+  return useQuery({
+    queryKey: ["psico-registros", "resumo"],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const [execucoes, validacoes] = await Promise.all([
+        fetchAllRows<{ id_execucao: string; id_grupo: string; criado_em: string }>((de, ate) =>
+          sb().from("psico_consolidacao_execucoes" as never).select("id_execucao, id_grupo, criado_em").order("id_execucao").range(de, ate),
+        ),
+        fetchAllRows<{ id_execucao: string; id_empresa: string }>((de, ate) =>
+          sb().from("psico_consolidacao_validacoes" as never).select("id_validacao, id_execucao, id_empresa").order("id_validacao").range(de, ate),
+        ),
+      ]);
+      return { execucoes, validacoes };
+    },
+  });
+}
+
 /** Registros do grupo (sem o `resultado`, que é grande) e as validações deles. */
 export function useRegistrosDoGrupo(idGrupo: string | null) {
   return useQuery({
