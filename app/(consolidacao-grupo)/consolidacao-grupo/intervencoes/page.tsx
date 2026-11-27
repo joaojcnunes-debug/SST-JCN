@@ -10,8 +10,8 @@
 // 0.3.242 (banco v328): o título de cada coluna é uma lista com todos os tópicos dela, onde se insere
 // outro. Modalidade e responsável inseridos ali ficam guardados mesmo antes de entrar numa intervenção.
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ChevronDown, HeartHandshake, Loader2, Pencil, Plus, Star, Trash2, X } from "lucide-react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { BookOpenText, ChevronDown, FilterX, HeartHandshake, Loader2, Pencil, Plus, Search, Star, Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import Badge from "@/components/ui/Badge";
 import Dica from "@/components/ui/Dica";
@@ -37,12 +37,15 @@ import {
   useInserirTopico,
   useTopicosIntervencao,
   useExcluirIntervencao,
+  useMetodosModalidade,
   usePodeLiberarServicos,
   useSalvarIntervencao,
   type IntervencaoCatalogo,
 } from "@/lib/hooks/useComercial";
 import { cn } from "@/lib/utils";
 import MetodosModalidade from "@/components/psico-consolidacao/MetodosModalidade";
+import { CAMPOS_METODO, metodoDe, rotuloModalidade, type MetodoTexto } from "@/lib/comercial/plano";
+import { buscar } from "@/lib/busca/texto";
 import { TABELA_GRADE } from "@/components/ui/tabela-grade";
 
 const inputCls =
@@ -61,6 +64,30 @@ export default function IntervencoesPage() {
   const excluirTopico = useExcluirTopico();
   const [forma, setForma] = useState<Forma | null>(null);
   const opcoes = opcoesDoCatalogo(catalogo, topicos);
+  // 0.3.330 (pedido do João): busca e filtros, para o catálogo crescer sem se perder.
+  const [busca, setBusca] = useState("");
+  const [filtroModalidade, setFiltroModalidade] = useState("");
+  const [filtroResponsavel, setFiltroResponsavel] = useState("");
+  const [situacao, setSituacao] = useState<"todas" | "ativas" | "inativas">("todas");
+  // 0.3.330: as intervenções com o método aberto.
+  const [abertas, setAbertas] = useState<Set<string>>(new Set());
+  const { data: metodosModalidade = [] } = useMetodosModalidade();
+  const achadas = busca.trim() ? new Set(buscar(catalogo, busca, (i) => [i.nome, i.observacao]).itens.map((i) => i.id_intervencao)) : null;
+  const visiveis = catalogo.filter(
+    (i) =>
+      (!achadas || achadas.has(i.id_intervencao)) &&
+      (!filtroModalidade || acharNaLista(i.modalidades, filtroModalidade) !== undefined) &&
+      (!filtroResponsavel || acharNaLista(i.responsaveis, filtroResponsavel) !== undefined) &&
+      (situacao === "todas" || (situacao === "ativas" ? i.ativo : !i.ativo)),
+  );
+  const filtrando = !!(busca.trim() || filtroModalidade || filtroResponsavel || situacao !== "todas");
+  const alternar = (id: string) =>
+    setAbertas((a) => {
+      const n = new Set(a);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
 
   /** Os itens da lista do título: cada opção com o uso nas intervenções e o tópico guardado, se houver. */
   const itensDaColuna = (coluna: ColunaTopico, valores: string[], listas: string[][]): ItemColuna[] =>
@@ -119,6 +146,48 @@ export default function IntervencoesPage() {
         </button>
       </div>
 
+      {/* 0.3.330: busca e filtros. */}
+      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-white p-3">
+        <label className="min-w-[16rem] flex-1 text-xs font-semibold text-gray-600">
+          Buscar
+          <span className="relative mt-1 block">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+            <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Nome ou observação da intervenção…" className={cn(inputCls, "pl-8")} />
+          </span>
+        </label>
+        <label className="w-44 text-xs font-semibold text-gray-600">
+          Modalidade
+          <select value={filtroModalidade} onChange={(e) => setFiltroModalidade(e.target.value)} className={cn(inputCls, "mt-1")}>
+            <option value="">Todas</option>
+            {opcoes.modalidades.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </label>
+        <label className="w-56 text-xs font-semibold text-gray-600">
+          Responsável
+          <select value={filtroResponsavel} onChange={(e) => setFiltroResponsavel(e.target.value)} className={cn(inputCls, "mt-1")}>
+            <option value="">Todos</option>
+            {opcoes.responsaveis.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </label>
+        <label className="w-36 text-xs font-semibold text-gray-600">
+          Situação
+          <select value={situacao} onChange={(e) => setSituacao(e.target.value as typeof situacao)} className={cn(inputCls, "mt-1")}>
+            <option value="todas">Todas</option>
+            <option value="ativas">Ativas</option>
+            <option value="inativas">Inativas</option>
+          </select>
+        </label>
+        <div className="flex items-center gap-3 pb-1.5 text-xs text-gray-500">
+          <span>{visiveis.length} de {catalogo.length}</span>
+          {filtrando && (
+            <button type="button" onClick={() => { setBusca(""); setFiltroModalidade(""); setFiltroResponsavel(""); setSituacao("todas"); }}
+              className="inline-flex items-center gap-1 font-medium text-marca-primary hover:underline">
+              <FilterX className="size-3.5" /> Limpar
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
         <table className={cn(TABELA_GRADE, "w-full min-w-[760px] text-sm")}>
           <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-600">
@@ -153,8 +222,9 @@ export default function IntervencoesPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {catalogo.map((i) => (
-              <tr key={i.id_intervencao} className={cn("align-top", !i.ativo && "opacity-60")}>
+            {visiveis.map((i) => (
+              <Fragment key={i.id_intervencao}>
+              <tr className={cn("align-top", !i.ativo && "opacity-60")}>
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-2">
                     <TextoNaLinha
@@ -173,6 +243,13 @@ export default function IntervencoesPage() {
                     className="text-xs text-gray-500"
                     onGravar={(obs) => atualizar.mutate({ idIntervencao: i.id_intervencao, campos: { observacao: obs || null } })}
                   />
+                  {/* 0.3.330: o texto do método desta intervenção (por modalidade). */}
+                  <button type="button" onClick={() => alternar(i.id_intervencao)} aria-expanded={abertas.has(i.id_intervencao)}
+                    className="mt-1 inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-800 hover:bg-indigo-100">
+                    <BookOpenText className="size-3" /> Método
+                    <span className="text-indigo-600">· {resumoMetodo(i)}</span>
+                    <ChevronDown className={cn("size-3 transition", abertas.has(i.id_intervencao) && "rotate-180")} />
+                  </button>
                 </td>
                 <td className="px-3 py-2">
                   <ListaNaLinha
@@ -213,11 +290,20 @@ export default function IntervencoesPage() {
                   </div>
                 </td>
               </tr>
+              {abertas.has(i.id_intervencao) && (
+                <tr>
+                  <td colSpan={4} className="bg-indigo-50/30 px-3 py-3 !text-left">
+                    <MetodoNoCatalogo i={i} padroes={metodosModalidade}
+                      onGravar={(metodos) => atualizar.mutate({ idIntervencao: i.id_intervencao, campos: { metodos } })} />
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             ))}
-            {catalogo.length === 0 && (
+            {visiveis.length === 0 && (
               <tr>
                 <td colSpan={4} className="px-3 py-10 text-center text-sm text-gray-500">
-                  Nenhuma intervenção no catálogo.
+                  {catalogo.length === 0 ? "Nenhuma intervenção no catálogo." : "Nenhuma intervenção com esses filtros."}
                 </td>
               </tr>
             )}
@@ -665,6 +751,68 @@ function ListaAberta({
         <button type="button" onClick={inserir} disabled={!novo.trim()} className="shrink-0 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60">
           Inserir
         </button>
+      </div>
+    </div>
+  );
+}
+
+/** 0.3.330: quantos campos do método a intervenção tem de próprio (o resto vem da modalidade). */
+function resumoMetodo(i: IntervencaoCatalogo): string {
+  const n = Object.values(i.metodos ?? {}).reduce((t, m) => t + Object.values(m ?? {}).filter((v) => (v ?? "").trim()).length, 0);
+  return n === 0 ? "texto da modalidade" : `${n} ${n === 1 ? "campo próprio" : "campos próprios"}`;
+}
+
+/**
+ * 0.3.330 (pedido do João): o texto do método desta intervenção, por modalidade — forma de realização, duração, avaliação e
+ * certificado. Em branco vale o texto da modalidade (que aparece de sugestão no campo). É o que a Conciliação e o vendedor
+ * veem, e cada empresa ainda pode ajustar o seu na Conciliação. Grava ao sair do campo.
+ */
+function MetodoNoCatalogo({ i, padroes, onGravar }: {
+  i: IntervencaoCatalogo;
+  padroes: Parameters<typeof metodoDe>[1];
+  onGravar: (metodos: Record<string, Partial<MetodoTexto>>) => void;
+}) {
+  if (i.modalidades.length === 0) {
+    return <p className="text-xs text-amber-700">Marque ao menos uma modalidade para descrever o método desta intervenção.</p>;
+  }
+  const gravar = (modalidade: string, campo: keyof MetodoTexto, valor: string) => {
+    const atual = (i.metodos?.[modalidade]?.[campo] ?? "").trim();
+    const t = valor.trim();
+    if (t === atual) return;
+    const daMod = { ...(i.metodos?.[modalidade] ?? {}) };
+    if (t) daMod[campo] = t;
+    else delete daMod[campo];
+    const todos = { ...(i.metodos ?? {}) };
+    if (Object.keys(daMod).length) todos[modalidade] = daMod;
+    else delete todos[modalidade];
+    onGravar(todos);
+  };
+  return (
+    <div className="space-y-2 text-left [&_*]:!text-left">
+      <p className="text-xs text-gray-500">
+        O texto do método desta intervenção. Em branco vale o da modalidade (em cinza, de sugestão), que fica em Métodos por modalidade, no
+        fim da página.
+      </p>
+      <div className={cn("grid gap-3", i.modalidades.length > 1 && "xl:grid-cols-2")}>
+        {i.modalidades.map((m) => {
+          const padrao = metodoDe(m, padroes, null);
+          return (
+            <div key={m} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+              <p className="mb-2 text-xs font-bold uppercase tracking-wide text-indigo-700">{rotuloModalidade(m)}</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {CAMPOS_METODO.map(({ campo, rotulo }) => (
+                  <label key={campo} className="block text-xs font-medium text-gray-600">
+                    {rotulo}
+                    <textarea key={`${i.id_intervencao}:${m}:${campo}:${i.metodos?.[m]?.[campo] ?? ""}`} rows={2}
+                      defaultValue={i.metodos?.[m]?.[campo] ?? ""} placeholder={padrao[campo] ?? "Sem texto na modalidade"}
+                      onBlur={(e) => gravar(m, campo, e.target.value)}
+                      className={cn(inputCls, "mt-0.5 resize-y placeholder:text-gray-400")} />
+                  </label>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

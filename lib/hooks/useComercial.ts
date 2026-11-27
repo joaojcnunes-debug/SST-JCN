@@ -15,7 +15,7 @@ import { normalizarRelatorio } from "@/lib/hooks/useAep";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import { perfilEscreveNaRls } from "@/lib/acesso/linha-por-unidade";
 import { useUserStore } from "@/lib/store";
-import { anexarPlanos, type MetodoModalidade, type PlanoIntervencoes } from "@/lib/comercial/plano";
+import { anexarPlanos, type MetodoModalidade, type MetodoTexto, type PlanoIntervencoes } from "@/lib/comercial/plano";
 import {
   montarComercial,
   type CertificadoEmpresa,
@@ -53,6 +53,8 @@ interface DadosComercial {
   /** v372: o Plano de intervenções de cada empresa/grupo e o texto dos métodos, para o vendedor. */
   planos: PlanoIntervencoes[];
   metodos: MetodoModalidade[];
+  /** v373: o texto do método de cada intervenção do catálogo. */
+  metodosIntervencao: Record<string, Record<string, Partial<MetodoTexto>>>;
 }
 
 function useDadosComercial<T>(select: (d: DadosComercial) => T) {
@@ -73,6 +75,7 @@ function useDadosComercial<T>(select: (d: DadosComercial) => T) {
         grupos?: AtendimentoGrupo[];
         planos?: PlanoIntervencoes[];
         metodos?: MetodoModalidade[];
+        metodos_intervencao?: Record<string, Record<string, Partial<MetodoTexto>>>;
       };
       const aeps = (r.aeps ?? []).map((a) => {
         const x = a as { entregue_em?: string | null; enviado_por?: string | null };
@@ -88,6 +91,7 @@ function useDadosComercial<T>(select: (d: DadosComercial) => T) {
         grupos: r.grupos ?? [],
         planos: r.planos ?? [],
         metodos: r.metodos ?? [],
+        metodosIntervencao: r.metodos_intervencao ?? {},
       };
     },
     select,
@@ -104,7 +108,7 @@ export function useComercial() {
   return useDadosComercial<EmpresaComercial[]>((d) => {
     const e = efetivos(d);
     // 0.3.328: o método de cada intervenção e o Plano de intervenções vão junto para o vendedor.
-    return anexarPlanos(aplicarVendas(visaoDoVendedor(d.lista, e.atendimentos, e.indicadas, e.conciliacoes), d.vendas), e.indicadas, d.planos, d.metodos, d.grupos);
+    return anexarPlanos(aplicarVendas(visaoDoVendedor(d.lista, e.atendimentos, e.indicadas, e.conciliacoes), d.vendas), e.indicadas, d.planos, d.metodos, d.grupos, d.metodosIntervencao);
   });
 }
 
@@ -340,6 +344,8 @@ export interface IntervencaoCatalogo {
   responsaveis: string[];
   ativo: boolean;
   ordem: number;
+  /** 0.3.330 (v373): o texto do método da intervenção, por modalidade (só os campos próprios dela). */
+  metodos?: Record<string, Partial<MetodoTexto>>;
 }
 
 const CHAVE_CATALOGO = "comercial-intervencoes";
@@ -350,7 +356,7 @@ export function useCatalogoIntervencoes() {
     queryFn: async () => {
       const { data, error } = await sb()
         .from("comercial_intervencoes")
-        .select("id_intervencao, nome, modalidades, observacao, responsaveis, ativo, ordem")
+        .select("id_intervencao, nome, modalidades, observacao, responsaveis, ativo, ordem, metodos")
         .order("ordem")
         .order("nome");
       if (error) throw error;
@@ -484,7 +490,7 @@ export function useAtualizarIntervencaoNaLinha() {
       campos,
     }: {
       idIntervencao: string;
-      campos: Partial<Pick<IntervencaoCatalogo, "nome" | "observacao" | "modalidades" | "responsaveis">>;
+      campos: Partial<Pick<IntervencaoCatalogo, "nome" | "observacao" | "modalidades" | "responsaveis" | "metodos">>;
     }) => {
       const linha = campos.responsaveis ? camposCatalogo({ ...campos, responsaveis: campos.responsaveis }) : campos;
       const { error } = await sb().from("comercial_intervencoes").update(linha).eq("id_intervencao", idIntervencao);
