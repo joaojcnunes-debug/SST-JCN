@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "comercial-avisos-oportunidade",
+    data: "2026-11-27",
+    tipo: "novidade",
+    titulo: "Comercial: aviso por e-mail e no sino quando entra uma oportunidade",
+    texto:
+      "Quando uma empresa ou serviço entra nas Oportunidades do Comercial — inspeção ou AEP liberada, ou conciliação " +
+      "(da empresa ou do grupo) liberada com as intervenções psicossociais —, quem tem o módulo Comercial recebe um aviso " +
+      "no sino da foto e por e-mail, como nos quadros da Gestão. Clicar abre as Oportunidades. Quem liberou não recebe, e " +
+      "a preferência de avisos de cada pessoa (Meu espaço › Notificações) continua valendo.",
+    onde: "Comercial › Oportunidades",
+    versoes: ["0.3.338"],
+  },
+  {
     id: "plano-mes-por-risco",
     data: "2026-11-27",
     tipo: "correcao",

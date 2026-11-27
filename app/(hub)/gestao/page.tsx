@@ -973,7 +973,7 @@ export default function GestaoChabraPage() {
               tarefas={minhas}
               quadros={quadros}
               statusMap={statusGlobalMap}
-              onAbrirNotif={(n) => { if (!n.lida) marcarLida.mutate({ id: n.id }); if (n.id_quadro) setQuadroId(n.id_quadro); setInboxView(false); const t = n.id_tarefa ? minhasTodas.find((x) => x.id_tarefa === n.id_tarefa) : undefined; if (t) { setEditando(t); setModalOpen(true); } }}
+              onAbrirNotif={(n) => { if (!n.lida) marcarLida.mutate({ id: n.id }); if (n.tipo === "comercial") { router.push("/comercial"); return; } if (n.id_quadro) setQuadroId(n.id_quadro); setInboxView(false); const t = n.id_tarefa ? minhasTodas.find((x) => x.id_tarefa === n.id_tarefa) : undefined; if (t) { setEditando(t); setModalOpen(true); } }}
               onMarcarLida={(id) => marcarLida.mutate({ id })}
               onAbrirTarefa={(t) => { setQuadroId(t.id_quadro); setInboxView(false); setEditando(t); setModalOpen(true); }}
               onAbrirComentario={(c) => {

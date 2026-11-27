@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { escolherCanalEmail, linkTarefa, montarEmailAviso, type AvisoReservado } from "./avisos-email";
+import { escolherCanalEmail, linkDoAviso, linkTarefa, montarEmailAviso, type AvisoReservado } from "./avisos-email";
 
 describe("canal do e-mail dos avisos", () => {
   test("Gmail vence o Resend e a senha de app perde os espaços", () => {
@@ -50,4 +50,16 @@ describe("e-mail dos avisos da Gestão", () => {
     assert.match(html, /<h2[^>]*>Você foi atribuído/);
     assert.ok(!html.includes("Prazo"));
   });
+});
+
+test("0.3.338: o aviso do Comercial leva às Oportunidades, com o assunto e o rodapé do Comercial", () => {
+  const a = { id: "1", destinatario: "v@x.com", nome: "Vera Lima", tipo: "comercial", titulo: "Nova oportunidade no Comercial: Teste",
+    id_tarefa: null, id_quadro: null, tarefa_titulo: null, quadro_nome: null, prazo: null, mensagem: "A AEP de Teste foi liberada." } as AvisoReservado;
+  assert.equal(linkDoAviso("https://sst-jcn.vercel.app/", a), "https://sst-jcn.vercel.app/comercial");
+  const { assunto, html } = montarEmailAviso(a, "https://sst-jcn.vercel.app");
+  assert.equal(assunto, "[Comercial JCN Consultoria] Nova oportunidade no Comercial: Teste");
+  assert.ok(html.includes('href="https://sst-jcn.vercel.app/comercial"'));
+  assert.ok(html.includes("Abrir as Oportunidades"));
+  assert.ok(html.includes("tem acesso ao módulo Comercial"));
+  assert.ok(html.includes("A AEP de Teste foi liberada."));
 });
