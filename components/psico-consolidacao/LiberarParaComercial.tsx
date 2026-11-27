@@ -197,10 +197,9 @@ export default function LiberarParaComercial({
               {/* 0.3.325 (pedido do João): o título da tabela (texto, Por setor | Por risco e as colunas) fica congelado e a
                   tabela rola por dentro, com barra lateral. */}
               <div className="max-h-[75vh] overflow-auto rounded-lg border border-gray-100">
-                <table className="w-full min-w-[48rem] text-sm">
-                  <thead className="sticky top-0 z-20 bg-white text-left text-xs font-semibold text-gray-600 shadow-[0_1px_0_0_rgb(229_231_235)]">
-                    <tr>
-                      <th colSpan={4} className="px-2 pb-2 pt-2 font-normal">
+                <div className="min-w-[48rem] text-sm">
+                  <div className="sticky top-0 z-20 bg-white text-left text-xs font-semibold text-gray-600 shadow-[0_1px_0_0_rgb(229_231_235)]">
+                    <div className="px-2 pb-2 pt-2 font-normal">
                         <p className="text-xs text-gray-500">
                           Riscos da conciliação fechada: os confirmados, os de AET e os convergentes (questionário e AEP concordam). As opções vêm do{" "}
                           <Link href="/consolidacao-grupo/intervencoes" className="font-medium text-indigo-700 underline">
@@ -223,10 +222,10 @@ export default function LiberarParaComercial({
                               : "Por setor, cada setor com os seus riscos; a intervenção escolhida vale só para aquele setor."}
                           </span>
                         </div>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
+                    </div>
+                  </div>
+                  {/* 0.3.329 (pedido do João): cada intervenção é um cartão com sombra, como no Comercial. */}
+                  <div className="bg-slate-50/70 px-3 pb-4">
                     {agrupar === "risco" && porFator.map((g) => (
                       <LinhasDoFator key={g.idFator} grupo={g} alvo={alvo} empresasDoRisco={empresasDoRisco} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar} />
                     ))}
@@ -236,24 +235,22 @@ export default function LiberarParaComercial({
                       const emp = empresasDoRisco?.(g.riscos[0].chave) ?? [];
                       return (
                         <Fragment key={g.setorChave}>
-                          <tr className="bg-indigo-50/70">
-                            <td colSpan={4} className="border-t-2 border-indigo-200 px-2 py-2">
+                          <div className="-mx-3 mt-3 border-y-2 border-indigo-200 bg-indigo-50/70 px-3 py-2 first:mt-0">
                               <span className="text-xs font-semibold text-indigo-700">Setor:</span>{" "}
                               <span className="font-bold text-gray-900">{g.setor}</span>
                               <span className="ml-2 text-xs text-gray-500">
                                 {g.riscos.length === 1 ? "1 risco" : `${g.riscos.length} riscos`}
                                 {emp.length > 0 && ` · em ${emp.join(", ")}`}
                               </span>
-                            </td>
-                          </tr>
+                            </div>
                           {g.riscos.map((r) => (
                             <LinhasDoFator key={r.chave} grupo={agruparPorRisco([r], indicadas)[0]} alvo={alvo} empresasDoRisco={empresasDoRisco} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar} semSetores />
                           ))}
                         </Fragment>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </div>
+                </div>
               </div>
               <PlanoIntervencoes alvo={alvo} indicadas={indicadas} podeAlterar={podeAlterar} agrupar={agrupar} onAgrupar={setAgrupar} />
             </>
@@ -377,8 +374,7 @@ function LinhasDoFator({
 
   return (
     <Fragment>
-      <tr className="border-t-2 border-gray-200 bg-gray-50/70">
-        <td colSpan={4} className="px-2 py-2">
+      <div className="mt-3 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="text-xs font-semibold text-gray-500">Risco:</span>
             <span className="font-semibold text-gray-900">{grupo.fator}</span>
@@ -403,38 +399,33 @@ function LinhasDoFator({
               ))}
             </p>
           )}
-        </td>
-      </tr>
+      </div>
       {temas.map((t) => {
         const representante = [...t.itens.values()][0];
         const faltam = riscos.length - t.itens.size;
         return (
           <Fragment key={t.chave}>
-            <LinhaIntervencao risco={rotulo} alvo={alvo} item={representante} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar}
-              celulaRisco={null}
+            <article className="mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-md ring-1 ring-black/5 transition hover:shadow-lg">
+              <LinhaIntervencao risco={rotulo} alvo={alvo} item={representante} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar}
               grupo={{ riscos, itens: t.itens, empresasDe: empresasDoRisco }}
               nota={faltam > 0 ? `Em ${t.itens.size} de ${riscos.length} setores — qualquer mudança aplica em todos.` : undefined} />
-            <tr>
-              <td colSpan={4} className="pb-3 pr-2">
-                <div className="overflow-hidden rounded-md border border-gray-200">
-                  <MetodoDaIntervencao alvo={alvo} tema={chaveTema(representante)} modalidade={representante.modalidade} podeAlterar={podeAlterar} />
-                </div>
-              </td>
-            </tr>
+              <div className="border-t border-gray-200">
+                <MetodoDaIntervencao alvo={alvo} tema={chaveTema(representante)} modalidade={representante.modalidade} podeAlterar={podeAlterar} />
+              </div>
+            </article>
           </Fragment>
         );
       })}
       {mostrarNova && (
-        <LinhaIntervencao risco={rotulo} alvo={alvo} item={null} catalogo={catalogo} opcoes={opcoes} podeAlterar
-          celulaRisco={null}
+        <article className="mt-2 overflow-hidden rounded-xl border border-dashed border-indigo-300 bg-white shadow-md">
+          <LinhaIntervencao risco={rotulo} alvo={alvo} item={null} catalogo={catalogo} opcoes={opcoes} podeAlterar
           grupo={{ riscos, itens: new Map(), empresasDe: empresasDoRisco }}
           onCriada={() => setAdicionando(false)}
           onCancelar={temas.length > 0 ? () => setAdicionando(false) : undefined} />
+        </article>
       )}
       {temas.length === 0 && !mostrarNova && (
-        <tr>
-          <td colSpan={4} className="py-2 pr-2 text-xs text-gray-400">Nenhuma intervenção indicada.</td>
-        </tr>
+        <p className="mt-2 px-1 text-xs text-gray-400">Nenhuma intervenção indicada.</p>
       )}
     </Fragment>
   );
@@ -539,7 +530,6 @@ function LinhaIntervencao({
   catalogo,
   opcoes,
   podeAlterar,
-  celulaRisco,
   onCriada,
   onCancelar,
   grupo,
@@ -555,7 +545,6 @@ function LinhaIntervencao({
   catalogo: IntervencaoCatalogo[];
   opcoes: OpcoesCatalogo;
   podeAlterar: boolean;
-  celulaRisco: ReactNode;
   onCriada?: () => void;
   onCancelar?: () => void;
 }) {
@@ -681,11 +670,10 @@ function LinhaIntervencao({
   }
 
   return (
-    <tr className="align-top">
-      {celulaRisco}
+    <div className="grid grid-cols-[minmax(14rem,1fr)_9rem_18rem_2.5rem] items-start gap-x-2 px-3 py-2.5">
       {/* 0.3.326 (pedido do João): o título de cada campo fica em cima dele, dentro do bloco do risco (sem a linha de colunas), e o
           prazo saiu — o tempo agora é do Plano de intervenções. O prazo já gravado continua no item. */}
-      <td className="py-2 pl-2 pr-2">
+      <div>
         <span className={rotuloCampo}>Intervenção</span>
         <CampoOpcoes
           valor={item ? (item.id_intervencao ?? ITEM_FORA_DO_CATALOGO) : ""}
@@ -701,8 +689,8 @@ function LinhaIntervencao({
           onNovo={novaIntervencao}
         />
         {nota && <p className="mt-0.5 text-[11px] text-amber-700">{nota}</p>}
-      </td>
-      <td className="w-36 py-2 pr-2">
+      </div>
+      <div>
         <span className={rotuloCampo}>Modalidade</span>
         <CampoOpcoes
           valor={modalidade ?? ""}
@@ -714,8 +702,8 @@ function LinhaIntervencao({
           onEscolher={(v) => escolherModalidade(v || null)}
           onNovo={novaModalidade}
         />
-      </td>
-      <td className="w-72 py-2 pr-2">
+      </div>
+      <div>
         <span className={rotuloCampo}>Responsável</span>
         <CampoOpcoes
           valor={responsavel ?? ""}
@@ -728,8 +716,8 @@ function LinhaIntervencao({
           onEscolher={(v) => escolherResponsavel(v || null)}
           onNovo={novoResponsavel}
         />
-      </td>
-      <td className="w-10 pb-2 pt-6 text-right">
+      </div>
+      <div className="pt-5 text-right">
         {podeAlterar && item && (
           <button type="button" onClick={remover} disabled={retirar.isPending} aria-label={`Retirar ${item.nome}`} className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-700 disabled:opacity-60">
             <Trash2 className="size-4" />
@@ -740,8 +728,8 @@ function LinhaIntervencao({
             Cancelar
           </button>
         )}
-      </td>
-    </tr>
+      </div>
+    </div>
   );
 }
 
