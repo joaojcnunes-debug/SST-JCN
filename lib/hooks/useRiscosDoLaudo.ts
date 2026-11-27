@@ -24,6 +24,10 @@ export function useLaudosComSetores(idInspecao: string, habilitado: boolean) {
   return useQuery({
     queryKey: ["riscos-do-laudo", idInspecao],
     enabled: habilitado && !!idInspecao,
+    // 0.3.333 (pedido do usuário): sempre lê o laudo de novo ao abrir a janela. Com os 5 min do padrão, quem ajustava a
+    // AEP e voltava para trazer via a cópia antiga (o risco novo não aparecia).
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async (): Promise<LaudoComSetores[]> => {
       const out: LaudoComSetores[] = [];
       for (const origem of ["AEP", "AET"] as const) {
@@ -92,6 +96,7 @@ export function useAplicarRiscosDoLaudo() {
     },
     onSuccess: (r, args) => {
       qc.invalidateQueries({ queryKey: ["inspecao", args.idInspecao] });
+      qc.invalidateQueries({ queryKey: ["riscos-do-laudo", args.idInspecao] });
       const partes = [
         r.novos ? `${r.novos} risco${r.novos > 1 ? "s" : ""} trazido${r.novos > 1 ? "s" : ""}` : "",
         r.atualizados ? `${r.atualizados} atualizado${r.atualizados > 1 ? "s" : ""}` : "",

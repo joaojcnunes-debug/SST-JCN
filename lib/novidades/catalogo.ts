@@ -41,6 +41,28 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "trazer-riscos-laudo-sempre-atual",
+    data: "2026-11-27",
+    tipo: "correcao",
+    titulo: "Trazer riscos da AEP/AET: o risco recém-incluído na AEP já aparece",
+    texto:
+      "A janela Trazer riscos da AEP/AET passa a ler a AEP/AET de novo toda vez que é aberta. Antes, quem ajustava a AEP e " +
+      "voltava à inspeção em poucos minutos via a lista antiga, sem o risco novo para trazer.",
+    onde: "Inspeções › Riscos › Trazer riscos da AEP/AET",
+    versoes: ["0.3.333"],
+  },
+  {
+    id: "relatorio-laudo-trivial-baixo-fora-pgr",
+    data: "2026-11-27",
+    tipo: "melhoria",
+    titulo: "Relatório: risco da AEP/AET Trivial ou Baixo avisa que não entra no PGR",
+    texto:
+      "No relatório da inspeção, o risco trazido da AEP/AET com nível Trivial ou Baixo mostra o aviso \"Não entra no PGR\" " +
+      "no cartão do risco, ao lado do quadro de avaliação.",
+    onde: "Inspeções › Relatório",
+    versoes: ["0.3.332"],
+  },
+  {
     id: "trazer-riscos-laudo-setor-automatico",
     data: "2026-11-27",
     tipo: "melhoria",

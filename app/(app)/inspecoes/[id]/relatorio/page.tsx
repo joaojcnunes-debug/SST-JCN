@@ -58,6 +58,7 @@ import DocumentosEmpresaPainel from "@/components/empresas/DocumentosEmpresaPain
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import NivelBadge from "@/components/riscos/NivelBadge";
+import { laudoForaDoPgr } from "@/lib/ergonomia/riscos-do-laudo";
 import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
 import { useTextosPadrao } from "@/lib/hooks/useTextosPadrao";
 import {
@@ -1494,7 +1495,8 @@ function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]
 
         {/* Grid principal de avaliação */}
         {!isIapat && (
-          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] md:grid-cols-4">
+          <div className="flex items-start gap-3">
+          <div className="grid flex-1 grid-cols-2 gap-x-3 gap-y-1 text-[11px] md:grid-cols-4">
             <Campo label="Probabilidade" valor={risco.probabilidade} />
             <Campo label="Severidade" valor={risco.severidade} />
             <Campo label="Meio de Propagação" valor={risco.meio_propagacao?.join(", ")} />
@@ -1509,6 +1511,14 @@ function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]
             {risco.tipo_risco === "Químico" && (
               <Campo label="Forma do agente" valor={null} />
             )}
+          </div>
+          {/* 0.3.332 (pedido do usuário): risco trazido da AEP/AET com nível Trivial ou Baixo não deve entrar no PGR. */}
+          {laudoForaDoPgr(risco) && (
+            <div className="w-44 shrink-0 rounded-md border border-gray-400 bg-gray-100 px-2 py-1.5 text-[11px] leading-tight text-gray-800">
+              <p className="font-bold uppercase tracking-wide text-gray-900">Não entra no PGR</p>
+              <p className="mt-0.5">Risco da {risco.origem} classificado como {nivel}.</p>
+            </div>
+          )}
           </div>
         )}
 
