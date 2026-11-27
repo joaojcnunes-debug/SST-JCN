@@ -10,7 +10,7 @@
  */
 
 import type { ReactNode } from "react";
-import { BadgeCheck, Building2, GitCompareArrows, GitMerge, HeartHandshake, Network } from "lucide-react";
+import { BadgeCheck, Building2, GitCompareArrows, GitMerge, HeartHandshake, LayoutDashboard, Network } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -21,6 +21,8 @@ const SECTIONS: NavSection[] = [
   {
     label: "Consolidação",
     items: [
+      // 0.3.335 (pedido do usuário): o dashboard é a tela de entrada do módulo.
+      { href: "/consolidacao-grupo/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/consolidacao-grupo", label: "Grupos de empresas", icon: Network },
       { href: "/consolidacao-grupo/por-empresa", label: "Por empresa", icon: Building2 },
       // 29/10: questionários (DRPS/QPS) × AEP, empresa a empresa — não precisa de grupo.
@@ -49,7 +51,7 @@ export default function ConsolidacaoGrupoLayout({ children }: { children: ReactN
     : SECTIONS;
   return (
     <div className="casca min-h-screen">
-      <SidebarShell title="Consolidação" subtitle="Segurança do Trabalho" logoHref="/consolidacao-grupo" sections={sections} backHref="/modulos" />
+      <SidebarShell title="Consolidação" subtitle="Segurança do Trabalho" logoHref="/consolidacao-grupo/dashboard" sections={sections} backHref="/modulos" />
       <div className="casca-folha md:pl-[220px] print:pl-0">
         <ModuleTopbar />
         <main className="px-4 py-6 md:px-6 print:p-0" style={{ viewTransitionName: "content" }}>

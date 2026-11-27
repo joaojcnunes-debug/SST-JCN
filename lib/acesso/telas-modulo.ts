@@ -93,6 +93,7 @@ export const TELAS_DO_MODULO: Partial<Record<ModuloPermitido, TelaModulo[]>> = {
     t("/aep/texto-padrao", "Texto Padrão"),
   ],
   consolidacao_psicossocial: [
+    t("/consolidacao-grupo/dashboard", "Dashboard"),
     t("/consolidacao-grupo", "Grupos de empresas"),
     t("/consolidacao-grupo/por-empresa", "Por empresa"),
     t("/consolidacao-grupo/conciliacao", "Conciliação DRPS/QPS × AEP"),

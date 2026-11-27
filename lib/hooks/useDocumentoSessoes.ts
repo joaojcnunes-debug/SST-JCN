@@ -108,6 +108,22 @@ export function useTempoComercial() {
   });
 }
 
+/** 0.3.335: todas as sessões de atendimento dos grupos (Consolidação › Dashboard). `id_inspecao` guarda o grupo. */
+export function useTempoComercialGrupo() {
+  return useQuery({
+    queryKey: [CHAVE_SESSOES, "comercial-grupo-todas"],
+    queryFn: () =>
+      fetchAllRows<SessaoDocumento>((de, ate) =>
+        sb()
+          .from("comercial_sessoes_grupo")
+          .select("id_sessao, id_inspecao:id_grupo, id_usuario, nome, inicio, ultima_atividade, fim, motivo_fim, fechada_auto")
+          // ordem única: a paginação por faixa não pula nem repete linhas
+          .order("id_sessao")
+          .range(de, ate),
+      ),
+  });
+}
+
 /**
  * Dashboard › Tempo nos documentos: as sessões dos últimos `meses` meses e os documentos delas
  * (empresa, complexidade, situação). A RLS recorta o que a pessoa enxerga.
