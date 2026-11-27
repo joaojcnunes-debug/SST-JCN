@@ -120,11 +120,20 @@ export function metodoDe(
   metodos: readonly MetodoModalidade[],
   plano: Pick<PlanoIntervencoes, "metodos"> | null,
   tema?: string,
+  /** 0.3.330 (v373): o texto que a própria intervenção tem no catálogo, por modalidade. */
+  daIntervencao?: Record<string, Partial<MetodoTexto>> | null,
 ): MetodoTexto {
   const padrao = metodos.find((x) => norm(x.modalidade) === norm(modalidade));
   const daModalidade = plano?.metodos?.[modalidade] ?? {};
   const doTema = (tema && plano?.metodos?.[chaveMetodo(tema, modalidade)]) || {};
-  const v = (c: keyof MetodoTexto) => (c in doTema ? doTema[c] ?? null : c in daModalidade ? daModalidade[c] ?? null : padrao?.[c] ?? null);
+  const chaveCat = daIntervencao ? Object.keys(daIntervencao).find((k) => norm(k) === norm(modalidade)) : undefined;
+  const doCatalogo = (chaveCat && daIntervencao?.[chaveCat]) || {};
+  // Ordem: ajuste da empresa na intervenção > ajuste da empresa na modalidade > texto da intervenção > texto da modalidade.
+  // No catálogo, campo vazio não conta (vale o da modalidade).
+  const v = (c: keyof MetodoTexto) =>
+    c in doTema ? doTema[c] ?? null
+      : c in daModalidade ? daModalidade[c] ?? null
+        : doCatalogo[c]?.trim() ? doCatalogo[c]! : padrao?.[c] ?? null;
   return { forma: v("forma"), duracao: v("duracao"), avaliacao: v("avaliacao"), certificado: v("certificado") };
 }
 
@@ -259,6 +268,8 @@ export function anexarPlanos(
   planos: readonly PlanoIntervencoes[],
   metodos: readonly MetodoModalidade[],
   grupos: readonly AtendimentoGrupo[],
+  /** 0.3.330 (v373): o texto do método de cada intervenção do catálogo (id_intervencao → por modalidade). */
+  metodosIntervencao: Record<string, Record<string, Partial<MetodoTexto>>> = {},
 ): EmpresaComercial[] {
   const doGrupo = new Map<string, string>();
   for (const g of grupos) if (g.status === "CONCLUIDO" && g.fechada) for (const e of g.empresas) doGrupo.set(e.id_empresa, g.id_grupo);
@@ -279,7 +290,10 @@ export function anexarPlanos(
               plano: planoDoVendedor(p, dela),
               intervencoes: o.intervencoes.map((l) => ({
                 ...l,
-                metodo: l.modalidade ? metodoDe(l.modalidade, metodos, p, chaveTema({ id_intervencao: l.idIntervencao ?? null, nome: l.intervencao })) : null,
+                metodo: l.modalidade
+                  ? metodoDe(l.modalidade, metodos, p, chaveTema({ id_intervencao: l.idIntervencao ?? null, nome: l.intervencao }),
+                    l.idIntervencao ? metodosIntervencao[l.idIntervencao] : null)
+                  : null,
               })),
             },
       ),

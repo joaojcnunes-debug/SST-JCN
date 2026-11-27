@@ -8,7 +8,7 @@
 import { RotateCcw } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AlvoConciliacao } from "@/lib/hooks/useConciliacaoParecer";
-import { useMetodosModalidade, usePlanoIntervencoes, useSalvarPlanoIntervencoes } from "@/lib/hooks/useComercial";
+import { useCatalogoIntervencoes, useMetodosModalidade, usePlanoIntervencoes, useSalvarPlanoIntervencoes } from "@/lib/hooks/useComercial";
 import { chaveMetodo, metodoDe, planoVazio, type MetodoTexto, type PlanoIntervencoes } from "@/lib/comercial/plano";
 
 /** Na ordem do desenho do pedido. */
@@ -34,6 +34,9 @@ export default function MetodoDaIntervencao({
   const qc = useQueryClient();
   const { data: metodos = [] } = useMetodosModalidade();
   const { data: salvo } = usePlanoIntervencoes(alvo);
+  // 0.3.330: o texto que a intervenção tem no catálogo vale antes do da modalidade (o tema é o id da intervenção).
+  const { data: catalogo = [] } = useCatalogoIntervencoes();
+  const doCatalogo = catalogo.find((c) => c.id_intervencao === tema)?.metodos ?? null;
   const salvar = useSalvarPlanoIntervencoes();
   const plano: PlanoIntervencoes = salvo ?? planoVazio(alvo.id, alvo.tipo);
 
@@ -42,7 +45,7 @@ export default function MetodoDaIntervencao({
   }
 
   const k = chaveMetodo(tema, modalidade);
-  const texto = metodoDe(modalidade, metodos, plano, tema);
+  const texto = metodoDe(modalidade, metodos, plano, tema, doCatalogo);
   const ajustado = !!plano.metodos[k] || !!plano.metodos[modalidade];
   // Vários blocos gravam no mesmo plano: parte do que está no cache agora (a gravação é otimista), não do render.
   const atual = (): PlanoIntervencoes =>

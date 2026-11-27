@@ -90,3 +90,12 @@ test("vendedor: método e plano entram na oportunidade; o grupo liberado vale so
   const comGrupo = anexarPlanos([emp], ii, planos, m, g);
   assert.equal((comGrupo[0] as { oportunidades: { intervencoes: { metodo: { duracao: string } }[] }[] }).oportunidades[0].intervencoes[0].metodo.duracao, "do grupo");
 });
+
+test("método: o texto da intervenção no catálogo vale antes do da modalidade, e o ajuste da empresa vale antes dos dois", () => {
+  const m = [{ modalidade: "EAD", ordem: 1, forma: "Plataforma", duracao: "8h", avaliacao: "Prova", certificado: "Sim" }];
+  const cat = { ead: { duracao: "2h (do treinamento)", avaliacao: "  " } };
+  // campo vazio no catálogo não conta; a chave da modalidade não diferencia maiúsculas
+  assert.deepEqual(metodoDe("EAD", m, null, "I1", cat), { forma: "Plataforma", duracao: "2h (do treinamento)", avaliacao: "Prova", certificado: "Sim" });
+  assert.equal(metodoDe("EAD", m, { metodos: { [chaveMetodo("I1", "EAD")]: { duracao: "1h (da empresa)" } } }, "I1", cat).duracao, "1h (da empresa)");
+  assert.equal(metodoDe("EAD", m, { metodos: { EAD: { duracao: "3h" } } }, "I1", cat).duracao, "3h");
+});

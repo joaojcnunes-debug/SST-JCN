@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "catalogo-busca-metodo-por-intervencao",
+    data: "2026-11-27",
+    tipo: "melhoria",
+    titulo: "Catálogo de intervenções: busca, filtros e o método de cada intervenção",
+    texto:
+      "O catálogo de intervenções ganhou busca pelo nome e filtros por modalidade, responsável e situação (ativas ou " +
+      "inativas). E cada intervenção pode ter o seu próprio texto de método — forma de realização, duração, avaliação e " +
+      "certificado, por modalidade — no botão Método da linha. Em branco vale o texto da modalidade. A Conciliação e o " +
+      "vendedor passam a ver o texto da intervenção, e cada empresa ainda pode ajustar o seu na Conciliação.",
+    onde: "Consolidação › Intervenções",
+    versoes: ["0.3.330"],
+  },
+  {
     id: "comercial-intervencoes-por-setor-ou-risco",
     data: "2026-11-27",
     tipo: "melhoria",
