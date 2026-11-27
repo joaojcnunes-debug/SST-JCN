@@ -26,6 +26,7 @@ import {
   SETOR_EMPRESA_TODA,
   SETOR_NAO_INFORMADO,
   type EmpresaComercial,
+  type LinhaIntervencaoOferta,
   type Oportunidade,
   type Origem,
   type Produto,
@@ -644,16 +645,42 @@ function ItemJustificativa({ texto }: { texto: string }) {
  * As intervenções que a Conciliação indicou: Setor, Risco, Intervenção, Modalidade, Responsável, Prazo e,
  * desde a 0.3.247, a Situação e a Venda de cada uma.
  */
+/** 0.3.329: as intervenções agrupadas pelo setor ou pelo risco; dentro do grupo, pelo outro lado e pela intervenção. */
+function agruparLinhas(linhas: readonly LinhaIntervencaoOferta[], por: "setor" | "risco") {
+  const grupo = (l: LinhaIntervencaoOferta) => (por === "setor" ? l.setor : l.risco);
+  const outro = (l: LinhaIntervencaoOferta) => (por === "setor" ? l.risco : l.setor);
+  const mapa = new Map<string, LinhaIntervencaoOferta[]>();
+  for (const l of linhas) mapa.set(grupo(l), [...(mapa.get(grupo(l)) ?? []), l]);
+  return [...mapa.entries()]
+    .sort(([a], [b]) => a.localeCompare(b, "pt-BR"))
+    .map(([nome, ls]) => ({
+      nome,
+      outro,
+      linhas: [...ls].sort((x, y) => outro(x).localeCompare(outro(y), "pt-BR") || x.intervencao.localeCompare(y.intervencao, "pt-BR")),
+      outros: [...new Set(ls.map(outro))].sort((x, y) => x.localeCompare(y, "pt-BR")),
+    }));
+}
+
 function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunidade }) {
-  const linhas = o.intervencoes ?? [];
+  // 0.3.329 (pedido do João): ver por setor ou por risco, como na Conciliação por grupo.
+  const [por, setPor] = useState<"setor" | "risco">("setor");
+  const grupos = agruparLinhas(o.intervencoes ?? [], por);
   return (
     <div className="overflow-x-auto rounded-xl border border-indigo-200 bg-white">
-      <p className="border-b border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-900">
-        Intervenções psicossociais
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-100 bg-indigo-50 px-3 py-2">
+        <p className="text-xs font-bold uppercase tracking-wide text-indigo-900">Intervenções psicossociais</p>
+        <div className="inline-flex rounded-lg border border-indigo-200 bg-white p-0.5 text-xs font-medium" role="group" aria-label="Mostrar as intervenções">
+          {(["setor", "risco"] as const).map((k) => (
+            <button key={k} type="button" onClick={() => setPor(k)} aria-pressed={por === k}
+              className={cn("rounded-md px-2.5 py-1", por === k ? "bg-indigo-600 text-white shadow-sm" : "text-gray-600 hover:text-gray-900")}>
+              {k === "setor" ? "Por setor" : "Por risco"}
+            </button>
+          ))}
+        </div>
+      </div>
       {o.venda && (
-        // Venda do serviço inteiro, de antes da venda por intervenção (0.3.247). O desfazer fica aqui desde a
-        // 0.3.249, porque a linha do serviço saiu da tabela de cima.
+        // Venda do serviço inteiro, de antes da venda por intervenção. O desfazer fica aqui, porque a linha do
+        // serviço saiu da tabela de cima.
         <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 border-b border-violet-200 bg-violet-50 px-3 py-2">
           <p className="text-xs text-violet-900">
             <strong>Vendida como serviço inteiro.</strong> A venda cobre todas as intervenções abaixo. Para vender uma a uma, desfaça-a.
@@ -661,12 +688,13 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
           <Venda idEmpresa={idEmpresa} produto={o.produto} nome="O serviço Intervenção psicossocial" venda={o.venda} podeVender={false} />
         </div>
       )}
-      <table className={cn(TABELA_GRADE, "w-full min-w-[72rem] text-sm")}>
+      <table className={cn(TABELA_GRADE, "w-full min-w-[64rem] text-sm")}>
         <thead className={CLS_THEAD}>
-          <FaixaGrupos indicacao="Indicado na Conciliação" colunas={5} />
+          <FaixaGrupos indicacao="Indicado na Conciliação" colunas={4} />
           <tr>
-            <Titulo className="w-40" dica="Setor onde o risco foi confirmado">Setor</Titulo>
-            <Titulo className="w-32" dica="Fator de risco psicossocial confirmado na Conciliação">Risco</Titulo>
+            {por === "setor"
+              ? <Titulo className="w-44" dica="Fator de risco psicossocial confirmado na Conciliação">Risco</Titulo>
+              : <Titulo className="w-44" dica="Setor onde o risco foi confirmado">Setor</Titulo>}
             <Titulo dica="Ação indicada para o risco">Intervenção</Titulo>
             <Titulo className="w-28" dica="Como é feita: EAD, presencial ou ao vivo">Modalidade</Titulo>
             <Titulo className="w-48" dica="Quem executa a intervenção">Responsável</Titulo>
@@ -675,56 +703,62 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 text-gray-700">
-          {linhas.map((l, n) => {
-            const novoSetor = n === 0 || linhas[n - 1].setor !== l.setor;
-            const novoRisco = novoSetor || linhas[n - 1].risco !== l.risco;
-            // Setor e risco numa célula só para as linhas do mesmo grupo (as linhas vêm ordenadas por setor e risco).
-            // 0.3.328: a intervenção com método ocupa 2 linhas (a dela e a faixa do método embaixo).
-            const linhasSetor = novoSetor ? somarAltura(linhas, n, (x) => x.setor === l.setor) : 0;
-            const linhasRisco = novoRisco ? somarAltura(linhas, n, (x) => x.setor === l.setor && x.risco === l.risco) : 0;
-            const comMetodo = temMetodo(l);
-            const st = SITUACAO[l.venda || o.venda ? "vendida" : "aberta"];
-            return (
-              <Fragment key={l.idItem}>
-              <tr className="align-top">
-                {novoSetor && (
-                  <td rowSpan={linhasSetor} className="border-l-0 px-3 py-2 font-semibold text-gray-900">
-                    {l.setor}
-                  </td>
-                )}
-                {novoRisco && (
-                  <td rowSpan={linhasRisco} className="px-3 py-2 font-medium text-gray-800">
-                    {l.risco}
-                  </td>
-                )}
-                <td className="px-3 py-2 font-semibold text-gray-900">{l.intervencao}</td>
-                <td className="px-3 py-2">{l.modalidade ?? "—"}</td>
-                <td className="px-3 py-2">{l.responsavel ?? "—"}</td>
-                <td className={cn("px-3 py-2", CLS_COL_COMERCIAL)}>
-                  <span title={st.dica} className={cn("inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold", st.cls)}>
-                    {st.rotulo}
+          {grupos.map((g) => (
+            <Fragment key={g.nome}>
+              {/* O título do grupo: o setor (com quantas intervenções) ou o risco (com os setores em que aparece). */}
+              <tr className="bg-indigo-50/60">
+                <td colSpan={6} className="border-t-2 border-indigo-200 px-3 py-2 !text-left">
+                  <span className="text-xs font-semibold text-indigo-700">{por === "setor" ? "Setor:" : "Risco:"}</span>{" "}
+                  <span className="font-bold text-gray-900">{g.nome}</span>
+                  <span className="ml-2 text-xs text-gray-500">
+                    {por === "setor"
+                      ? `${g.linhas.length} ${g.linhas.length === 1 ? "intervenção" : "intervenções"}`
+                      : `${g.outros.length === 1 ? "Setor" : `Setores (${g.outros.length})`}: ${g.outros.join(", ")}`}
                   </span>
                 </td>
-                <td className={cn("px-3 py-2", CLS_COL_COMERCIAL)}>
-                  {!l.venda && o.venda ? (
-                    <span className="text-xs text-violet-900">Coberta pela venda do serviço inteiro (acima)</span>
-                  ) : (
-                    <Venda idEmpresa={idEmpresa} produto={o.produto} idItem={l.idItem} nome={l.intervencao} venda={l.venda} podeVender />
-                  )}
-                </td>
               </tr>
-              {comMetodo && (
-                // 0.3.328 (pedido do João): o método que a equipe descreveu, numa faixa embaixo da intervenção (largura toda,
-                // texto à esquerda), para o vendedor ter tudo na proposta.
-                <tr>
-                  <td colSpan={5} className="bg-gray-50/60 px-3 py-2 !text-left">
-                    <MetodoNaVenda m={l.metodo!} />
-                  </td>
-                </tr>
-              )}
-              </Fragment>
-            );
-          })}
+              {g.linhas.map((l, n) => {
+                const novoOutro = n === 0 || g.outro(g.linhas[n - 1]) !== g.outro(l);
+                // A intervenção com método ocupa 2 linhas (a dela e a faixa do método embaixo).
+                const altura = novoOutro ? somarAltura(g.linhas, n, (x) => g.outro(x) === g.outro(l)) : 0;
+                const st = SITUACAO[l.venda || o.venda ? "vendida" : "aberta"];
+                return (
+                  <Fragment key={l.idItem}>
+                    <tr className="align-top">
+                      {novoOutro && (
+                        <td rowSpan={altura} className="border-l-0 px-3 py-2 font-medium text-gray-800">
+                          {g.outro(l)}
+                        </td>
+                      )}
+                      <td className="px-3 py-2 font-semibold text-gray-900">{l.intervencao}</td>
+                      <td className="px-3 py-2">{l.modalidade ?? "—"}</td>
+                      <td className="px-3 py-2">{l.responsavel ?? "—"}</td>
+                      <td className={cn("px-3 py-2", CLS_COL_COMERCIAL)}>
+                        <span title={st.dica} className={cn("inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold", st.cls)}>
+                          {st.rotulo}
+                        </span>
+                      </td>
+                      <td className={cn("px-3 py-2", CLS_COL_COMERCIAL)}>
+                        {!l.venda && o.venda ? (
+                          <span className="text-xs text-violet-900">Coberta pela venda do serviço inteiro (acima)</span>
+                        ) : (
+                          <Venda idEmpresa={idEmpresa} produto={o.produto} idItem={l.idItem} nome={l.intervencao} venda={l.venda} podeVender />
+                        )}
+                      </td>
+                    </tr>
+                    {temMetodo(l) && (
+                      // O método que a equipe descreveu, numa faixa embaixo da intervenção (texto à esquerda).
+                      <tr>
+                        <td colSpan={5} className="bg-gray-50/60 px-3 py-2 !text-left">
+                          <MetodoNaVenda m={l.metodo!} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </Fragment>
+          ))}
         </tbody>
       </table>
       {o.plano && <PlanoNaVenda p={o.plano} />}

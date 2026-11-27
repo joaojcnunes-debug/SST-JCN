@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "comercial-intervencoes-por-setor-ou-risco",
+    data: "2026-11-27",
+    tipo: "melhoria",
+    titulo: "Comercial: intervenções por setor ou por risco",
+    texto:
+      "Na tela de Oportunidades, a tabela de intervenções psicossociais ganhou o botão Por setor | Por risco, como na " +
+      "Conciliação. Por setor, cada setor tem um título com as intervenções dele e o risco ao lado; por risco, cada risco " +
+      "tem um título com os setores em que aparece e o setor ao lado. O método continua numa faixa embaixo de cada intervenção.",
+    onde: "Comercial › Oportunidades",
+    versoes: ["0.3.329"],
+  },
+  {
     id: "comercial-metodo-e-plano-de-intervencoes",
     data: "2026-11-26",
     tipo: "novidade",
