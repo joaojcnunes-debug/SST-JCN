@@ -116,7 +116,9 @@ export default function ModuleTopbar({ recolher = true, avisos = 0, onAvisos }: 
   const router = useRouter();
   // Fora da Gestão (sem onAvisos): quem usa a Gestão vê o contador na sigla e abre a lista ali mesmo.
   const { data: papelGestao } = useMeuPapelGestao();
-  const notifGlobal = !onAvisos && !!papelGestao && user?.perfil !== "Cliente";
+  // 0.3.338: quem tem o Comercial também vê o sino (os avisos de oportunidade nova, v374), mesmo sem papel na Gestão.
+  const temComercial = !!user?.modulos_permitidos?.includes("comercial");
+  const notifGlobal = !onAvisos && (!!papelGestao || temComercial) && user?.perfil !== "Cliente";
   const toggleSidebar = useSidebarMini((s) => s.toggle);
   const pathname = usePathname();
   const crumbs = buildCrumbs(pathname);

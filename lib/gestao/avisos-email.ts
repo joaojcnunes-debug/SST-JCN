@@ -35,6 +35,8 @@ const ROTULO_TIPO: Record<string, string> = {
   prazo: "Prazo de uma tarefa sua",
   automacao: "Mensagem automática da Gestão",
   etapa: "Uma tarefa entrou numa coluna que você segue",
+  // 0.3.338 (v374): empresa ou serviço que entrou nas Oportunidades do Comercial.
+  comercial: "Nova oportunidade no Comercial",
 };
 
 function esc(s: string | null | undefined): string {
@@ -53,8 +55,15 @@ import { linkTarefa } from "@/lib/gestao/link-tarefa";
 export { linkTarefa } from "@/lib/gestao/link-tarefa";
 
 /** Assunto + HTML do e-mail. Função pura (testada). */
+/** 0.3.338: o aviso do Comercial (v374) leva às Oportunidades; os demais, à tarefa da Gestão. */
+export function linkDoAviso(appUrl: string, a: Pick<AvisoReservado, "tipo" | "id_quadro" | "id_tarefa">): string {
+  return a.tipo === "comercial" ? `${appUrl.replace(/\/+$/, "")}/comercial` : linkTarefa(appUrl, a);
+}
+
 export function montarEmailAviso(a: AvisoReservado, appUrl: string): { assunto: string; html: string } {
-  const assunto = `[Gestão JCN Consultoria] ${a.titulo}`.slice(0, 200);
+  const comercial = a.tipo === "comercial";
+  const area = comercial ? "Comercial JCN Consultoria" : "Gestão JCN Consultoria";
+  const assunto = `[${area}] ${a.titulo}`.slice(0, 200);
   const primeiro = (a.nome ?? "").trim().split(/\s+/)[0];
   const linhas: [string, string][] = [];
   if (a.tarefa_titulo) linhas.push(["Tarefa", a.tarefa_titulo]);
@@ -65,22 +74,22 @@ export function montarEmailAviso(a: AvisoReservado, appUrl: string): { assunto: 
     .map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#6b7280;">${esc(k)}</td><td style="padding:4px 0;color:#111827;font-weight:600;">${esc(v)}</td></tr>`)
     .join("");
   const html = `<!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gestão JCN Consultoria</title></head>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${area}</title></head>
 <body style="margin:0;padding:0;background:#f0f9ff;font-family:Arial,sans-serif;color:#111827;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:28px 16px;">
     <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
-      <tr><td style="background:#0284c7;padding:18px 24px;color:#ffffff;font-size:16px;font-weight:700;">Gestão JCN Consultoria</td></tr>
+      <tr><td style="background:#0284c7;padding:18px 24px;color:#ffffff;font-size:16px;font-weight:700;">${area}</td></tr>
       <tr><td style="padding:24px;">
         <p style="margin:0 0 6px;color:#6b7280;font-size:13px;">${esc(ROTULO_TIPO[a.tipo] ?? "Aviso da Gestão")}</p>
         <h2 style="margin:0 0 16px;font-size:18px;line-height:1.35;color:#111827;">${primeiro ? `${esc(primeiro)}, ` : ""}${esc(a.titulo)}</h2>
         ${a.mensagem ? `<p style="margin:0 0 18px;font-size:14px;line-height:1.5;color:#374151;white-space:pre-line;">${esc(a.mensagem)}</p>` : ""}
         ${tabela ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 22px;font-size:14px;">${tabela}</table>` : ""}
         <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#0284c7;border-radius:8px;">
-          <a href="${esc(linkTarefa(appUrl, a))}" style="display:inline-block;padding:11px 24px;font-weight:700;color:#ffffff;text-decoration:none;font-size:14px;">Abrir no painel →</a>
+          <a href="${esc(linkDoAviso(appUrl, a))}" style="display:inline-block;padding:11px 24px;font-weight:700;color:#ffffff;text-decoration:none;font-size:14px;">${comercial ? "Abrir as Oportunidades →" : "Abrir no painel →"}</a>
         </td></tr></table>
       </td></tr>
       <tr><td style="padding:12px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px;">
-        Você recebe este e-mail porque é responsável, seguidor ou foi mencionado nesta tarefa.<br>© JCN Consultoria · SST JCN
+        ${comercial ? "Você recebe este e-mail porque tem acesso ao módulo Comercial." : "Você recebe este e-mail porque é responsável, seguidor ou foi mencionado nesta tarefa."}<br>© JCN Consultoria · SST JCN
       </td></tr>
     </table>
   </td></tr></table>

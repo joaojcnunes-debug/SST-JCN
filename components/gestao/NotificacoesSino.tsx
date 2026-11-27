@@ -6,10 +6,12 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNotificacoes, useMarcarLida, type GestaoNotificacao } from "@/lib/hooks/useGestao";
 
-const ICONE_TIPO: Record<string, string> = { atribuicao: "📌", seguidor: "👁", quadro: "🗂", comentario: "💬", mencao: "@", status: "🔄", prazo: "⏰", automacao: "⚡", etapa: "🔔", comentario_atribuido: "📝", prazo_atendimento: "⏱" };
+const ICONE_TIPO: Record<string, string> = { atribuicao: "📌", seguidor: "👁", quadro: "🗂", comentario: "💬", mencao: "@", status: "🔄", prazo: "⏰", automacao: "⚡", etapa: "🔔", comentario_atribuido: "📝", prazo_atendimento: "⏱", comercial: "💼" };
 
 /** Link da Gestão que abre a lista e a tarefa da notificação (fora da Gestão: barra superior, Módulos, Início). */
 export function linkNotificacao(n: GestaoNotificacao): string {
+  // 0.3.338 (v374): o aviso do Comercial abre as Oportunidades.
+  if (n.tipo === "comercial") return "/comercial";
   const qs = new URLSearchParams();
   if (n.id_quadro) qs.set("quadro", n.id_quadro);
   if (n.id_tarefa) qs.set("tarefa", n.id_tarefa);
