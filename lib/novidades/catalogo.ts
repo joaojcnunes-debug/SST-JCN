@@ -48,7 +48,8 @@ export const CATALOGO: Novidade[] = [
     texto:
       "Na tela de Oportunidades, a tabela de intervenções psicossociais ganhou o botão Por setor | Por risco, como na " +
       "Conciliação. Por setor, cada setor tem um título com as intervenções dele e o risco ao lado; por risco, cada risco " +
-      "tem um título com os setores em que aparece e o setor ao lado. Cada intervenção é um cartão, com o método no rodapé.",
+      "tem um título com os setores em que aparece e o setor ao lado. Cada intervenção é um cartão, com o método no rodapé, " +
+      "e os serviços indicados (AET, DRPS, NR-12, treinamentos) também aparecem em cartões.",
     onde: "Comercial › Oportunidades",
     versoes: ["0.3.329"],
   },
