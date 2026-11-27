@@ -30,6 +30,7 @@ import { useLiberacaoServicos, usePodeLiberarServicos } from "@/lib/hooks/useCom
 import { useAgora, useAtividadeSessao, useSessoesComercial } from "@/lib/hooks/useDocumentoSessoes";
 import { useUserStore } from "@/lib/store";
 import {
+  motivoSoLeitura,
   ROTULO_SITUACAO_COMERCIAL,
   chaveRisco,
   riscosComIntervencoes,
@@ -531,6 +532,7 @@ export default function ConciliacaoEmpresaPage() {
           atendimento={atendimento}
           podeAlterar={podeTrabalhar && fechada}
           podeRetirar={podeEditar && fechada}
+          motivoSoLeitura={fechada ? motivoSoLeitura({ podeEditar, podeLiberar, sessaoAberta: !!minha, liberado }) : null}
         />
       )}
 

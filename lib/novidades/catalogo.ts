@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "intervencoes-motivo-so-leitura",
+    data: "2026-11-27",
+    tipo: "melhoria",
+    titulo: "Intervenções da conciliação: a tela diz por que não dá para inserir",
+    texto:
+      "Na etapa Intervenções da conciliação (por empresa e por grupo), quando não dá para inserir ou alterar, um aviso diz o " +
+      "motivo: o tempo não está rodando (Iniciar/Retomar no relógio), já foi liberado ao Comercial (reabra a liberação) ou o " +
+      "perfil não pode alterar. Antes aparecia só \"Nenhuma intervenção indicada\", sem o campo de inserir.",
+    onde: "Consolidação › Conciliação › Intervenções",
+    versoes: ["0.3.334"],
+  },
+  {
     id: "trazer-riscos-laudo-sempre-atual",
     data: "2026-11-27",
     tipo: "correcao",
