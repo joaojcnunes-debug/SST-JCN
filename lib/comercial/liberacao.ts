@@ -508,3 +508,15 @@ export function aplicarGrupos(
   }
   return out;
 }
+
+/**
+ * 0.3.334 (pedido do usuário): por que a etapa Intervenções está só para leitura — a tela dizia só "Nenhuma intervenção
+ * indicada" e o campo de inserir sumia, sem explicar. null = pode alterar. Só vale com a conciliação fechada (aberta já
+ * tem o seu aviso).
+ */
+export function motivoSoLeitura(p: { podeEditar: boolean; podeLiberar: boolean; sessaoAberta: boolean; liberado: boolean }): string | null {
+  if (!p.podeEditar || !p.podeLiberar) return "O seu perfil não pode alterar as intervenções.";
+  if (p.liberado) return "Já liberado ao Comercial: reabra a liberação para alterar as intervenções.";
+  if (!p.sessaoAberta) return "O tempo não está rodando: clique em Iniciar ou Retomar no relógio do canto para inserir ou alterar as intervenções.";
+  return null;
+}

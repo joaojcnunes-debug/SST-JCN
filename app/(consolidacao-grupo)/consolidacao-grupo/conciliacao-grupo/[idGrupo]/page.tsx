@@ -33,6 +33,7 @@ import { useAgora, useAtividadeSessao, useSessoesComercialGrupo } from "@/lib/ho
 import { useUserStore } from "@/lib/store";
 import { minhaSessaoAberta, type SessaoDocumento } from "@/lib/inspecoes/sessoes";
 import {
+  motivoSoLeitura,
   ROTULO_SITUACAO_COMERCIAL,
   chaveRisco,
   riscosComIntervencoes,
@@ -583,6 +584,7 @@ export default function ConciliacaoGrupoPage() {
           atendimento={atendimento}
           podeAlterar={podeTrabalhar && fechada}
           podeRetirar={podeEditar && podeLiberar && fechada}
+          motivoSoLeitura={fechada ? motivoSoLeitura({ podeEditar, podeLiberar, sessaoAberta: !!minha, liberado }) : null}
         />
       )}
 

@@ -83,7 +83,10 @@ export default function LiberarParaComercial({
   podeAlterar,
   podeRetirar,
   avisoRiscos,
+  motivoSoLeitura,
 }: {
+  /** 0.3.334: por que a etapa está só para leitura (tempo parado, já liberado, perfil); null = pode alterar. */
+  motivoSoLeitura?: string | null;
   /** 0.3.321: aviso acima da tabela (ex.: fechamento antigo sem os convergentes). */
   avisoRiscos?: ReactNode;
   alvo: AlvoConciliacao;
@@ -222,12 +225,18 @@ export default function LiberarParaComercial({
                               : "Por setor, cada setor com os seus riscos; a intervenção escolhida vale só para aquele setor."}
                           </span>
                         </div>
+                        {/* 0.3.334 (pedido do usuário): o motivo de não dar para inserir, em vez de só "Nenhuma intervenção indicada". */}
+                        {!podeAlterar && motivoSoLeitura && (
+                          <p role="status" className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-800">
+                            {motivoSoLeitura}
+                          </p>
+                        )}
                     </div>
                   </div>
                   {/* 0.3.329 (pedido do João): cada intervenção é um cartão com sombra, como no Comercial. */}
                   <div className="bg-slate-50/70 px-3 pb-4">
                     {agrupar === "risco" && porFator.map((g) => (
-                      <LinhasDoFator key={g.idFator} grupo={g} alvo={alvo} empresasDoRisco={empresasDoRisco} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar} />
+                      <LinhasDoFator key={g.idFator} grupo={g} alvo={alvo} empresasDoRisco={empresasDoRisco} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar} motivo={motivoSoLeitura} />
                     ))}
                     {/* 0.3.325 (pedido do João): por setor, um título por setor e, embaixo, os riscos dele (cada um com as
                         intervenções e o método). */}
@@ -244,7 +253,7 @@ export default function LiberarParaComercial({
                               </span>
                             </div>
                           {g.riscos.map((r) => (
-                            <LinhasDoFator key={r.chave} grupo={agruparPorRisco([r], indicadas)[0]} alvo={alvo} empresasDoRisco={empresasDoRisco} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar} semSetores />
+                            <LinhasDoFator key={r.chave} grupo={agruparPorRisco([r], indicadas)[0]} alvo={alvo} empresasDoRisco={empresasDoRisco} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar} motivo={motivoSoLeitura} semSetores />
                           ))}
                         </Fragment>
                       );
@@ -353,8 +362,11 @@ function LinhasDoFator({
   catalogo,
   opcoes,
   podeAlterar,
+  motivo,
   semSetores = false,
 }: {
+  /** 0.3.334: por que não dá para inserir (aparece no lugar de só "Nenhuma intervenção indicada"). */
+  motivo?: string | null;
   /** 0.3.325: no Por setor o setor está no título do grupo; a linha do risco não repete. */
   semSetores?: boolean;
   grupo: RiscoPorFator;
@@ -425,7 +437,9 @@ function LinhasDoFator({
         </article>
       )}
       {temas.length === 0 && !mostrarNova && (
-        <p className="mt-2 px-1 text-xs text-gray-400">Nenhuma intervenção indicada.</p>
+        <p className="mt-2 px-1 text-xs text-gray-400">
+          Nenhuma intervenção indicada.{!podeAlterar && motivo && <span className="ml-1 text-amber-700">{motivo}</span>}
+        </p>
       )}
     </Fragment>
   );

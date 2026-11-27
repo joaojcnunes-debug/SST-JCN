@@ -2,6 +2,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  motivoSoLeitura,
   acharIntervencao,
   acharNaLista,
   comOpcao,
@@ -389,4 +390,12 @@ describe("aplicarGrupos (Conciliação por grupo, v0.3.290)", () => {
     assert.ok(e2.oportunidades.some((o) => o.produto === "Intervenção psicossocial"));
     assert.ok(e2.oportunidades.some((o) => o.produto === "AET"), "o AET do setor Loja");
   });
+});
+
+test("motivoSoLeitura: perfil, liberado e tempo parado explicam a etapa só para leitura", () => {
+  const ok = { podeEditar: true, podeLiberar: true, sessaoAberta: true, liberado: false };
+  assert.equal(motivoSoLeitura(ok), null);
+  assert.match(motivoSoLeitura({ ...ok, sessaoAberta: false })!, /Retomar/);
+  assert.match(motivoSoLeitura({ ...ok, liberado: true, sessaoAberta: false })!, /reabra a liberação/);
+  assert.match(motivoSoLeitura({ ...ok, podeLiberar: false })!, /perfil/);
 });
