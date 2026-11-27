@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "plano-mes-por-risco",
+    data: "2026-11-27",
+    tipo: "correcao",
+    titulo: "Plano de intervenções: um mês para cada risco",
+    texto:
+      "No Plano de intervenções da Conciliação, o mês agora é escolhido para cada risco. Antes, a mesma intervenção em " +
+      "vários riscos (por exemplo, um treinamento de liderança) tinha um mês só, e mudar num risco mudava em todos — não " +
+      "dava para montar o cronograma anual. O mês já escolhido continua valendo até ser trocado. O cronograma e a tela do " +
+      "vendedor mostram o risco de cada mês.",
+    onde: "Consolidação › Conciliação › Intervenções › Plano de intervenções",
+    versoes: ["0.3.337"],
+  },
+  {
     id: "consolidacao-grupos-em-cartoes",
     data: "2026-11-27",
     tipo: "melhoria",

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { IntervencaoIndicada, RiscoConciliado } from "./liberacao";
-import { anexarPlanos, chaveMetodo, cronograma, linhasDoPlano, planoDoVendedor, metodoDe, modalidadesEmUso, planoVazio, riscosDoPlano, rotuloMes, setoresDoPlano, temasDoPlano } from "./plano";
+import { anexarPlanos, chaveMesRisco, chaveMetodo, cronograma, cronogramaPorRisco, linhasDoPlano, planoDoVendedor, metodoDe, modalidadesEmUso, planoVazio, riscosDoPlano, rotuloMes, setoresDoPlano, temasDoPlano } from "./plano";
 
 const ind = (setor: string, fator: string, nome: string, modalidade: string | null, id: string | null = null) =>
   ({ id_item: `${setor}${fator}${nome}`, id_empresa: "E", setor_chave: setor, setor_nome: setor, id_fator: fator, fator_nome: fator,
@@ -67,7 +67,7 @@ test("vendedor: plano com o mês de cada intervenção e o cronograma (padrão s
   const ii = [ind("Caixa", "Assédio", "Tema A", "EAD", "I1"), ind("Caixa", "Sobrecarga", "Tema B", "Presencial", "I2")];
   const p = planoDoVendedor({ ...planoVazio("E", "empresa"), inicio: "2027-01-01", temas: { I2: 1, I1: 2 } }, ii)!;
   assert.deepEqual(p.linhas.map((l) => `${l.intervencao}:${l.metodo}:${l.mes}`), ["Tema A:EAD:fev/2027", "Tema B:Presencial:jan/2027"]);
-  assert.deepEqual(p.cronograma.map((m) => `${m.rotulo}=${m.intervencoes.join(",")}`), ["jan/2027=Tema B", "fev/2027=Tema A"]);
+  assert.deepEqual(p.cronograma.map((m) => `${m.rotulo}=${m.intervencoes.join(",")}`), ["jan/2027=Tema B (Sobrecarga)", "fev/2027=Tema A (Assédio)"]);
   assert.equal(p.gravado, true);
   assert.equal(planoDoVendedor(null, ii)!.gravado, false);
   assert.equal(planoDoVendedor(null, []), null);
@@ -98,4 +98,22 @@ test("método: o texto da intervenção no catálogo vale antes do da modalidade
   assert.deepEqual(metodoDe("EAD", m, null, "I1", cat), { forma: "Plataforma", duracao: "2h (do treinamento)", avaliacao: "Prova", certificado: "Sim" });
   assert.equal(metodoDe("EAD", m, { metodos: { [chaveMetodo("I1", "EAD")]: { duracao: "1h (da empresa)" } } }, "I1", cat).duracao, "1h (da empresa)");
   assert.equal(metodoDe("EAD", m, { metodos: { EAD: { duracao: "3h" } } }, "I1", cat).duracao, "3h");
+});
+
+test("0.3.337: o mês é de cada risco — a mesma intervenção em dois riscos tem um mês para cada", () => {
+  const ii = [ind("Adm", "Clareza", "Liderança", "Presencial", "L"), ind("Obra", "Controle", "Liderança", "Presencial", "L"), ind("Adm", "Assédio", "Respeito", "EAD", "R")];
+  // plano antigo: o mês do tema vale para os dois riscos
+  const antigo = { ...planoVazio("E", "empresa"), inicio: "2026-01-01", meses: 12, temas: { L: 2 } };
+  const linhas = linhasDoPlano(ii, temasDoPlano(ii), "risco").filter((l) => l.tema.chave === "L");
+  assert.deepEqual(linhas.map((l) => l.idFator), ["Clareza", "Controle"]);
+  // escolher o mês só de um risco não mexe no outro
+  const novo = { ...antigo, temas: { ...antigo.temas, [chaveMesRisco("Controle", "L")]: 5 } };
+  const c = cronogramaPorRisco(novo, ii);
+  assert.deepEqual(c.meses[1].itens.filter((i) => i.tema.chave === "L").map((i) => `${i.tema.nome}:${i.riscos.join("+")}`), ["Liderança:Clareza"]);
+  assert.deepEqual(c.meses[4].itens.filter((i) => i.tema.chave === "L").map((i) => `${i.tema.nome}:${i.riscos.join("+")}`), ["Liderança:Controle"]);
+  const v = planoDoVendedor(novo, ii)!;
+  assert.deepEqual(v.linhas.filter((l) => l.intervencao === "Liderança").map((l) => `${l.risco}:${l.mes}`), ["Clareza:fev/2026", "Controle:mai/2026"]);
+  // no Por setor, uma linha por setor × risco × intervenção
+  assert.deepEqual(linhasDoPlano([...ii, ind("Adm", "Controle", "Liderança", "Presencial", "L")], temasDoPlano(ii), "setor").filter((l) => l.grupo === "Adm").map((l) => `${l.idFator}:${l.tema.nome}`),
+    ["Assédio:Respeito", "Clareza:Liderança", "Controle:Liderança"]);
 });
