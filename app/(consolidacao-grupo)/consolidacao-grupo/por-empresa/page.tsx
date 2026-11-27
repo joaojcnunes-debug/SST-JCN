@@ -9,10 +9,20 @@
 // aparece nas listas de grupos e não mexe no grupo de nenhuma empresa. O painel é o mesmo
 // componente da página de grupo (`PainelConsolidacao`).
 //
+// 0.3.336 (pedido do usuário): sem consolidação aberta, a tela mostra as consolidações em CARTÕES (situação do registro,
+// documentos, avisos e ações) em vez de ficar vazia; a aberta vai para o endereço (?consolidacao=…) — voltar ou mandar
+// o link abre direto nela — e a última aberta vira o atalho "Continuar onde parou" (antes abria sozinha).
+//
 // Só LÊ a AEP e o DRPS/QPS — nada desses módulos é alterado aqui.
 
-import { useEffect, useState } from "react";
-import { Building2, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Building2, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import CartoesConsolidacao, { useDocsPorEmpresa, type CartaoItem } from "@/components/psico-consolidacao/CartoesConsolidacao";
+import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import { useEmpresas } from "@/lib/hooks/useEmpresas";
+import { avisosDoCartao, resumirDocs, resumirRegistro } from "@/lib/consolidacao/cartoes";
+import { hojeSP } from "@/lib/inspecoes/prioridade";
 import EmpresasMultiSelect from "@/components/empresas/EmpresasMultiSelect";
 import PainelConsolidacao from "@/components/psico-consolidacao/PainelConsolidacao";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
@@ -20,6 +30,7 @@ import {
   useConsolidacoesPorEmpresa,
   useExcluirConsolidacaoPorEmpresa,
   useMembrosDaConsolidacao,
+  useResumoRegistrosConsolidacao,
   useSalvarConsolidacaoPorEmpresa,
 } from "@/lib/hooks/usePsicoConsolidacao";
 
@@ -29,27 +40,33 @@ const CHAVE_ULTIMA = "chabra:consolidacao-por-empresa:ultima";
 type Edicao = { id: string | null; nome: string; empresas: string[] };
 
 export default function ConsolidacaoPorEmpresaPage() {
+  // useSearchParams() exige um limite de Suspense para o build do Next não falhar.
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <Conteudo />
+    </Suspense>
+  );
+}
+
+function Conteudo() {
   const podeEditar = useCanEdit();
   const { data: consolidacoes = [], isLoading } = useConsolidacoesPorEmpresa();
   const salvar = useSalvarConsolidacaoPorEmpresa();
   const excluir = useExcluirConsolidacaoPorEmpresa();
-  const [id, setId] = useState("");
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const id = params.get("consolidacao") ?? "";
+  const setId = (novo: string) => router.replace(novo ? `${pathname}?consolidacao=${encodeURIComponent(novo)}` : pathname, { scroll: false });
+  const [ultimoId, setUltimoId] = useState<string | null>(null);
   const [edicao, setEdicao] = useState<Edicao | null>(null);
 
   useEffect(() => {
     try {
-      const salvo = localStorage.getItem(CHAVE_ULTIMA);
-      if (salvo) setId(salvo);
-    } catch {
-      /* navegador sem storage: começa vazio */
-    }
-  }, []);
-  useEffect(() => {
-    try {
       if (id) localStorage.setItem(CHAVE_ULTIMA, id);
-      else localStorage.removeItem(CHAVE_ULTIMA);
+      else setUltimoId(localStorage.getItem(CHAVE_ULTIMA));
     } catch {
-      /* idem */
+      /* navegador sem storage */
     }
   }, [id]);
 
@@ -119,8 +136,30 @@ export default function ConsolidacaoPorEmpresaPage() {
             </button>
           </div>
         </div>
+      ) : !id ? (
+        <>
+          {podeEditar && (
+            <button
+              type="button"
+              onClick={() => setEdicao({ id: null, nome: "", empresas: [] })}
+              className="inline-flex items-center gap-1.5 rounded-md border border-marca-primary px-3 py-2 text-sm font-medium text-marca-primary hover:bg-marca-light"
+            >
+              <Plus className="size-4" /> Nova consolidação
+            </button>
+          )}
+          <ListaConsolidacoes
+            consolidacoes={consolidacoes}
+            carregando={isLoading}
+            ultimoId={ultimoId}
+            onAbrir={setId}
+            onEditar={podeEditar ? (c) => setEdicao({ id: c.id_grupo, nome: c.nome, empresas: c.empresas_consolidacao ?? [] }) : undefined}
+          />
+        </>
       ) : (
         <div className="flex max-w-3xl flex-wrap items-end gap-2">
+          <button type="button" onClick={() => setId("")} className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+            <ArrowLeft className="size-4" /> Todas
+          </button>
           <label className="min-w-0 flex-1">
             <span className="text-xs font-medium text-gray-600">Consolidação</span>
             <select
@@ -180,5 +219,69 @@ export default function ConsolidacaoPorEmpresaPage() {
         )
       )}
     </div>
+  );
+}
+
+/** 0.3.336: as consolidações salvas em cartões — situação do registro, documentos e avisos. */
+function ListaConsolidacoes({
+  consolidacoes,
+  carregando,
+  ultimoId,
+  onAbrir,
+  onEditar,
+}: {
+  consolidacoes: ReturnType<typeof useConsolidacoesPorEmpresa>["data"] & object;
+  carregando: boolean;
+  ultimoId: string | null;
+  onAbrir: (id: string) => void;
+  onEditar?: (c: NonNullable<ReturnType<typeof useConsolidacoesPorEmpresa>["data"]>[number]) => void;
+}) {
+  const registros = useResumoRegistrosConsolidacao();
+  const { data: empresas = [], isLoading: carregandoEmpresas } = useEmpresas();
+  const { docs, isLoading: carregandoDocs } = useDocsPorEmpresa();
+
+  const itens = useMemo<CartaoItem[]>(() => {
+    if (!registros.data) return [];
+    const hoje = hojeSP();
+    // A lista de empresas já vem recortada pelo acesso: empresa que não está nela é de fora do acesso.
+    const nomes = new Map(empresas.map((e) => [e.id_empresa, e.nome_empresa]));
+    return consolidacoes.map((c): CartaoItem => {
+      const membros = (c.empresas_consolidacao ?? []).map((id) => ({ id, nome: nomes.get(id) ?? "Empresa fora do acesso", visivel: nomes.has(id) }));
+      return {
+        id: c.id_grupo,
+        nome: c.nome,
+        descricao: c.descricao,
+        empresas: membros.length,
+        registro: resumirRegistro(
+          registros.data.execucoes.filter((e) => e.id_grupo === c.id_grupo),
+          registros.data.validacoes,
+          membros.filter((m) => m.visivel).length,
+        ),
+        docs: resumirDocs(membros, docs),
+        avisos: avisosDoCartao(membros, docs, hoje),
+        extra: membros.length > 0 && (
+          <span className="line-clamp-1" title={membros.map((m) => m.nome).join(", ")}>
+            {membros.map((m) => m.nome).join(", ")}
+          </span>
+        ),
+        acoes: onEditar && (
+          <button type="button" onClick={() => onEditar(c)} className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1 font-medium text-gray-700 hover:bg-gray-50">
+            <Pencil className="size-3.5" /> Editar empresas
+          </button>
+        ),
+      };
+    });
+  }, [consolidacoes, registros.data, empresas, docs, onEditar]);
+
+  if (carregando || registros.isLoading || carregandoEmpresas || carregandoDocs) return <LoadingSkeleton />;
+  if (registros.error) return <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">Não foi possível carregar: {(registros.error as Error).message}</p>;
+  return (
+    <CartoesConsolidacao
+      itens={itens}
+      rotuloItem={{ um: "consolidação", varios: "consolidações" }}
+      ultimoId={ultimoId}
+      onAbrir={onAbrir}
+      vazio={<>Nenhuma consolidação salva. Use &quot;Nova consolidação&quot; para escolher as empresas.</>}
+    />
   );
 }

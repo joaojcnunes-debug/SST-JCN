@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "consolidacao-grupos-em-cartoes",
+    data: "2026-11-27",
+    tipo: "melhoria",
+    titulo: "Grupos de empresas e Por empresa em cartões",
+    texto:
+      "As telas Grupos de empresas e Por empresa não abrem mais vazias: cada grupo (ou consolidação salva) é um cartão com a " +
+      "situação do registro (sem registro, aguardando validação, validando, validada), as empresas, os documentos usados e " +
+      "avisos (empresa sem AEP ou DRPS/QPS, documento com mais de 2 anos, empresa fora do acesso), com busca, filtro e " +
+      "ações (abrir, Conciliação, editar). O grupo aberto fica no endereço, para voltar ou mandar o link, e o último aberto " +
+      "vira o atalho \"Continuar onde parou\".",
+    onde: "Consolidação › Grupos de empresas e Por empresa",
+    versoes: ["0.3.336"],
+  },
+  {
     id: "consolidacao-dashboard",
     data: "2026-11-27",
     tipo: "novidade",
