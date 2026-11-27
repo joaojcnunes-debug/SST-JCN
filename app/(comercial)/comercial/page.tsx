@@ -784,11 +784,11 @@ function PlanoNaVenda({ p }: { p: PlanoDoVendedor }) {
       {p.linhas.length > 0 && (
         <table className="mt-2 w-full max-w-3xl text-sm">
           <thead className="text-left text-xs font-semibold text-gray-600">
-            <tr><th className="py-1 pr-3">Intervenção</th><th className="w-40 py-1 pr-3">Método</th><th className="w-28 py-1">Mês</th></tr>
+            <tr><th className="py-1 pr-3">Intervenção</th><th className="w-44 py-1 pr-3">Risco</th><th className="w-40 py-1 pr-3">Método</th><th className="w-28 py-1">Mês</th></tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-gray-700">
             {p.linhas.map((l) => (
-              <tr key={l.intervencao}><td className="py-1 pr-3 font-medium text-gray-900">{l.intervencao}</td><td className="py-1 pr-3">{l.metodo}</td><td className="py-1">{l.mes}</td></tr>
+              <tr key={`${l.intervencao}:${l.risco ?? ""}`}><td className="py-1 pr-3 font-medium text-gray-900">{l.intervencao}</td><td className="py-1 pr-3">{l.risco ?? "—"}</td><td className="py-1 pr-3">{l.metodo}</td><td className="py-1">{l.mes}</td></tr>
             ))}
           </tbody>
         </table>

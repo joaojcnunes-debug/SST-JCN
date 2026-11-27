@@ -9,8 +9,8 @@ import type { AlvoConciliacao } from "@/lib/hooks/useConciliacaoParecer";
 import { usePlanoIntervencoes, useSalvarPlanoIntervencoes } from "@/lib/hooks/useComercial";
 import type { IntervencaoIndicada } from "@/lib/comercial/liberacao";
 import {
-  cronograma, ehEad, linhasDoPlano, mesDoTema, mesesDoPlano, planoVazio, rotuloMes, rotuloModalidade, temasDoPlano, temasMensais,
-  type PlanoIntervencoes, type TemaPlano,
+  chaveMesRisco, cronogramaPorRisco, ehEad, linhasDoPlano, mesDoRisco, mesesDoPlano, planoVazio, rotuloMes, rotuloModalidade, temasDoPlano,
+  temasMensais, type PlanoIntervencoes,
 } from "@/lib/comercial/plano";
 import { cn } from "@/lib/utils";
 
@@ -45,11 +45,11 @@ export default function PlanoIntervencoes({
   const plano: PlanoIntervencoes = salvo ?? planoVazio(alvo.id, alvo.tipo);
 
   const temas = useMemo(() => temasDoPlano(indicadas), [indicadas]);
-  const crono = useMemo(() => cronograma(plano, temas), [plano, temas]);
+  // 0.3.337: o mês é de cada risco × intervenção (antes, da intervenção: mudar num risco mudava em todos).
+  const crono = useMemo(() => cronogramaPorRisco(plano, indicadas), [plano, indicadas]);
   const mensais = temasMensais(plano.planejamento, temas);
   const totalMeses = mesesDoPlano(plano, temas);
   const linhas = linhasDoPlano(indicadas, mensais, agrupar);
-  const ondeEntra = (t: TemaPlano) => (agrupar === "setor" ? t.setores : t.riscos).join(", ");
 
   const mudar = (p: Partial<PlanoIntervencoes>) => podeAlterar && salvar.mutate({ ...plano, ...p });
 
@@ -119,7 +119,7 @@ export default function PlanoIntervencoes({
                   const primeira = n === 0 || linhas[n - 1].grupo !== l.grupo;
                   const t = l.tema;
                   return (
-                    <tr key={`${l.grupo}:${t.chave}`} className={cn(primeira ? "border-t border-gray-200" : "border-t border-gray-50")}>
+                    <tr key={`${l.grupo}:${l.idFator}:${t.chave}`} className={cn(primeira ? "border-t border-gray-200" : "border-t border-gray-50")}>
                       <td className="py-1.5 pr-3 align-top font-semibold text-gray-900">{primeira ? l.grupo : ""}</td>
                       <td className="py-1.5 pr-3 align-top text-gray-600">{l.outros.join(", ")}</td>
                       <td className="py-1.5 pr-3 align-top font-medium text-gray-800">{t.nome}</td>
@@ -127,8 +127,9 @@ export default function PlanoIntervencoes({
                         {(plano.planejamento === "ead_continuo" ? t.modalidades.filter((m) => !ehEad(m)) : t.modalidades).map(rotuloModalidade).join(" + ") || "—"}
                       </td>
                       <td className="py-1 align-top">
-                        <select value={mesDoTema(plano, mensais, t.chave, totalMeses)} disabled={!podeAlterar}
-                          onChange={(e) => mudar({ temas: { ...plano.temas, [t.chave]: Number(e.target.value) } })} className={campo}>
+                        <select value={mesDoRisco(plano, mensais, l.idFator, t.chave, totalMeses)} disabled={!podeAlterar}
+                          aria-label={`Mês de ${t.nome} em ${agrupar === "setor" ? l.outros.join(", ") : l.grupo}`}
+                          onChange={(e) => mudar({ temas: { ...plano.temas, [chaveMesRisco(l.idFator, t.chave)]: Number(e.target.value) } })} className={campo}>
                           {Array.from({ length: totalMeses }, (_, k) => <option key={k} value={k + 1}>{rotuloMes(plano.inicio, k + 1)}</option>)}
                         </select>
                       </td>
@@ -152,8 +153,8 @@ export default function PlanoIntervencoes({
               {crono.meses.map((m) => (
                 <li key={m.n}>
                   <span className="font-medium">{m.rotulo}:</span>{" "}
-                  {m.temas.length ? m.temas.map((t, k) => (
-                    <span key={t.chave}>{k > 0 && "; "}{t.nome} <span className="text-xs text-gray-500">({ondeEntra(t)})</span></span>
+                  {m.itens.length ? m.itens.map((i, k) => (
+                    <span key={i.tema.chave}>{k > 0 && "; "}{i.tema.nome} <span className="text-xs text-gray-500">({(agrupar === "setor" ? i.setores : i.riscos).join(", ")})</span></span>
                   )) : <span className="text-gray-400">—</span>}
                 </li>
               ))}

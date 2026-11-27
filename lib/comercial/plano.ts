@@ -30,7 +30,10 @@ export interface PlanoIntervencoes {
   /** 1º dia do mês em que o plano começa (yyyy-mm-01); sem ele, os meses são "Mês 1", "Mês 2"… */
   inicio: string | null;
   meses: number | null;
-  /** O mês (1..meses) de cada tema, pela chave do tema. */
+  /**
+   * O mês (1..meses) de cada tema, pela chave do tema. 0.3.337: também o mês de cada RISCO × tema, pela chave
+   * `chaveMesRisco(idFator, tema)` — vale antes do mês do tema (que fica como o padrão dos planos antigos).
+   */
   temas: Record<string, number>;
   /** Ajustes do texto do método, por modalidade (só os campos alterados). */
   metodos: Record<string, Partial<MetodoTexto>>;
@@ -187,6 +190,8 @@ export function cronograma(plano: PlanoIntervencoes | null, temas: readonly Tema
 export interface LinhaPlano {
   /** O setor (Por setor) ou o risco (Por risco) da linha. */
   grupo: string;
+  /** 0.3.337: o risco da linha — o mês é de cada risco × intervenção. */
+  idFator: string;
   /** Os riscos (Por setor) ou os setores (Por risco) em que o tema entra dentro do grupo. */
   outros: string[];
   tema: TemaPlano;
@@ -209,13 +214,82 @@ export function linhasDoPlano(
     if (!tema || !i.nome.trim()) continue;
     const grupo = por === "setor" ? i.setor_nome : i.fator_nome;
     const outro = por === "setor" ? i.fator_nome : i.setor_nome;
-    const k = `${norm(grupo)}|${tema.chave}`;
-    const l = linhas.get(k) ?? { grupo, outros: [], tema };
+    // 0.3.337: a linha é sempre de um risco só (no Por setor, setor × risco × intervenção), para o mês ser do risco.
+    const k = por === "setor" ? `${norm(grupo)}|${i.id_fator}|${tema.chave}` : `${i.id_fator}|${tema.chave}`;
+    const l = linhas.get(k) ?? { grupo, idFator: i.id_fator, outros: [], tema };
     semRepetir(l.outros, outro);
     linhas.set(k, l);
   }
   return [...linhas.values()].sort((a, b) =>
     a.grupo.localeCompare(b.grupo, "pt-BR") || a.outros.join(", ").localeCompare(b.outros.join(", "), "pt-BR") || a.tema.nome.localeCompare(b.tema.nome, "pt-BR"));
+}
+
+// ── 0.3.337 (pedido do usuário, 27/11/2026): o mês é de cada RISCO, não da intervenção ──────────────────────────────────────
+// A mesma intervenção (ex.: Liderança) em vários riscos tinha um mês só: mudar num risco mudava em todos. Agora cada
+// risco × intervenção tem o seu mês; sem escolha, vale o mês antigo da intervenção (ou a ordem padrão).
+
+export const chaveMesRisco = (idFator: string, tema: string) => `${idFator}::${tema}`;
+
+/** O mês de um risco × intervenção: o escolhido para o risco; sem ele, o do tema (planos antigos) ou a ordem padrão. */
+export function mesDoRisco(
+  plano: Pick<PlanoIntervencoes, "temas"> | null,
+  mensais: readonly TemaPlano[],
+  idFator: string,
+  tema: string,
+  meses: number,
+): number {
+  const proprio = plano?.temas?.[chaveMesRisco(idFator, tema)];
+  if (proprio && proprio >= 1 && proprio <= meses) return proprio;
+  return mesDoTema(plano, mensais, tema, meses);
+}
+
+export interface UnidadePlano {
+  idFator: string;
+  fator: string;
+  tema: TemaPlano;
+  setores: string[];
+}
+
+/** Cada risco × intervenção (dos temas pedidos), com os setores; ordem: intervenção, depois risco. */
+export function unidadesDoPlano(indicadas: readonly IntervencaoIndicada[], temas: readonly TemaPlano[]): UnidadePlano[] {
+  const doTema = new Map(temas.map((t) => [t.chave, t]));
+  const out = new Map<string, UnidadePlano>();
+  for (const i of indicadas) {
+    const tema = doTema.get(chaveTema(i));
+    if (!tema || !i.nome.trim()) continue;
+    const k = chaveMesRisco(i.id_fator, tema.chave);
+    const u = out.get(k) ?? { idFator: i.id_fator, fator: i.fator_nome, tema, setores: [] };
+    semRepetir(u.setores, i.setor_nome);
+    out.set(k, u);
+  }
+  return [...out.values()].sort((a, b) => a.tema.nome.localeCompare(b.tema.nome, "pt-BR") || a.fator.localeCompare(b.fator, "pt-BR"));
+}
+
+export interface ItemDoMes {
+  tema: TemaPlano;
+  riscos: string[];
+  setores: string[];
+}
+
+/** O cronograma com o mês de cada risco: em cada mês, as intervenções e os riscos (e setores) em que entram. */
+export function cronogramaPorRisco(
+  plano: PlanoIntervencoes | null,
+  indicadas: readonly IntervencaoIndicada[],
+): { meses: { n: number; rotulo: string; itens: ItemDoMes[] }[]; continuos: TemaPlano[] } {
+  const temas = temasDoPlano(indicadas);
+  const planejamento = plano?.planejamento ?? "tema_por_mes";
+  const mensais = temasMensais(planejamento, temas);
+  const total = mesesDoPlano(plano, temas);
+  const meses = Array.from({ length: total }, (_, k) => ({ n: k + 1, rotulo: rotuloMes(plano?.inicio ?? null, k + 1), itens: [] as ItemDoMes[] }));
+  for (const u of unidadesDoPlano(indicadas, mensais)) {
+    const m = meses[mesDoRisco(plano, mensais, u.idFator, u.tema.chave, total) - 1];
+    let item = m.itens.find((x) => x.tema.chave === u.tema.chave);
+    if (!item) m.itens.push((item = { tema: u.tema, riscos: [], setores: [] }));
+    semRepetir(item.riscos, u.fator);
+    for (const s of u.setores) semRepetir(item.setores, s);
+  }
+  const continuos = planejamento === "ead_continuo" ? temas.filter((t) => !mensais.includes(t)) : [];
+  return { meses, continuos };
 }
 
 export function planoVazio(idAlvo: string, tipo: "empresa" | "grupo"): PlanoIntervencoes {
@@ -231,8 +305,8 @@ export interface PlanoDoVendedor {
   gravado: boolean;
   inicio: string | null;
   meses: number;
-  /** Os temas que entram mês a mês, com o método e o mês. */
-  linhas: { intervencao: string; metodo: string; mes: string }[];
+  /** Os temas que entram mês a mês, com o método e o mês (0.3.337: um por risco × intervenção, com o risco). */
+  linhas: { intervencao: string; risco?: string; metodo: string; mes: string }[];
   /** No "EAD o período todo": os temas só EAD. */
   continuos: string[];
   cronograma: { rotulo: string; intervencoes: string[] }[];
@@ -244,7 +318,7 @@ export function planoDoVendedor(plano: PlanoIntervencoes | null, indicadas: read
   const p = plano ?? planoVazio("", "empresa");
   const mensais = temasMensais(p.planejamento, temas);
   const total = mesesDoPlano(p, temas);
-  const c = cronograma(p, temas);
+  const c = cronogramaPorRisco(p, indicadas);
   const metodoDoTema = (t: TemaPlano) =>
     (p.planejamento === "ead_continuo" ? t.modalidades.filter((m) => !ehEad(m)) : t.modalidades).map(rotuloModalidade).join(" + ") || "—";
   return {
@@ -252,9 +326,14 @@ export function planoDoVendedor(plano: PlanoIntervencoes | null, indicadas: read
     gravado: !!plano,
     inicio: p.inicio,
     meses: total,
-    linhas: mensais.map((t) => ({ intervencao: t.nome, metodo: metodoDoTema(t), mes: rotuloMes(p.inicio, mesDoTema(p, mensais, t.chave, total)) })),
+    linhas: unidadesDoPlano(indicadas, mensais).map((u) => ({
+      intervencao: u.tema.nome,
+      risco: u.fator,
+      metodo: metodoDoTema(u.tema),
+      mes: rotuloMes(p.inicio, mesDoRisco(p, mensais, u.idFator, u.tema.chave, total)),
+    })),
     continuos: c.continuos.map((t) => t.nome),
-    cronograma: c.meses.map((m) => ({ rotulo: m.rotulo, intervencoes: m.temas.map((t) => t.nome) })),
+    cronograma: c.meses.map((m) => ({ rotulo: m.rotulo, intervencoes: m.itens.map((i) => `${i.tema.nome} (${i.riscos.join(", ")})`) })),
   };
 }
 
