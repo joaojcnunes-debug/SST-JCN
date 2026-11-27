@@ -645,7 +645,7 @@ function ItemJustificativa({ texto }: { texto: string }) {
  * As intervenções que a Conciliação indicou: Setor, Risco, Intervenção, Modalidade, Responsável, Prazo e,
  * desde a 0.3.247, a Situação e a Venda de cada uma.
  */
-/** 0.3.329: as intervenções agrupadas pelo setor ou pelo risco; dentro do grupo, pelo outro lado e pela intervenção. */
+/** 0.3.329: as intervenções agrupadas pelo setor ou pelo risco; dentro do grupo, em blocos do outro lado (risco ou setor). */
 function agruparLinhas(linhas: readonly LinhaIntervencaoOferta[], por: "setor" | "risco") {
   const grupo = (l: LinhaIntervencaoOferta) => (por === "setor" ? l.setor : l.risco);
   const outro = (l: LinhaIntervencaoOferta) => (por === "setor" ? l.risco : l.setor);
@@ -653,16 +653,25 @@ function agruparLinhas(linhas: readonly LinhaIntervencaoOferta[], por: "setor" |
   for (const l of linhas) mapa.set(grupo(l), [...(mapa.get(grupo(l)) ?? []), l]);
   return [...mapa.entries()]
     .sort(([a], [b]) => a.localeCompare(b, "pt-BR"))
-    .map(([nome, ls]) => ({
-      nome,
-      outro,
-      linhas: [...ls].sort((x, y) => outro(x).localeCompare(outro(y), "pt-BR") || x.intervencao.localeCompare(y.intervencao, "pt-BR")),
-      outros: [...new Set(ls.map(outro))].sort((x, y) => x.localeCompare(y, "pt-BR")),
-    }));
+    .map(([nome, ls]) => {
+      const ordenadas = [...ls].sort((x, y) => outro(x).localeCompare(outro(y), "pt-BR") || x.intervencao.localeCompare(y.intervencao, "pt-BR"));
+      const blocos: { nome: string; linhas: LinhaIntervencaoOferta[] }[] = [];
+      for (const l of ordenadas) {
+        const ultimo = blocos[blocos.length - 1];
+        if (ultimo && ultimo.nome === outro(l)) ultimo.linhas.push(l);
+        else blocos.push({ nome: outro(l), linhas: [l] });
+      }
+      return { nome, total: ls.length, blocos, outros: blocos.map((b) => b.nome) };
+    });
 }
 
+/** As colunas dos cartões: os títulos e os campos usam a mesma grade, para ficarem alinhados. */
+const COLS_CARTAO = "grid grid-cols-[minmax(14rem,1fr)_7rem_12rem_10rem_13rem]";
+const COL_LADO = "w-44 shrink-0";
+
 function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunidade }) {
-  // 0.3.329 (pedido do João): ver por setor ou por risco, como na Conciliação por grupo.
+  // 0.3.329 (pedido do João): ver por setor ou por risco, como na Conciliação por grupo; cada intervenção é um cartão com sombra
+  // (efeito de profundidade) e o método no rodapé dele.
   const [por, setPor] = useState<"setor" | "risco">("setor");
   const grupos = agruparLinhas(o.intervencoes ?? [], por);
   return (
@@ -688,95 +697,76 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
           <Venda idEmpresa={idEmpresa} produto={o.produto} nome="O serviço Intervenção psicossocial" venda={o.venda} podeVender={false} />
         </div>
       )}
-      <table className={cn(TABELA_GRADE, "w-full min-w-[64rem] text-sm")}>
-        <thead className={CLS_THEAD}>
-          <FaixaGrupos indicacao="Indicado na Conciliação" colunas={4} />
-        </thead>
-        <tbody className="divide-y divide-gray-100 text-gray-700">
-          {grupos.map((g) => (
-            <Fragment key={g.nome}>
-              {/* O título do grupo: o setor (com quantas intervenções) ou o risco (com os setores em que aparece). */}
-              {/* 0.3.329 (pedido do João): a faixa do grupo vem primeiro e os títulos das colunas logo abaixo, em cada grupo. */}
-              <tr className="bg-indigo-50/60">
-                <td colSpan={6} className="border-t-2 border-indigo-200 px-3 py-2">
-                  <div className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-0.5">
-                    <span className="text-xs font-semibold text-indigo-700">{por === "setor" ? "Setor:" : "Risco:"}</span>
-                    <span className="font-bold text-gray-900">{g.nome}</span>
-                    <span className="text-xs text-gray-500">
-                      ·{" "}
-                      {por === "setor"
-                        ? `${g.linhas.length} ${g.linhas.length === 1 ? "intervenção" : "intervenções"}`
-                        : `${g.outros.length === 1 ? "Setor" : `Setores (${g.outros.length})`}: ${g.outros.join(", ")}`}
-                    </span>
-                  </div>
-                </td>
-              </tr>
-              <tr className={cn(CLS_THEAD, "border-b-2 border-gray-300")}>
+      <div className="min-w-[66rem] bg-slate-50/70 pb-4">
+        {grupos.map((g) => (
+          <section key={g.nome} className="border-t border-indigo-100 first:border-t-0">
+            {/* A faixa do grupo vem primeiro: o setor (com quantas intervenções) ou o risco (com os setores em que aparece). */}
+            <div className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-0.5 border-b-2 border-indigo-200 bg-indigo-50/70 px-3 py-2">
+              <span className="text-xs font-semibold text-indigo-700">{por === "setor" ? "Setor:" : "Risco:"}</span>
+              <span className="font-bold text-gray-900">{g.nome}</span>
+              <span className="text-xs text-gray-500">
+                ·{" "}
                 {por === "setor"
-                  ? <Titulo className="w-44" dica="Fator de risco psicossocial confirmado na Conciliação">Risco</Titulo>
-                  : <Titulo className="w-44" dica="Setor onde o risco foi confirmado">Setor</Titulo>}
-                <Titulo dica="Ação indicada para o risco">Intervenção</Titulo>
-                <Titulo className="w-28" dica="Como é feita: EAD, presencial ou ao vivo">Modalidade</Titulo>
-                <Titulo className="w-48" dica="Quem executa a intervenção">Responsável</Titulo>
-                <Titulo className="w-40" comercial dica="Aberta ou vendida, por intervenção">Situação</Titulo>
-                <Titulo className="w-52" comercial dica="Cada intervenção se vende sozinha; quem marcou, ou um Admin, pode desfazer">Venda</Titulo>
-              </tr>
-              {g.linhas.map((l, n) => {
-                const novoOutro = n === 0 || g.outro(g.linhas[n - 1]) !== g.outro(l);
-                const mesmo = (x: LinhaIntervencaoOferta) => g.outro(x) === g.outro(l);
-                // A intervenção com método ocupa 2 linhas (a dela e a faixa do método embaixo), e entre duas intervenções do
-                // mesmo risco/setor há a linha do espaço — todas contam na célula mesclada da 1ª coluna.
-                const seguidas = novoOutro ? contarIguais(g.linhas, n, mesmo) : 0;
-                const altura = novoOutro ? somarAltura(g.linhas, n, mesmo) + seguidas - 1 : 0;
-                const proxima = g.linhas[n + 1];
-                const st = SITUACAO[l.venda || o.venda ? "vendida" : "aberta"];
-                return (
-                  <Fragment key={l.idItem}>
-                    <tr className="align-top">
-                      {novoOutro && (
-                        // No meio do bloco (largura e altura).
-                        <td rowSpan={altura} className="border-l-0 px-3 py-2 align-middle font-semibold text-gray-800">
-                          {g.outro(l)}
-                        </td>
-                      )}
-                      <td className="px-3 py-2 font-semibold text-gray-900">{l.intervencao}</td>
-                      <td className="px-3 py-2">{l.modalidade ?? "—"}</td>
-                      <td className="px-3 py-2">{l.responsavel ?? "—"}</td>
-                      <td className={cn("px-3 py-2", CLS_COL_COMERCIAL)}>
-                        <span title={st.dica} className={cn("inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold", st.cls)}>
-                          {st.rotulo}
-                        </span>
-                      </td>
-                      <td className={cn("px-3 py-2", CLS_COL_COMERCIAL)}>
-                        {!l.venda && o.venda ? (
-                          <span className="text-xs text-violet-900">Coberta pela venda do serviço inteiro (acima)</span>
-                        ) : (
-                          <Venda idEmpresa={idEmpresa} produto={o.produto} idItem={l.idItem} nome={l.intervencao} venda={l.venda} podeVender />
+                  ? `${g.total} ${g.total === 1 ? "intervenção" : "intervenções"}`
+                  : `${g.outros.length === 1 ? "Setor" : `Setores (${g.outros.length})`}: ${g.outros.join(", ")}`}
+              </span>
+            </div>
+            {/* Os títulos das colunas, na mesma grade dos cartões. */}
+            <div className="flex gap-3 px-3 pt-2 text-[11px] font-bold uppercase tracking-wide text-gray-500">
+              <span className={cn(COL_LADO, "text-center")}>{por === "setor" ? "Risco" : "Setor"}</span>
+              <div className={cn(COLS_CARTAO, "flex-1 text-center")}>
+                <span>Intervenção</span>
+                <span>Modalidade</span>
+                <span>Responsável</span>
+                <span className="text-amber-800">Situação</span>
+                <span className="text-amber-800">Venda</span>
+              </div>
+            </div>
+            {g.blocos.map((b) => (
+              <div key={b.nome} className="flex gap-3 px-3 pt-3">
+                {/* O outro lado (risco ou setor), no meio do bloco. */}
+                <div className={cn(COL_LADO, "flex items-center justify-center rounded-xl border border-indigo-100 bg-white px-2 text-center text-sm font-semibold text-gray-800 shadow-sm")}>
+                  {b.nome}
+                </div>
+                <div className="flex-1 space-y-3">
+                  {b.linhas.map((l) => {
+                    const st = SITUACAO[l.venda || o.venda ? "vendida" : "aberta"];
+                    return (
+                      // Cada intervenção é um cartão com sombra, que sobe um pouco ao passar o mouse.
+                      <article key={l.idItem}
+                        className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-md ring-1 ring-black/5 transition duration-150 hover:-translate-y-0.5 hover:shadow-lg">
+                        <div className={cn(COLS_CARTAO, "items-center text-center text-sm text-gray-700")}>
+                          <p className="px-3 py-2.5 font-semibold text-gray-900">{l.intervencao}</p>
+                          <p className="px-3 py-2.5">{l.modalidade ?? "—"}</p>
+                          <p className="px-3 py-2.5">{l.responsavel ?? "—"}</p>
+                          <div className="flex h-full items-center justify-center bg-amber-50/70 px-3 py-2.5">
+                            <span title={st.dica} className={cn("inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold", st.cls)}>
+                              {st.rotulo}
+                            </span>
+                          </div>
+                          <div className="flex h-full items-center justify-center bg-amber-50/70 px-3 py-2.5">
+                            {!l.venda && o.venda ? (
+                              <span className="text-xs text-violet-900">Coberta pela venda do serviço inteiro (acima)</span>
+                            ) : (
+                              <Venda idEmpresa={idEmpresa} produto={o.produto} idItem={l.idItem} nome={l.intervencao} venda={l.venda} podeVender />
+                            )}
+                          </div>
+                        </div>
+                        {temMetodo(l) && (
+                          // O método que a equipe descreveu, no rodapé do cartão.
+                          <div className="border-t border-gray-200 bg-gray-50/80">
+                            <MetodoNaVenda m={l.metodo!} />
+                          </div>
                         )}
-                      </td>
-                    </tr>
-                    {temMetodo(l) && (
-                      // O método que a equipe descreveu, numa faixa embaixo da intervenção (texto à esquerda).
-                      <tr>
-                        <td colSpan={5} className="bg-gray-50/60 p-0">
-                          <MetodoNaVenda m={l.metodo!} />
-                        </td>
-                      </tr>
-                    )}
-                    {proxima && (
-                      // 0.3.329 (pedido do João): um espaço entre os quadros de intervenção. Dentro do mesmo risco/setor ele fica ao
-                      // lado da célula mesclada; quando o risco/setor muda, ocupa a largura toda.
-                      <tr aria-hidden="true">
-                        <td colSpan={mesmo(proxima) ? 5 : 6} className="h-3 !border-x-0 bg-white p-0" />
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-            </Fragment>
-          ))}
-        </tbody>
-      </table>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </section>
+        ))}
+      </div>
       {o.plano && <PlanoNaVenda p={o.plano} />}
     </div>
   );
@@ -790,20 +780,6 @@ const LINHAS_METODO: { campo: keyof MetodoTexto; rotulo: string }[] = [
 ];
 
 const temMetodo = (l: { metodo?: MetodoTexto | null }) => !!l.metodo && LINHAS_METODO.some((x) => l.metodo![x.campo]);
-
-/** Quantas intervenções seguidas, a partir de `inicio`, atendem `igual`. */
-function contarIguais<T>(linhas: readonly T[], inicio: number, igual: (x: T) => boolean): number {
-  let k = inicio;
-  while (k < linhas.length && igual(linhas[k])) k++;
-  return k - inicio;
-}
-
-/** Quantas linhas da tabela as intervenções seguidas do mesmo grupo ocupam (com método, 2 cada). */
-function somarAltura<T extends { metodo?: MetodoTexto | null }>(linhas: readonly T[], inicio: number, igual: (x: T) => boolean): number {
-  let total = 0;
-  for (let k = inicio; k < linhas.length && igual(linhas[k]); k++) total += temMetodo(linhas[k]) ? 2 : 1;
-  return total;
-}
 
 /** 0.3.328: o método da intervenção (o que a equipe preparou na Conciliação), só leitura: os 4 campos lado a lado. */
 function MetodoNaVenda({ m }: { m: MetodoTexto }) {
