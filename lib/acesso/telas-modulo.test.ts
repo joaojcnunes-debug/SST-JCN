@@ -69,7 +69,7 @@ test("conta antiga (NULL) e Admin veem tudo; a tela bloqueada fica fora", () => 
 
 test("entrada direta: vai para a primeira tela liberada do módulo, ou para o hub", () => {
   assert.equal(primeiraTelaLiberada(conta(["/comercial"]), ["comercial"]), "/comercial-matriz-aiha");
-  assert.equal(primeiraTelaLiberada(conta(["/comercial", "/comercial-matriz-aiha"]), ["comercial"]), null);
+  assert.equal(primeiraTelaLiberada(conta(["/comercial", "/comercial-matriz-aiha", "/comercial-orcamentos"]), ["comercial"]), null);
   // Sinalização: layout de AEP ou DRPS; sem AEP, cai no DRPS.
   assert.equal(
     primeiraTelaLiberada(conta(["/sinalizacao-psicossocial"], "Tecnico", ["psicossocial"]), ["aep", "psicossocial"]),
@@ -90,7 +90,7 @@ test("cadastro: marcar/desmarcar telas e o que se grava", () => {
   assert.deepEqual(marcarTelas([], ["/comercial-matriz-aiha"], false), ["/comercial-matriz-aiha"]);
   assert.deepEqual(marcarTelas(["/comercial-matriz-aiha"], ["/comercial-matriz-aiha"], true), []);
   assert.deepEqual(marcarTelas(["/x"], ["/x"], false), ["/x"]); // sem repetir
-  assert.deepEqual(telasDosModulos(["comercial"]), ["/comercial", "/comercial-matriz-aiha"]);
+  assert.deepEqual(telasDosModulos(["comercial"]), ["/comercial", "/comercial-matriz-aiha", "/comercial-orcamentos"]);
   // Vazia vira NULL (vê tudo); tela de módulo que a conta não vê sai; a Sinalização fica com AEP OU DRPS.
   assert.equal(telasParaGravar(["comercial"], []), null);
   assert.deepEqual(telasParaGravar(["comercial"], ["/comercial-matriz-aiha", "/consolidacao-grupo/vendas"]), [
